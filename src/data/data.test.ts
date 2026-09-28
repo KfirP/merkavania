@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { abilityIds } from './abilities';
 import { assetManifest, getAsset, type AssetKey } from './assetManifest';
 import { mkTiers } from './mkTiers';
+import { terrains } from './terrain';
 import { QUICK_ROUND_REFILL_SECONDS, weapons } from './weapons';
 
 const keys: string[] = assetManifest.map((a) => a.key);
@@ -72,5 +74,69 @@ describe('mkTiers', () => {
       // Must fit the 3-tile (48px) corridors LEVEL_DESIGN.md promises.
       expect(bodyRadius * 2).toBeLessThan(48);
     }
+  });
+});
+
+describe('abilities', () => {
+  it('match the GAME_DESIGN.md ability table', () => {
+    expect([...abilityIds].sort()).toEqual(
+      [
+        'mortar',
+        'hatch_scout',
+        'dozer_blade',
+        'ammo_heat',
+        'snorkel',
+        'ammo_apfsds',
+        'mine_plow',
+        'smoke',
+        'wide_tracks',
+        'lahat',
+        'hatch_drone',
+        'suspension',
+        'trophy',
+      ].sort(),
+    );
+  });
+});
+
+describe('terrain', () => {
+  it('has exactly the LEVEL_DESIGN.md terrain ids', () => {
+    expect(Object.keys(terrains).sort()).toEqual(
+      [
+        'sand',
+        'rock',
+        'road',
+        'water_shallow',
+        'water_deep',
+        'mud',
+        'rubble',
+        'minefield',
+        'crawlspace',
+        'chasm',
+        'missile_zone',
+      ].sort(),
+    );
+  });
+
+  it('gates terrain with the LEVEL_DESIGN.md abilities and pawns', () => {
+    expect(terrains.water_deep.requires).toEqual({ ability: 'snorkel', without: 'block' });
+    expect(terrains.mud.requires).toEqual({ ability: 'wide_tracks', without: 'block' });
+    expect(terrains.rubble.requires).toEqual({ ability: 'dozer_blade', without: 'block' });
+    expect(terrains.minefield.requires).toEqual({ ability: 'mine_plow', without: 'hazard' });
+    expect(terrains.missile_zone.requires).toEqual({ ability: 'trophy', without: 'hazard' });
+    expect(terrains.crawlspace.pawns).toEqual(['scout']);
+    expect(terrains.chasm.pawns).toEqual(['drone']);
+  });
+
+  it('references known abilities and has sane speed multipliers', () => {
+    for (const t of Object.values(terrains)) {
+      if (t.requires) expect(abilityIds).toContain(t.requires.ability);
+      expect(t.speedMul).toBeGreaterThan(0);
+      expect(t.speedMul).toBeLessThanOrEqual(2);
+    }
+  });
+
+  it('makes road faster than sand', () => {
+    expect(terrains.road.speedMul).toBeGreaterThan(terrains.sand.speedMul);
   });
 });
