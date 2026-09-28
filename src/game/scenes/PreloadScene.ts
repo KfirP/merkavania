@@ -3,13 +3,19 @@ import { assetManifest, type AssetEntry } from '../../data/assetManifest';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../logic/scale';
 import { t } from '../../i18n/i18n';
 import { generatePlaceholder } from '../placeholders';
-import { queueTiledMap, registerTiledMap } from '../tiledLoader';
+import {
+  queueTiledMap,
+  queueTiledWorld,
+  registerTiledMap,
+  registerTiledWorld,
+} from '../tiledLoader';
 import { SceneKey } from './keys';
 
 const BAR_WIDTH = 200;
 const BAR_HEIGHT = 8;
 
 const isTiledMap = (path: string) => path.endsWith('.tmj');
+const isTiledWorld = (path: string) => path.endsWith('.world');
 
 /** Loads everything in the asset manifest while drawing a progress bar. */
 export class PreloadScene extends Phaser.Scene {
@@ -38,6 +44,7 @@ export class PreloadScene extends Phaser.Scene {
       else if (asset.type === 'audio') this.load.audio(asset.key, asset.path);
       else if (asset.type === 'json') {
         if (isTiledMap(asset.path)) queueTiledMap(this.load, asset.key, asset.path);
+        else if (isTiledWorld(asset.path)) queueTiledWorld(this.load, asset.key, asset.path);
         else this.load.json(asset.key, asset.path);
       }
     }
@@ -47,7 +54,9 @@ export class PreloadScene extends Phaser.Scene {
     for (const asset of assetManifest) {
       if (asset.path === '' && !generatePlaceholder(this, asset.key))
         console.warn(`No file or placeholder drawer for asset "${asset.key}"`);
-      if (asset.type === 'json' && isTiledMap(asset.path)) registerTiledMap(this, asset.key);
+      if (asset.type !== 'json') continue;
+      if (isTiledMap(asset.path)) registerTiledMap(this, asset.key, asset.path);
+      else if (isTiledWorld(asset.path)) registerTiledWorld(this, asset.key, asset.path);
     }
     this.scene.start(SceneKey.Title);
   }

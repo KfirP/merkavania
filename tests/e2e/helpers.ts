@@ -10,6 +10,24 @@ export async function getPawn(page: Page) {
   return pawn;
 }
 
+export async function getWorld(page: Page) {
+  const world = await page.evaluate(() => window.__merkavania?.getWorld() ?? null);
+  if (!world) throw new Error('No world state yet');
+  return world;
+}
+
+/** Moves the pawn (debug hook), waits for a frame at the new spot, and returns its telemetry. */
+export async function teleport(page: Page, x: number, y: number, heading?: number) {
+  await page.evaluate(([x, y, h]) => window.__merkavania?.teleport(x!, y!, h), [x, y, heading]);
+  await expect
+    .poll(async () => {
+      const p = await getPawn(page);
+      return Math.hypot(p.x - x, p.y - y) < 1 && p.speed === 0;
+    })
+    .toBe(true);
+  return getPawn(page);
+}
+
 export function getShots(page: Page) {
   return page.evaluate(() => window.__merkavania?.getShots() ?? {});
 }

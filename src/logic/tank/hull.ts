@@ -20,6 +20,12 @@ export interface HullState {
   speed: number;
 }
 
+/** Hull stats on terrain with speed multiplier `mul`: only the top speeds change. */
+export function withSpeedMul(stats: HullStats, mul: number): HullStats {
+  if (mul === 1) return stats;
+  return { ...stats, maxSpeed: stats.maxSpeed * mul, reverseSpeed: stats.reverseSpeed * mul };
+}
+
 /** Advances hull heading and speed by one step. Tracks can pivot in place, so turning never needs speed. */
 export function stepHull(
   state: HullState,

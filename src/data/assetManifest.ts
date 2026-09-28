@@ -35,7 +35,15 @@ export const assetManifest = [
     path: 'assets/tiles/test/placeholder.png',
     status: 'placeholder',
   },
-  { key: 'map_test_room', type: 'json', path: 'maps/test/test_room.tmj', status: 'final' },
+  {
+    key: 'tiles_test_terrain',
+    type: 'image',
+    path: 'assets/tiles/test/terrain.png',
+    status: 'placeholder',
+  },
+  // Elevation data tiles: shown in Tiled only (the layer is hidden in game).
+  { key: 'tiles_elevation', type: 'image', path: 'assets/tiles/elevation.png', status: 'final' },
+  { key: 'world_test', type: 'json', path: 'maps/test/test.world', status: 'final' },
 ] as const satisfies readonly AssetEntry[];
 
 export type AssetKey = (typeof assetManifest)[number]['key'];

@@ -35,6 +35,24 @@ export function parseWorld(world: TiledWorld, worldPath: string): ParsedWorld {
   return { biome: stem(worldPath), chunks };
 }
 
+interface ObjectsOnly {
+  layers: { name: string; objects?: { type?: string; name?: string; x: number; y: number }[] }[];
+}
+
+/** World-pixel position of the `spawn` object called `name`, searching every chunk. */
+export function findSpawn(
+  chunks: readonly WorldChunk[],
+  mapOf: (chunkId: string) => ObjectsOnly,
+  name: string,
+): { x: number; y: number } | null {
+  for (const chunk of chunks) {
+    const objects = mapOf(chunk.id).layers.find((l) => l.name === 'objects')?.objects ?? [];
+    const spawn = objects.find((o) => o.type === 'spawn' && o.name === name);
+    if (spawn) return { x: chunk.cx * CHUNK_PX_W + spawn.x, y: chunk.cy * CHUNK_PX_H + spawn.y };
+  }
+  return null;
+}
+
 /** Pixel rectangle covering every chunk. */
 export function worldBounds(chunks: readonly ChunkCoord[]) {
   const xs = chunks.map((c) => c.cx);

@@ -1,0 +1,477 @@
+{
+  "columns": 8,
+  "image": "../../assets/tiles/elevation.png",
+  "imageheight": 64,
+  "imagewidth": 128,
+  "margin": 0,
+  "name": "tiles_elevation",
+  "spacing": 0,
+  "tilecount": 28,
+  "tiledversion": "1.11.2",
+  "tileheight": 16,
+  "tiles": [
+    {
+      "id": 0,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 2
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 3
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "name": "ramp",
+          "type": "string",
+          "value": "n"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "name": "ramp",
+          "type": "string",
+          "value": "e"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "name": "ramp",
+          "type": "string",
+          "value": "s"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "name": "ramp",
+          "type": "string",
+          "value": "w"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "name": "ramp",
+          "type": "string",
+          "value": "n"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "name": "ramp",
+          "type": "string",
+          "value": "e"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "name": "ramp",
+          "type": "string",
+          "value": "s"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "name": "ramp",
+          "type": "string",
+          "value": "w"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 2
+        },
+        {
+          "name": "ramp",
+          "type": "string",
+          "value": "n"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 2
+        },
+        {
+          "name": "ramp",
+          "type": "string",
+          "value": "e"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 2
+        },
+        {
+          "name": "ramp",
+          "type": "string",
+          "value": "s"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 2
+        },
+        {
+          "name": "ramp",
+          "type": "string",
+          "value": "w"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "name": "ramp",
+          "type": "string",
+          "value": "n"
+        },
+        {
+          "name": "steep",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "name": "ramp",
+          "type": "string",
+          "value": "e"
+        },
+        {
+          "name": "steep",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "name": "ramp",
+          "type": "string",
+          "value": "s"
+        },
+        {
+          "name": "steep",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "name": "ramp",
+          "type": "string",
+          "value": "w"
+        },
+        {
+          "name": "steep",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "name": "ramp",
+          "type": "string",
+          "value": "n"
+        },
+        {
+          "name": "steep",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "name": "ramp",
+          "type": "string",
+          "value": "e"
+        },
+        {
+          "name": "steep",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "name": "ramp",
+          "type": "string",
+          "value": "s"
+        },
+        {
+          "name": "steep",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "name": "ramp",
+          "type": "string",
+          "value": "w"
+        },
+        {
+          "name": "steep",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 2
+        },
+        {
+          "name": "ramp",
+          "type": "string",
+          "value": "n"
+        },
+        {
+          "name": "steep",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 2
+        },
+        {
+          "name": "ramp",
+          "type": "string",
+          "value": "e"
+        },
+        {
+          "name": "steep",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 2
+        },
+        {
+          "name": "ramp",
+          "type": "string",
+          "value": "s"
+        },
+        {
+          "name": "steep",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 2
+        },
+        {
+          "name": "ramp",
+          "type": "string",
+          "value": "w"
+        },
+        {
+          "name": "steep",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    }
+  ],
+  "tilewidth": 16,
+  "type": "tileset",
+  "version": "1.10"
+}

@@ -1,10 +1,14 @@
 import Phaser from 'phaser';
 import type { TankCommand } from '../../logic/input/TankCommand';
 import type { AssetKey } from '../../data/assetManifest';
+import type { PawnKind } from '../../data/terrain';
 
 /** Anything the player can drive: the tank now, the scout and drone later (ARCHITECTURE.md, Pawns). */
 export abstract class Pawn extends Phaser.Physics.Arcade.Sprite {
+  abstract readonly kind: PawnKind;
   level = 0;
+  /** Top-speed multiplier of the terrain under the pawn (set by ElevationSystem). */
+  speedMul = 1;
   hp: number;
   declare body: Phaser.Physics.Arcade.Body;
 
@@ -26,4 +30,15 @@ export abstract class Pawn extends Phaser.Physics.Arcade.Sprite {
   }
 
   abstract applyCommand(cmd: TankCommand, dt: number): void;
+
+  /**
+   * The world stopped part of this step's motion (a cliff, gated terrain…); `vx`/`vy` is the
+   * velocity that survived, with blocked axes zeroed.
+   */
+  onBlocked?(vx: number, vy: number): void;
+
+  /** Debug: moves the pawn and stops it. */
+  teleport(x: number, y: number): void {
+    this.body.reset(x, y);
+  }
 }

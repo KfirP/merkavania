@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseWorld, worldBounds, type TiledWorld } from './world';
+import { findSpawn, parseWorld, worldBounds, type TiledWorld } from './world';
 
 const world: TiledWorld = {
   type: 'world',
@@ -26,6 +26,27 @@ describe('parseWorld', () => {
       maps: [{ fileName: 'a.tmj', x: 16, y: 0, width: 480, height: 272 }],
     };
     expect(() => parseWorld(bad, 'maps/test/test.world')).toThrow('a.tmj');
+  });
+});
+
+describe('findSpawn', () => {
+  const { chunks } = parseWorld(world, 'maps/test/test.world');
+  const objects: Record<string, { type: string; name: string; x: number; y: number }[]> = {
+    test_x01_y01: [
+      { type: 'enemy', name: 'start', x: 1, y: 1 },
+      { type: 'spawn', name: 'start', x: 16, y: 32 },
+    ],
+  };
+  const mapOf = (id: string) => ({
+    layers: [{ name: 'objects', type: 'objectgroup', objects: objects[id] ?? [] }],
+  });
+
+  it('returns the named spawn in world pixels', () => {
+    expect(findSpawn(chunks, mapOf, 'start')).toEqual({ x: 480 + 16, y: 272 + 32 });
+  });
+
+  it('returns null when no chunk has it', () => {
+    expect(findSpawn(chunks, mapOf, 'depot_1')).toBeNull();
   });
 });
 
