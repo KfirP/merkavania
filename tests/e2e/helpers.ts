@@ -28,6 +28,18 @@ export async function teleport(page: Page, x: number, y: number, heading?: numbe
   return getPawn(page);
 }
 
+export function damagePlayer(page: Page, amount: number) {
+  return page.evaluate((n) => window.__merkavania?.damagePlayer(n), amount);
+}
+
+export function setGod(page: Page, on: boolean) {
+  return page.evaluate((v) => window.__merkavania?.setGod(v), on);
+}
+
+export function getCombatLog(page: Page) {
+  return page.evaluate(() => window.__merkavania?.getCombatLog() ?? []);
+}
+
 export function getShots(page: Page) {
   return page.evaluate(() => window.__merkavania?.getShots() ?? {});
 }

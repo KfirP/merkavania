@@ -13,6 +13,23 @@ export interface PawnTelemetry {
   level: number;
   /** Id of the chunk the pawn is in. */
   chunk: string;
+  hp: number;
+  maxHp: number;
+  /** False between the tank's death and its respawn. */
+  alive: boolean;
+}
+
+/** One resolved hit, for the debug combat log and specs. */
+export interface CombatHit {
+  /** `player`, an enemy id or a destructible's `<chunkId>:<id>`. */
+  target: string;
+  weapon: WeaponId;
+  damage: number;
+  rear: boolean;
+  ricochet: boolean;
+  killed: boolean;
+  /** Splash damage rather than a direct hit. */
+  splash: boolean;
 }
 
 export interface WorldState {
@@ -27,6 +44,13 @@ export interface GameEvents {
   'weapon:fired': { weapon: WeaponId };
   /** Main-gun quick rounds; emitted when the displayed value changes. */
   'gun:state': { rounds: number; max: number; refillRemaining: number };
+  /** Anything with HP changed it; `target` is `player`, an enemy id or a destructible key. */
+  'hp:changed': { target: string; hp: number; max: number };
+  'combat:hit': CombatHit;
+  /** An enemy or destructible was destroyed. */
+  'entity:destroyed': { id: string; kind: 'enemy' | 'destructible' };
+  'player:died': undefined;
+  'player:respawned': undefined;
   /** The pawn entered another chunk, or chunks were streamed in or out. */
   'world:chunks': WorldState;
   /** Debug builds only: emitted every frame by WorldScene. */
@@ -35,6 +59,9 @@ export interface GameEvents {
   'debug:toggleElevation': undefined;
   /** Moves the active pawn and stops it; `heading` in radians, kept if omitted. */
   'debug:teleport': { x: number; y: number; heading?: number };
+  /** Deals `amount` damage to the player, ignoring armor. */
+  'debug:damagePlayer': { amount: number };
+  'debug:god': { on: boolean };
 }
 
 type EventName = keyof GameEvents & string;

@@ -4,6 +4,7 @@ import { installDebugHooks } from './game/debug';
 import { installIntegerScaling } from './game/scale';
 import { BootScene } from './game/scenes/BootScene';
 import { DebugScene } from './game/scenes/DebugScene';
+import { HudScene } from './game/scenes/HudScene';
 import { PreloadScene } from './game/scenes/PreloadScene';
 import { TitleScene } from './game/scenes/TitleScene';
 import { TouchControlsScene } from './game/scenes/TouchControlsScene';
@@ -24,7 +25,15 @@ const game = new Phaser.Game({
     default: 'arcade',
     arcade: { gravity: { x: 0, y: 0 }, debug: false },
   },
-  scene: [BootScene, PreloadScene, TitleScene, WorldScene, TouchControlsScene, DebugScene],
+  scene: [
+    BootScene,
+    PreloadScene,
+    TitleScene,
+    WorldScene,
+    HudScene,
+    TouchControlsScene,
+    DebugScene,
+  ],
 });
 
 installIntegerScaling(game);

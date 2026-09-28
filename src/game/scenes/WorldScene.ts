@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import { getAsset } from '../../data/assetManifest';
+import { RESPAWN_DELAY } from '../../data/combat';
+import { hazardDamage } from '../../logic/combat/hazard';
 import { CHUNK_H, CHUNK_PX_H, CHUNK_PX_W, CHUNK_W, TILE } from '../../logic/world/chunks';
 import { ABOVE_DEPTH } from '../../logic/world/depth';
 import { WorldGrid } from '../../logic/world/grid';
@@ -8,6 +10,8 @@ import { isDebug } from '../debug';
 import { Tank } from '../entities/Tank';
 import { events, type GameEvents } from '../events';
 import { ChunkStreamer } from '../systems/ChunkStreamer';
+import { CombatSystem } from '../systems/CombatSystem';
+import { EffectsSystem } from '../systems/EffectsSystem';
 import { ElevationSystem } from '../systems/ElevationSystem';
 import { InputSystem } from '../systems/InputSystem';
 import { ProjectileSystem } from '../systems/ProjectileSystem';
@@ -16,6 +20,8 @@ import { SceneKey } from './keys';
 /** Longest step fed to pawns, so a tab-switch hitch doesn't launch the tank through a wall. */
 const MAX_DT = 1 / 20;
 const WORLD_KEY = 'world_test';
+/** Camera fade around a respawn, ms. */
+const FADE_MS = 400;
 
 /** Debug elevation tint per level (0 is left clear), plus ramps and chunk borders. */
 const LEVEL_TINTS = [0x000000, 0xe8d24a, 0xe8883a, 0xd6453e];
@@ -29,7 +35,11 @@ export class WorldScene extends Phaser.Scene {
   private streamer!: ChunkStreamer;
   private elevation!: ElevationSystem;
   private projectiles!: ProjectileSystem;
+  private effects!: EffectsSystem;
+  private combat!: CombatSystem;
   private grid!: WorldGrid;
+  /** Where the tank respawns; M4 replaces it with the last depot. */
+  private respawnPoint!: { x: number; y: number; heading: number };
   private elevationOverlay: Phaser.GameObjects.Graphics | null = null;
 
   constructor() {
@@ -44,10 +54,22 @@ export class WorldScene extends Phaser.Scene {
     this.grid = new WorldGrid();
     this.elevation = new ElevationSystem(this.grid);
     this.projectiles = new ProjectileSystem(this, this.elevation.cellAt);
+    this.effects = new EffectsSystem(this);
+    this.combat = new CombatSystem(this, this.projectiles, this.effects);
 
     const spawn = findSpawn(world.chunks, (id) => this.cache.tilemap.get(id).data, 'start');
     if (!spawn) throw new Error(`${WORLD_KEY} has no start spawn`);
-    this.tank = new Tank(this, spawn.x, spawn.y, 'mk2', -Math.PI / 2, this.projectiles);
+    this.respawnPoint = { ...spawn, heading: -Math.PI / 2 };
+    this.tank = new Tank(
+      this,
+      spawn.x,
+      spawn.y,
+      'mk2',
+      this.respawnPoint.heading,
+      this.projectiles,
+    );
+    this.combat.add(this.tank);
+    events.on('player:died', this.onPlayerDied, this);
 
     this.streamer = new ChunkStreamer(this, world, this.grid, (walls) => [
       this.physics.add.collider(this.tank, walls),
@@ -63,12 +85,16 @@ export class WorldScene extends Phaser.Scene {
 
     this.inputSystem = new InputSystem(this);
 
+    this.scene.launch(SceneKey.Hud);
+    events.emit('hp:changed', { target: 'player', hp: this.tank.hp, max: this.tank.maxHp });
     if (this.sys.game.device.input.touch) this.scene.launch(SceneKey.TouchControls);
     if (isDebug()) {
       this.scene.launch(SceneKey.Debug);
       events.on('debug:toggleBodies', this.toggleBodies, this);
       events.on('debug:toggleElevation', this.toggleElevation, this);
       events.on('debug:teleport', this.teleport, this);
+      events.on('debug:damagePlayer', this.debugDamage, this);
+      events.on('debug:god', this.debugGod, this);
       events.on('world:chunks', this.redrawElevation, this);
     }
 
@@ -78,7 +104,11 @@ export class WorldScene extends Phaser.Scene {
       events.off('debug:toggleBodies', this.toggleBodies, this);
       events.off('debug:toggleElevation', this.toggleElevation, this);
       events.off('debug:teleport', this.teleport, this);
+      events.off('debug:damagePlayer', this.debugDamage, this);
+      events.off('debug:god', this.debugGod, this);
       events.off('world:chunks', this.redrawElevation, this);
+      events.off('player:died', this.onPlayerDied, this);
+      this.scene.stop(SceneKey.Hud);
       this.scene.stop(SceneKey.TouchControls);
       this.scene.stop(SceneKey.Debug);
     });
@@ -92,8 +122,12 @@ export class WorldScene extends Phaser.Scene {
     this.streamer.update(x, y);
     this.elevation.prepare(this.tank);
     const cmd = this.inputSystem.update({ x, y, turretAngle: this.tank.aim, dt });
-    this.tank.applyCommand(cmd, dt);
-    this.elevation.constrain(this.tank, dt);
+    // A dead tank ignores input until it respawns; input is still polled so edges stay current.
+    if (this.tank.alive) {
+      this.tank.applyCommand(cmd, dt);
+      this.elevation.constrain(this.tank, dt);
+      this.applyHazards(dt);
+    }
     this.projectiles.update();
 
     if (isDebug())
@@ -106,7 +140,40 @@ export class WorldScene extends Phaser.Scene {
         device: this.inputSystem.active,
         level: this.tank.level,
         chunk: this.streamer.currentChunk,
+        hp: this.tank.hp,
+        maxHp: this.tank.maxHp,
+        alive: this.tank.alive,
       });
+  }
+
+  /** Minefields and missile zones hurt a tank without the matching ability. */
+  private applyHazards(dt: number): void {
+    const { x, y } = this.tank.pos;
+    const cell = this.elevation.cellAt(Math.floor(x / TILE), Math.floor(y / TILE));
+    const damage = hazardDamage(cell, this.elevation.abilities(), dt);
+    if (damage > 0) this.combat.damage(this.tank, damage);
+  }
+
+  private onPlayerDied(): void {
+    const { x, y } = this.tank.pos;
+    this.effects.explosion(x, y, 28, this.tank.depth + 1);
+    const cam = this.cameras.main;
+    this.time.delayedCall(RESPAWN_DELAY * 1000 - FADE_MS, () => cam.fadeOut(FADE_MS));
+    this.time.delayedCall(RESPAWN_DELAY * 1000, () => {
+      const { x, y, heading } = this.respawnPoint;
+      this.tank.respawn(x, y, heading);
+      this.streamer.update(x, y);
+      this.elevation.prepare(this.tank);
+      cam.fadeIn(FADE_MS);
+    });
+  }
+
+  private debugDamage({ amount }: GameEvents['debug:damagePlayer']): void {
+    this.combat.damage(this.tank, amount);
+  }
+
+  private debugGod({ on }: GameEvents['debug:god']): void {
+    this.combat.god = on;
   }
 
   private toggleBodies(): void {

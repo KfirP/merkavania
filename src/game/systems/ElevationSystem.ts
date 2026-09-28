@@ -16,7 +16,7 @@ export class ElevationSystem {
   constructor(
     grid: WorldGrid,
     /** Abilities the pawn has; GameState supplies these from M4. */
-    private readonly abilities: () => readonly AbilityId[] = () => [],
+    readonly abilities: () => readonly AbilityId[] = () => [],
   ) {
     this.cellAt = (tx, ty) => grid.cellAt(tx, ty);
   }

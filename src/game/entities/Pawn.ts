@@ -10,6 +10,7 @@ export abstract class Pawn extends Phaser.Physics.Arcade.Sprite {
   /** Top-speed multiplier of the terrain under the pawn (set by ElevationSystem). */
   speedMul = 1;
   hp: number;
+  readonly maxHp: number;
   declare body: Phaser.Physics.Arcade.Body;
 
   constructor(
@@ -22,6 +23,7 @@ export abstract class Pawn extends Phaser.Physics.Arcade.Sprite {
   ) {
     super(scene, x, y, texture);
     this.hp = maxHp;
+    this.maxHp = maxHp;
     scene.add.existing(this);
     scene.physics.add.existing(this);
     // Circle body: the hull's rotation is visual only, so there are no rotated-AABB problems.

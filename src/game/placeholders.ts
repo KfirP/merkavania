@@ -133,6 +133,16 @@ const drawers: Partial<Record<AssetKey, Draw>> = {
     g.fillStyle(0xfff4b0).fillTriangle(0, 2, 6, 4, 0, 6);
     return { width: 10, height: 8 };
   },
+  spark: (g) => {
+    g.fillStyle(0xfff4b0).fillRect(1, 0, 1, 3).fillRect(0, 1, 3, 1);
+    return { width: 3, height: 3 };
+  },
+  explosion: (g) => {
+    g.fillStyle(0xd6453e).fillCircle(16, 16, 16);
+    g.fillStyle(0xffb030).fillCircle(15, 15, 11);
+    g.fillStyle(0xfff4b0).fillCircle(14, 14, 6);
+    return { width: 32, height: 32 };
+  },
   impact_puff: (g) => {
     g.fillStyle(0xcfc3a0).fillCircle(4, 4, 4);
     g.fillStyle(0xeee4c8).fillCircle(3, 3, 2);

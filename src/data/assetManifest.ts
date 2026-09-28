@@ -34,6 +34,8 @@ export const assetManifest = [
   { key: 'destructible_armored', type: 'image', path: '', status: 'placeholder' },
   { key: 'muzzle_flash', type: 'image', path: '', status: 'placeholder', origin: { x: 0, y: 0.5 } },
   { key: 'impact_puff', type: 'image', path: '', status: 'placeholder' },
+  { key: 'spark', type: 'image', path: '', status: 'placeholder' },
+  { key: 'explosion', type: 'image', path: '', status: 'placeholder' },
   {
     key: 'tiles_test',
     type: 'image',
