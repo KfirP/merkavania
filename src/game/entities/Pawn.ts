@@ -29,6 +29,15 @@ export abstract class Pawn extends Phaser.Physics.Arcade.Sprite {
     this.body.setCollideWorldBounds(true);
   }
 
+  /**
+   * Where the pawn is this frame. Read positions through this during a scene's `update`: Arcade
+   * steps bodies before `update` and copies them to the sprite only in POST_UPDATE, so until then
+   * `x`/`y` are a physics step behind.
+   */
+  get pos(): { x: number; y: number } {
+    return this.body.center;
+  }
+
   abstract applyCommand(cmd: TankCommand, dt: number): void;
 
   /**

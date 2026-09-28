@@ -48,6 +48,31 @@ test.describe('Mk2 tank on keyboard and mouse', () => {
     expect(errors).toEqual([]);
   });
 
+  test('telemetry reports the post-physics position, not the sprite a step behind', async ({
+    page,
+  }) => {
+    await enterWorld(page);
+    await page.keyboard.down('w');
+    await page.waitForTimeout(1_500);
+    // Arcade steps bodies before WorldScene.update and syncs the sprite in POST_UPDATE, so after
+    // POST_UPDATE the sprite shows where the tank really is this frame.
+    const gap = await page.evaluate(
+      () =>
+        new Promise<{ dx: number; dy: number; speed: number }>((resolve) => {
+          const world = window.__merkavania!.game.scene.getScene('World');
+          world.events.once('postupdate', () => {
+            const tank = (world as unknown as { tank: { x: number; y: number } }).tank;
+            const pawn = window.__merkavania!.getPawn()!;
+            resolve({ dx: pawn.x - tank.x, dy: pawn.y - tank.y, speed: pawn.speed });
+          });
+        }),
+    );
+    await page.keyboard.up('w');
+    expect(Math.abs(gap.speed)).toBeGreaterThan(30);
+    expect(Math.abs(gap.dx)).toBeLessThan(0.01);
+    expect(Math.abs(gap.dy)).toBeLessThan(0.01);
+  });
+
   test('turret traverses toward the mouse at a limited rate', async ({ page }) => {
     await enterWorld(page);
     // The mouse aims from the first frame, so park it due north (the camera centres on the tank).

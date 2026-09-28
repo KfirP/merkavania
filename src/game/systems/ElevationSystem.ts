@@ -23,7 +23,7 @@ export class ElevationSystem {
 
   /** Before the pawn moves: its level and the speed multiplier of the terrain under it. */
   prepare(pawn: Pawn): void {
-    const { x, y } = pawn.body.center;
+    const { x, y } = pawn.pos;
     pawn.level = levelAt(x, y, this.cellAt);
     pawn.speedMul = speedMulAt(this.cellAt(Math.floor(x / TILE), Math.floor(y / TILE)));
   }

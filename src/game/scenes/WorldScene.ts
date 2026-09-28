@@ -86,25 +86,20 @@ export class WorldScene extends Phaser.Scene {
 
   override update(_time: number, delta: number): void {
     const dt = Math.min(delta / 1000, MAX_DT);
+    // Positions come from `pos` (the body), not the sprite: Arcade has already stepped it.
     // Stream first, so the cells around the pawn exist before movement is checked against them.
-    // The body, not the sprite: Arcade has already stepped it this frame.
-    const { x, y } = this.tank.body.center;
+    const { x, y } = this.tank.pos;
     this.streamer.update(x, y);
     this.elevation.prepare(this.tank);
-    const cmd = this.inputSystem.update({
-      x: this.tank.x,
-      y: this.tank.y,
-      turretAngle: this.tank.aim,
-      dt,
-    });
+    const cmd = this.inputSystem.update({ x, y, turretAngle: this.tank.aim, dt });
     this.tank.applyCommand(cmd, dt);
     this.elevation.constrain(this.tank, dt);
     this.projectiles.update();
 
     if (isDebug())
       events.emit('debug:pawn', {
-        x: this.tank.x,
-        y: this.tank.y,
+        // After constrain, which may have moved the body back from a cliff.
+        ...this.tank.pos,
         heading: this.tank.heading,
         speed: this.tank.speed,
         turretAngle: this.tank.aim,

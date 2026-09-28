@@ -96,7 +96,7 @@ export class Tank extends Pawn {
       this.turretAngle = stepTurret(this.turretAngle, cmd.aimAngle, this.tier.traverseRate, dt);
 
     this.updateWeapons(cmd, dt);
-    this.setDepth(depthFor(this.level, this.y));
+    this.setDepth(depthFor(this.level, this.pos.y));
   }
 
   /** Carries a wall hit into the hull speed (see `speedAfterImpact`). */
@@ -179,7 +179,8 @@ export class Tank extends Pawn {
 
   /** Turret ring position: offset toward the rear of the hull. */
   private pivot(): { x: number; y: number } {
-    return offsetFrom(this.x, this.y, this.hull.heading, this.tier.turretOffset, 0);
+    const { x, y } = this.pos;
+    return offsetFrom(x, y, this.hull.heading, this.tier.turretOffset, 0);
   }
 
   private syncTurret(): void {
