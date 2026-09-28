@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { dragToStick } from '../../logic/input/virtualStick';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../logic/scale';
 import { touchState, type StickState } from '../input/touchState';
 import { SceneKey } from './keys';
@@ -83,13 +84,10 @@ export class TouchControlsScene extends Phaser.Scene {
     touchState.lastTouchAt = performance.now();
     for (const stick of Object.values(this.sticks)) {
       if (stick.pointerId !== p.id) continue;
-      const dx = p.x - stick.base.x;
-      const dy = p.y - stick.base.y;
-      const dist = Math.hypot(dx, dy);
-      const k = dist > STICK_RADIUS ? STICK_RADIUS / dist : 1;
-      stick.knob.setPosition(stick.base.x + dx * k, stick.base.y + dy * k);
-      stick.state.x = (dx * k) / STICK_RADIUS;
-      stick.state.y = (dy * k) / STICK_RADIUS;
+      const s = dragToStick(p.x - stick.base.x, p.y - stick.base.y, STICK_RADIUS);
+      stick.knob.setPosition(stick.base.x + s.knobX, stick.base.y + s.knobY);
+      stick.state.x = s.x;
+      stick.state.y = s.y;
     }
   }
 

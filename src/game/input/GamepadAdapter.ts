@@ -1,11 +1,9 @@
 import type Phaser from 'phaser';
 import { RisingEdge } from '../../logic/input/edge';
-import { applyRadialDeadzone, stickAngle } from '../../logic/input/stick';
+import { padAnalog } from '../../logic/input/mapping';
 import type { TankCommand } from '../../logic/input/TankCommand';
 import type { InputAdapter } from './InputAdapter';
 
-const STICK_DEADZONE = 0.2;
-const AIM_DEADZONE = 0.35;
 const TRIGGER_THRESHOLD = 0.4;
 
 /** Standard-mapping button indices (W3C Gamepad "standard" layout). */
@@ -32,15 +30,8 @@ export class GamepadAdapter implements InputAdapter {
     const pressed = (i: number) => value(i) > TRIGGER_THRESHOLD;
     const axis = (i: number) => pad.axes[i]?.getValue() ?? 0;
 
-    const left = applyRadialDeadzone(axis(0), axis(1), STICK_DEADZONE);
-    cmd.throttle = -left.y;
-    cmd.turn = left.x;
-
-    const rx = axis(2);
-    const ry = axis(3);
-    const right = applyRadialDeadzone(rx, ry, AIM_DEADZONE);
-    const aiming = right.x !== 0 || right.y !== 0;
-    cmd.aimAngle = aiming ? stickAngle(rx, ry) : null;
+    const analog = padAnalog(axis(0), axis(1), axis(2), axis(3));
+    Object.assign(cmd, analog);
 
     cmd.fire = pressed(B.rt);
     cmd.altFire = pressed(B.lt);
@@ -52,7 +43,7 @@ export class GamepadAdapter implements InputAdapter {
     cmd.pause = this.edges.pause.update(pressed(B.start));
 
     const anyButton = pad.buttons.some((b) => b.value > TRIGGER_THRESHOLD);
-    return anyButton || left.x !== 0 || left.y !== 0 || aiming;
+    return anyButton || analog.throttle !== 0 || analog.turn !== 0 || analog.aimAngle !== null;
   }
 
   destroy(): void {}

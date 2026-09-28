@@ -4,7 +4,8 @@ import { mkTiers, type MkTier, type MkTierId } from '../../data/mkTiers';
 import { QUICK_ROUND_REFILL_SECONDS, weapons } from '../../data/weapons';
 import type { TankCommand } from '../../logic/input/TankCommand';
 import { tickCooldown, tryTrigger } from '../../logic/tank/cooldown';
-import { stepHull, type HullState } from '../../logic/tank/hull';
+import { offsetFrom } from '../../logic/tank/geometry';
+import { speedAfterImpact, stepHull, type HullState } from '../../logic/tank/hull';
 import {
   initialGun,
   tickGun,
@@ -96,15 +97,11 @@ export class Tank extends Pawn {
     this.setDepth(depthFor(this.level, this.y));
   }
 
-  /**
-   * Arcade zeroes the blocked velocity axis on a wall hit. Carry that into the hull speed, so
-   * ramming a wall kills momentum instead of storing it, and sliding along one bleeds speed.
-   */
+  /** Carries a wall hit into the hull speed (see `speedAfterImpact`). */
   private bleedMomentumOnImpact(): void {
     if (this.body.blocked.none && this.body.touching.none) return;
     const v = this.body.velocity;
-    const achieved = v.x * Math.cos(this.hull.heading) + v.y * Math.sin(this.hull.heading);
-    if (Math.abs(achieved) < Math.abs(this.hull.speed)) this.hull.speed = achieved;
+    this.hull.speed = speedAfterImpact(this.hull.speed, this.hull.heading, v.x, v.y);
   }
 
   private updateWeapons(cmd: TankCommand, dt: number): void {
@@ -124,10 +121,8 @@ export class Tank extends Pawn {
       this.mgCooldown = shot.remaining;
       if (shot.fired) {
         const { x, y } = this.pivot();
-        const a = this.turretAngle;
-        const px = x + Math.cos(a) * COAX_FORWARD + Math.sin(a) * COAX_SIDE;
-        const py = y + Math.sin(a) * COAX_FORWARD - Math.cos(a) * COAX_SIDE;
-        this.projectiles.fire(mg, px, py, a, this.level);
+        const coax = offsetFrom(x, y, this.turretAngle, COAX_FORWARD, COAX_SIDE);
+        this.projectiles.fire(mg, coax.x, coax.y, this.turretAngle, this.level);
         events.emit('weapon:fired', { weapon: mg.id });
       }
     }
@@ -138,8 +133,7 @@ export class Tank extends Pawn {
     const weapon = weapons[this.tier.mainGun];
     const { x, y } = this.pivot();
     const a = this.turretAngle;
-    const tipX = x + Math.cos(a) * this.tier.muzzleLength;
-    const tipY = y + Math.sin(a) * this.tier.muzzleLength;
+    const { x: tipX, y: tipY } = offsetFrom(x, y, a, this.tier.muzzleLength, 0);
     this.projectiles.fire(weapon, tipX, tipY, a, this.level);
     this.recoil = weapon.recoil;
 
@@ -172,19 +166,14 @@ export class Tank extends Pawn {
 
   /** Turret ring position: offset toward the rear of the hull. */
   private pivot(): { x: number; y: number } {
-    return {
-      x: this.x + Math.cos(this.hull.heading) * this.tier.turretOffset,
-      y: this.y + Math.sin(this.hull.heading) * this.tier.turretOffset,
-    };
+    return offsetFrom(this.x, this.y, this.hull.heading, this.tier.turretOffset, 0);
   }
 
   private syncTurret(): void {
     const { x, y } = this.pivot();
+    const kicked = offsetFrom(x, y, this.turretAngle, -this.recoil, 0);
     this.turret
-      .setPosition(
-        x - Math.cos(this.turretAngle) * this.recoil,
-        y - Math.sin(this.turretAngle) * this.recoil,
-      )
+      .setPosition(kicked.x, kicked.y)
       .setRotation(this.turretAngle)
       .setDepth(this.depth + 0.5);
   }

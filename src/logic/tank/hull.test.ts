@@ -1,5 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import { stepHull, type HullState, type HullStats } from './hull';
+import { speedAfterImpact, stepHull, type HullState, type HullStats } from './hull';
+
+describe('speedAfterImpact', () => {
+  it('drops to zero when a wall stopped the tank head-on', () => {
+    expect(speedAfterImpact(70, 0, 0, 0)).toBe(0);
+  });
+
+  it('keeps only the motion along the heading when sliding along a wall', () => {
+    // Heading 45°, the wall zeroed y: the surviving x velocity projects back onto the heading.
+    const h = Math.PI / 4;
+    expect(speedAfterImpact(70, h, 70 * Math.cos(h), 0)).toBeCloseTo(35);
+  });
+
+  it('never adds speed', () => {
+    expect(speedAfterImpact(10, 0, 50, 0)).toBe(10);
+  });
+
+  it('works while reversing', () => {
+    expect(speedAfterImpact(-40, 0, 0, 0)).toBe(0);
+    expect(speedAfterImpact(-40, 0, -20, 0)).toBe(-20);
+  });
+});
 
 const stats: HullStats = {
   maxSpeed: 100,

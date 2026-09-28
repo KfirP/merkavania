@@ -44,3 +44,14 @@ export function stepHull(
   const heading = wrapAngle(state.heading + clamp(turn, -1, 1) * stats.turnRate * dt);
   return { heading, speed };
 }
+
+/**
+ * Hull speed after a wall collision. Arcade zeroes the blocked velocity axis, so projecting the
+ * velocity it kept onto the heading gives what the tank actually achieved: ramming a wall kills
+ * momentum instead of storing it, and sliding along one bleeds speed. Never adds speed.
+ */
+export function speedAfterImpact(speed: number, heading: number, vx: number, vy: number): number {
+  const achieved = vx * Math.cos(heading) + vy * Math.sin(heading);
+  const result = Math.abs(achieved) < Math.abs(speed) ? achieved : speed;
+  return Math.abs(result) < 1e-9 ? 0 : result;
+}
