@@ -70,9 +70,13 @@ Sequence breaks: the design tolerates skilled players reaching areas early (for 
 
 ## Combat & damage
 - Damage = weapon damage × material/armor modifier. The tank's armor tier reduces incoming damage, and a hit to the **rear arc** does +50%. This rewards keeping the front toward the enemy, a Merkava theme.
-- Destructible materials: `sandbag` (any weapon), `wood` (any weapon), `concrete` (HEAT+), `armored` (APFSDS).
+- Armor ids (`data/combat.ts`): `none` (infantry), `light` (technical), `low` (Mk2, light tank), `med`, `high`, `fortified` (bunkers). Each gives a damage multiplier per weapon class (`small_arms`, `cannon`, `missile`): the coax MG barely scratches armor and ricochets, while cannons and missiles get through.
+- Destructible materials: `sandbag` (any weapon), `wood` (any weapon), `concrete` (HEAT+), `armored` (APFSDS). Each has a `minAmmo`; standard shells bounce off anything tougher.
+- Splash: main-gun shells, the light tank's gun and ATGMs explode, hurting everything nearby on the same level.
+- Hazards: a `minefield` or `missile_zone` without its ability deals damage every second.
+- The tank flattens soldiers it drives into. It is a tank.
 - Secondary weapons use limited ammo that refills at depots. The main gun and coax MG have unlimited ammo, with a reload time for the main gun.
-- **Death:** respawn at the last depot you used. Pickups you collected are kept (they're saved when collected); enemies respawn.
+- **Death:** respawn at the last depot you used (the `start` spawn until depots arrive in M4). Pickups you collected are kept (they're saved when collected); enemies respawn.
 
 ## Save & depots
 - **Repair depots** (`depot` objects) heal fully, refill secondary ammo and save the game.
@@ -80,6 +84,8 @@ Sequence breaks: the design tolerates skilled players reaching areas early (for 
 - The map screen shows the chunks you've explored, depots, and any collected or seen pickup markers.
 
 ## Enemies (mostly military)
+Desert enemies (numbers in `data/enemies.ts`): `rifle_squad` (three soldiers who scatter from a close tank), `technical` (fast, circles you with an MG), `bunker_mg` (fortified, only traverses its front arc, weak from behind), `atgm_team` (aims a blinking laser for a long moment, then fires a slow guided missile you can outrun, out-turn or hide from), `light_tank` (closes to range, weak rear arc). Each spots you only on your level and in line of sight, telegraphs before its first shot, and hunts your last known position when it loses you.
+
 | Biome | Enemies |
 |---|---|
 | Desert | `rifle_squad`, `atgm_team` (slow guided missile), `technical` (fast pickup + MG), `bunker_mg`, `light_tank` |

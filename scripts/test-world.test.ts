@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { assetManifest } from '../src/data/assetManifest';
 import { CHUNK_H, CHUNK_W, TILE } from '../src/logic/world/chunks';
 import { parseChunkGrid, type Cell, type Dir, type GridMap } from '../src/logic/world/grid';
+import { parseChunkObjects, type RawObject } from '../src/logic/world/objects';
 import { embedTilesets, resolveRelativePath, type TiledMap } from '../src/logic/world/tiled';
 import { canEnter, type MoveContext } from '../src/logic/world/traversal';
 import { parseWorld, type TiledWorld } from '../src/logic/world/world';
@@ -155,5 +156,37 @@ describe('test world', () => {
     const used = new Set([...cells.values()].map((c) => c.terrain));
     for (const t of ['road', 'rock', 'water_shallow', 'water_deep', 'mud', 'rubble', 'minefield'])
       expect(used).toContain(t);
+  });
+
+  it('has a row of every destructible material on open level-0 ground (combat specs)', () => {
+    const objects = (maps.get('test_x00_y01')!.raw.layers as Layer[]).find(
+      (l) => l.name === 'objects',
+    )!.objects!;
+    const found = parseChunkObjects(maps.get('test_x00_y01')!.chunk, objects as RawObject[]);
+    expect(found.destructibles.map((d) => d.material).sort()).toEqual(
+      ['armored', 'concrete', 'sandbag', 'wood'].sort(),
+    );
+    for (const d of found.destructibles) {
+      const cell = cellAt(Math.floor(d.x / TILE), Math.floor(d.y / TILE))!;
+      expect(cell.level).toBe(0);
+      expect(cell.solid).toBe(false);
+    }
+  });
+
+  it('has one of each desert enemy in x03_y01, out of sight of the start and the M2 specs', () => {
+    const { chunk, raw } = maps.get('test_x03_y01')!;
+    const objects = (raw.layers as Layer[]).find((l) => l.name === 'objects')!.objects!;
+    const { enemies } = parseChunkObjects(chunk, objects as RawObject[]);
+    expect(enemies.map((e) => e.enemyType).sort()).toEqual(
+      ['atgm_team', 'bunker_mg', 'light_tank', 'rifle_squad', 'technical'].sort(),
+    );
+    expect(enemies.find((e) => e.enemyType === 'technical')!.patrol!.length).toBeGreaterThan(2);
+    for (const e of enemies) {
+      const cell = cellAt(Math.floor(e.x / TILE), Math.floor(e.y / TILE))!;
+      expect(cell.solid).toBe(false);
+      expect(cell.level).toBe(e.level);
+      // Rows 27+ keep them away from the plateau and road the world specs drive on.
+      expect(e.y).toBeGreaterThanOrEqual(27 * TILE);
+    }
   });
 });

@@ -9,6 +9,7 @@ import {
 } from '../../logic/world/chunks';
 import { ABOVE_DEPTH } from '../../logic/world/depth';
 import { parseChunkGrid, type GridMap, type WorldGrid } from '../../logic/world/grid';
+import type { RawObject } from '../../logic/world/objects';
 import type { ParsedWorld, WorldChunk } from '../../logic/world/world';
 import { events } from '../events';
 
@@ -21,6 +22,12 @@ const DRAWN_LAYERS = [
 ] as const;
 
 const DATA_ONLY_TILESETS = new Set(['tiles_elevation']);
+
+/** Called after a chunk's cells are in the grid, and before they leave it. */
+export interface ChunkHooks {
+  onLoad(chunk: WorldChunk, objects: readonly RawObject[]): void;
+  onUnload(chunk: WorldChunk): void;
+}
 
 interface LoadedChunk {
   chunk: WorldChunk;
@@ -45,6 +52,7 @@ export class ChunkStreamer {
     private readonly addColliders: (
       walls: Phaser.Tilemaps.TilemapLayer,
     ) => Phaser.Physics.Arcade.Collider[],
+    private readonly hooks?: ChunkHooks,
   ) {
     for (const c of world.chunks) this.byCoord.set(`${c.cx},${c.cy}`, c);
   }
@@ -101,11 +109,14 @@ export class ChunkStreamer {
     const data = this.scene.cache.tilemap.get(chunk.id).data as GridMap;
     this.grid.add(chunk, parseChunkGrid(data));
     this.loaded.set(chunk.id, { chunk, map, colliders });
+    const objects = data.layers.find((l) => l.name === 'objects')?.objects ?? [];
+    this.hooks?.onLoad(chunk, objects as RawObject[]);
   }
 
   private unload(id: string): void {
     const loaded = this.loaded.get(id);
     if (!loaded) return;
+    this.hooks?.onUnload(loaded.chunk);
     for (const c of loaded.colliders) c.destroy();
     loaded.map.destroy();
     this.grid.remove(loaded.chunk);

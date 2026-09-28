@@ -1,6 +1,10 @@
+import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { abilityIds } from './abilities';
 import { assetManifest, getAsset, type AssetKey } from './assetManifest';
+import { ammoTypes, armorIds, armorMultipliers, REAR_ARC, weaponClasses } from './combat';
+import { enemies, enemyBehaviours, enemyIds } from './enemies';
+import { materialIds, materials } from './materials';
 import { allMkTierIds, mkTiers } from './mkTiers';
 import { terrains } from './terrain';
 import { QUICK_ROUND_REFILL_SECONDS, weapons } from './weapons';
@@ -26,6 +30,12 @@ describe('assetManifest', () => {
     }
   });
 
+  it('points every file entry at a file that exists under public/', () => {
+    for (const a of assetManifest)
+      if (a.path !== '')
+        expect(existsSync(new URL(`../../public/${a.path}`, import.meta.url)), a.key).toBe(true);
+  });
+
   it('getAsset throws on an unknown key', () => {
     expect(() => getAsset('nope' as AssetKey)).toThrow('nope');
   });
@@ -38,6 +48,16 @@ describe('weapons', () => {
       expect(w.speed).toBeGreaterThan(0);
       expect(w.range).toBeGreaterThan(0);
       expect(w.spread).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it('have a known class and ammo, and sane combat numbers', () => {
+    for (const w of Object.values(weapons)) {
+      expect(weaponClasses).toContain(w.class);
+      expect(ammoTypes).toContain(w.ammo);
+      expect(w.damage).toBeGreaterThan(0);
+      expect(w.splash ?? 0).toBeGreaterThanOrEqual(0);
+      if (w.homing !== undefined) expect(w.homing).toBeGreaterThan(0);
     }
   });
 
@@ -67,6 +87,10 @@ describe('mkTiers', () => {
       expect(keys).toContain(tier.sprites.turret);
       expect(weapons[tier.mainGun]).toBeDefined();
     }
+  });
+
+  it('have a known armor', () => {
+    for (const tier of Object.values(mkTiers)) expect(armorIds).toContain(tier.armor);
   });
 
   it('have sane handling', () => {
@@ -140,7 +164,93 @@ describe('terrain', () => {
     }
   });
 
+  it('gives every hazard terrain a damage rate, and only hazards', () => {
+    for (const t of Object.values(terrains)) {
+      if (t.requires?.without === 'hazard') expect(t.hazardDps).toBeGreaterThan(0);
+      else expect(t.hazardDps).toBeUndefined();
+    }
+  });
+
   it('makes road faster than sand', () => {
     expect(terrains.road.speedMul).toBeGreaterThan(terrains.sand.speedMul);
+  });
+});
+
+describe('combat', () => {
+  it('has a multiplier in 0..1 for every armor and weapon class', () => {
+    for (const armor of armorIds)
+      for (const cls of weaponClasses) {
+        const m = armorMultipliers[armor][cls];
+        expect(m).toBeGreaterThanOrEqual(0);
+        expect(m).toBeLessThanOrEqual(1);
+      }
+  });
+
+  it('unarmored targets take full damage', () => {
+    for (const cls of weaponClasses) expect(armorMultipliers.none[cls]).toBe(1);
+  });
+
+  it('has a rear arc narrower than a half circle', () => {
+    expect(REAR_ARC).toBeGreaterThan(0);
+    expect(REAR_ARC).toBeLessThan(Math.PI / 2);
+  });
+});
+
+describe('materials', () => {
+  it('match the GAME_DESIGN.md destructible materials', () => {
+    expect([...materialIds].sort()).toEqual(['armored', 'concrete', 'sandbag', 'wood']);
+    expect(materials.sandbag.minAmmo).toBe('standard');
+    expect(materials.wood.minAmmo).toBe('standard');
+    expect(materials.concrete.minAmmo).toBe('heat');
+    expect(materials.armored.minAmmo).toBe('apfsds');
+  });
+
+  it('have positive HP and existing sprites', () => {
+    for (const m of Object.values(materials)) {
+      expect(m.hp).toBeGreaterThan(0);
+      expect(keys).toContain(m.sprite);
+    }
+  });
+});
+
+describe('enemies', () => {
+  it('match the GAME_DESIGN.md desert roster', () => {
+    expect([...enemyIds].sort()).toEqual(
+      ['atgm_team', 'bunker_mg', 'light_tank', 'rifle_squad', 'technical'].sort(),
+    );
+    expect(Object.keys(enemies).sort()).toEqual([...enemyIds].sort());
+  });
+
+  it('reference existing weapons, sprites, armor and behaviours', () => {
+    for (const e of Object.values(enemies)) {
+      expect(weapons[e.weapon]).toBeDefined();
+      expect(keys).toContain(e.sprites.body);
+      if (e.sprites.turret) expect(keys).toContain(e.sprites.turret);
+      expect(armorIds).toContain(e.armor);
+      expect(enemyBehaviours).toContain(e.behaviour);
+    }
+  });
+
+  it('have sane numbers', () => {
+    for (const e of Object.values(enemies)) {
+      expect(e.hp).toBeGreaterThan(0);
+      expect(e.count).toBeGreaterThanOrEqual(1);
+      expect(e.windup).toBeGreaterThanOrEqual(0);
+      expect(e.traverseRate).toBeGreaterThan(0);
+      expect(e.fireRange).toBeLessThanOrEqual(e.sightRange);
+      expect(e.fireRange).toBeLessThanOrEqual(weapons[e.weapon].range);
+      expect(e.bodyRadius * 2).toBeLessThan(48);
+      if (e.behaviour === 'static') expect(e.speed).toBe(0);
+      else expect(e.speed).toBeGreaterThan(0);
+    }
+  });
+
+  it('only guided weapons are ATGMs, and the team telegraphs them', () => {
+    expect(weapons[enemies.atgm_team.weapon].homing).toBeGreaterThan(0);
+    expect(enemies.atgm_team.windup).toBeGreaterThanOrEqual(1);
+  });
+
+  it('keeps the mk2 able to outrun a guided missile on the road', () => {
+    expect(weapons.atgm.speed).toBeLessThan(mkTiers.mk2.hull.maxSpeed * terrains.road.speedMul);
   });
 });

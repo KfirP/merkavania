@@ -23,10 +23,10 @@ Current target: **Vertical slice** (desert biome, M0–M8). Tick milestones off 
 - [x] Terrain rules from `data/terrain.ts` (speed multipliers, ability/pawn gates; hazard damage waits for M3)
 - [x] `validate:maps` v1 (structure, ids, edges)
 
-## M3: Combat
-- [ ] Damage model (`logic/combat`), rear-arc bonus, destructible materials
-- [ ] Desert enemies: `rifle_squad`, `technical`, `bunker_mg`, `atgm_team`, `light_tank`
-- [ ] Explosions, hit feedback, screen shake
+## M3: Combat ✅
+- [x] Damage model (`logic/combat`), rear-arc bonus, destructible materials, hazard damage, death and respawn (at `start` until M4's depots)
+- [x] Desert enemies: `rifle_squad`, `technical`, `bunker_mg`, `atgm_team`, `light_tank` (brain state machine, line of sight, guided ATGMs, entity-vs-entity level filtering)
+- [x] Explosions, hit feedback, screen shake; PixelLab sprites for enemies, destructibles and explosions (the rifle soldier stays a placeholder)
 
 ## M4: Progression & saves
 - [ ] `GameState`, abilities, pickups, persistent flags per `<chunkId>:<id>`

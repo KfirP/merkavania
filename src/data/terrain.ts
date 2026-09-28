@@ -7,9 +7,11 @@ export interface TerrainDef {
   speedMul: number;
   /**
    * Ability that makes the terrain passable. Without it the terrain either blocks movement or is
-   * a `hazard`: enterable, but harmful (the damage arrives with M3 combat).
+   * a `hazard`: enterable, but harmful.
    */
   requires?: { ability: AbilityId; without: 'block' | 'hazard' };
+  /** Damage per second to a pawn on `hazard` terrain without the ability. */
+  hazardDps?: number;
   /** Only these pawns may enter; absent means any pawn. */
   pawns?: readonly PawnKind[];
 }
@@ -39,10 +41,18 @@ export const terrains: Record<TerrainId, TerrainDef> = {
   water_deep: { speedMul: 0.5, requires: { ability: 'snorkel', without: 'block' } },
   mud: { speedMul: 0.6, requires: { ability: 'wide_tracks', without: 'block' } },
   rubble: { speedMul: 0.8, requires: { ability: 'dozer_blade', without: 'block' } },
-  minefield: { speedMul: 0.8, requires: { ability: 'mine_plow', without: 'hazard' } },
+  minefield: {
+    speedMul: 0.8,
+    requires: { ability: 'mine_plow', without: 'hazard' },
+    hazardDps: 25,
+  },
   crawlspace: { speedMul: 1, pawns: ['scout'] },
   chasm: { speedMul: 1, pawns: ['drone'] },
-  missile_zone: { speedMul: 1, requires: { ability: 'trophy', without: 'hazard' } },
+  missile_zone: {
+    speedMul: 1,
+    requires: { ability: 'trophy', without: 'hazard' },
+    hazardDps: 15,
+  },
 };
 
 export function isTerrainId(id: string): id is TerrainId {

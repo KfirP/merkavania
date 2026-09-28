@@ -1,0 +1,8 @@
+tool: create_image_pixflux
+job: e12356a6-dbcf-4fb6-91a9-3bc519571453
+size: 32x32, no_background: true, view: high top-down, shading: basic shading
+seed: 3109
+outline: single color black outline
+detail: low detail
+direction: none
+description: top-down pixel art cracked grey reinforced concrete block seen from above, square, rebar showing through cracks, sturdy

@@ -28,6 +28,18 @@ export async function teleport(page: Page, x: number, y: number, heading?: numbe
   return getPawn(page);
 }
 
+export function damagePlayer(page: Page, amount: number) {
+  return page.evaluate((n) => window.__merkavania?.damagePlayer(n), amount);
+}
+
+export function setGod(page: Page, on: boolean) {
+  return page.evaluate((v) => window.__merkavania?.setGod(v), on);
+}
+
+export function getCombatLog(page: Page) {
+  return page.evaluate(() => window.__merkavania?.getCombatLog() ?? []);
+}
+
 export function getShots(page: Page) {
   return page.evaluate(() => window.__merkavania?.getShots() ?? {});
 }
@@ -56,6 +68,49 @@ export async function canvasPoint(page: Page, fx: number, fy: number) {
   const box = await page.locator('canvas').boundingBox();
   if (!box) throw new Error('No canvas');
   return { x: box.x + box.width * fx, y: box.y + box.height * fy };
+}
+
+/**
+ * Keeps the mouse over world point (x, y) until the turret points at it. The camera follows with
+ * lerp, so the point drifts across the canvas for a while after a teleport: every poll moves the
+ * mouse back onto it.
+ */
+export async function aimAt(page: Page, x: number, y: number) {
+  await expect
+    .poll(
+      async () => {
+        const f = await page.evaluate(
+          ([x, y]) => window.__merkavania!.worldToCanvas(x!, y!),
+          [x, y],
+        );
+        const p = await canvasPoint(page, f.fx, f.fy);
+        await page.mouse.move(p.x, p.y);
+        const pawn = await getPawn(page);
+        const want = Math.atan2(y - pawn.y, x - pawn.x);
+        return Math.abs(
+          Math.atan2(Math.sin(want - pawn.turretAngle), Math.cos(want - pawn.turretAngle)),
+        );
+      },
+      { timeout: 10_000 },
+    )
+    .toBeLessThan(0.05);
+}
+
+export function getEnemies(page: Page) {
+  return page.evaluate(() => window.__merkavania?.getEnemies() ?? []);
+}
+
+/** Spawns an enemy (a whole squad for `rifle_squad`); `facing` in radians. */
+export function spawnEnemy(page: Page, type: string, x: number, y: number, facing = 0) {
+  return page.evaluate(
+    ([type, x, y, facing]) =>
+      window.__merkavania?.spawnEnemy(type as string, x as number, y as number, facing as number),
+    [type, x, y, facing] as const,
+  );
+}
+
+export function getDestructibles(page: Page) {
+  return page.evaluate(() => window.__merkavania?.getDestructibles() ?? []);
 }
 
 /** Holds a key for `ms` and returns the pawn telemetry sampled just before release. */

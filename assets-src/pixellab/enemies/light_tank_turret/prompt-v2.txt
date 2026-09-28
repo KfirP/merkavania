@@ -1,0 +1,7 @@
+tool: create_image_pixflux (img2img)
+job: 4990bbec-9d15-4b9d-a734-aa76fe818630
+init_image: the code placeholder (src/game/placeholders.ts) scaled x1 with nearest neighbour, centred on 32x32
+init_image_strength: 120
+size: 32x32, no_background: true, outline: single color black outline, shading: basic shading
+seed: 3205
+description: pixel art small round tank turret viewed from directly above (bird's eye), rust brown with a hatch, short cannon barrel pointing straight right, military

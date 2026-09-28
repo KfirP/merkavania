@@ -1,0 +1,7 @@
+tool: create_image_pixflux (img2img)
+job: 61a30f11-f1dc-4aa0-ae3f-ee742900f4d1
+init_image: the code placeholder (src/game/placeholders.ts) scaled x1 with nearest neighbour, centred on 32x32
+init_image_strength: 120
+size: 32x32, no_background: true, outline: single color black outline, shading: basic shading
+seed: 3202
+description: pixel art pickup truck viewed from directly above (bird's eye), dusty white roof and bonnet at the right end, open cargo bed on the left with a machine gun on a pintle, military technical, desert

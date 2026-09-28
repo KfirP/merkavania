@@ -1,0 +1,8 @@
+tool: create_image_pixflux
+job: 2a6eedce-28e7-4731-838d-539ebb49bf98
+size: 32x32, no_background: true, view: high top-down, shading: basic shading
+seed: 3110
+outline: single color black outline
+detail: low detail
+direction: none
+description: top-down pixel art heavy armored steel plate block seen from above, square, dark blue-grey steel with rivets in the corners, very sturdy

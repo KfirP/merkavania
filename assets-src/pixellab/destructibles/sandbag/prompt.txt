@@ -1,0 +1,8 @@
+tool: create_image_pixflux
+job: b2c389e1-9871-429e-b971-c9f1369fd37b
+size: 32x32, no_background: true, view: high top-down, shading: basic shading
+seed: 3107
+outline: single color black outline
+detail: low detail
+direction: none
+description: top-down pixel art wall of stacked tan sandbags seen from above, military fortification, desert

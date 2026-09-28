@@ -13,6 +13,52 @@ export interface PawnTelemetry {
   level: number;
   /** Id of the chunk the pawn is in. */
   chunk: string;
+  hp: number;
+  maxHp: number;
+  /** False between the tank's death and its respawn. */
+  alive: boolean;
+}
+
+export interface DestructibleTelemetry {
+  /** `<chunkId>:<id>` */
+  key: string;
+  material: string;
+  hp: number;
+  x: number;
+  y: number;
+  level: number;
+}
+
+export interface EnemyTelemetry {
+  /** Combat id: `<chunkId>:<object id>`, `#n` per squad member; debug spawns start `debug:`. */
+  id: string;
+  type: string;
+  hp: number;
+  maxHp: number;
+  x: number;
+  y: number;
+  level: number;
+  /** Brain mode: idle, alert, engage or search. */
+  mode: string;
+}
+
+/** Debug builds only: everything spawned from chunk objects, emitted every frame. */
+export interface EntitiesTelemetry {
+  destructibles: DestructibleTelemetry[];
+  enemies: EnemyTelemetry[];
+}
+
+/** One resolved hit, for the debug combat log and specs. */
+export interface CombatHit {
+  /** `player`, an enemy id or a destructible's `<chunkId>:<id>`. */
+  target: string;
+  weapon: WeaponId;
+  damage: number;
+  rear: boolean;
+  ricochet: boolean;
+  killed: boolean;
+  /** Splash damage rather than a direct hit. */
+  splash: boolean;
 }
 
 export interface WorldState {
@@ -27,14 +73,28 @@ export interface GameEvents {
   'weapon:fired': { weapon: WeaponId };
   /** Main-gun quick rounds; emitted when the displayed value changes. */
   'gun:state': { rounds: number; max: number; refillRemaining: number };
+  /** Anything with HP changed it; `target` is `player`, an enemy id or a destructible key. */
+  'hp:changed': { target: string; hp: number; max: number };
+  'combat:hit': CombatHit;
+  /** An enemy or destructible was destroyed. */
+  'entity:destroyed': { id: string; kind: 'enemy' | 'destructible' };
+  'player:died': undefined;
+  'player:respawned': undefined;
   /** The pawn entered another chunk, or chunks were streamed in or out. */
   'world:chunks': WorldState;
   /** Debug builds only: emitted every frame by WorldScene. */
   'debug:pawn': PawnTelemetry;
+  /** Debug builds only: emitted every frame by WorldScene. */
+  'debug:entities': EntitiesTelemetry;
   'debug:toggleBodies': undefined;
   'debug:toggleElevation': undefined;
   /** Moves the active pawn and stops it; `heading` in radians, kept if omitted. */
   'debug:teleport': { x: number; y: number; heading?: number };
+  /** Deals `amount` damage to the player, ignoring armor. */
+  'debug:damagePlayer': { amount: number };
+  'debug:god': { on: boolean };
+  /** Spawns an enemy at world (x, y); `facing` in radians. */
+  'debug:spawnEnemy': { type: string; x: number; y: number; facing: number };
 }
 
 type EventName = keyof GameEvents & string;

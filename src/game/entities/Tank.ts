@@ -17,6 +17,7 @@ import { stepTurret } from '../../logic/tank/turret';
 import { depthFor } from '../../logic/world/depth';
 import { events } from '../events';
 import type { ProjectileSystem } from '../systems/ProjectileSystem';
+import type { Damageable, Defense } from './Damageable';
 import { Pawn } from './Pawn';
 
 /** Recoil recovery, px/s. */
@@ -26,8 +27,11 @@ const COAX_FORWARD = 12;
 const COAX_SIDE = 4;
 
 /** The player's Merkava: hull with momentum, an independently traversing turret, main gun + coax MG. */
-export class Tank extends Pawn {
+export class Tank extends Pawn implements Damageable {
   readonly kind = 'tank';
+  readonly combatId = 'player';
+  readonly faction = 'player';
+  alive = true;
   readonly turret: Phaser.GameObjects.Image;
   private tier: MkTier;
   private hull: HullState;
@@ -74,6 +78,40 @@ export class Tank extends Pawn {
 
   get aim(): number {
     return this.turretAngle;
+  }
+
+  get defense(): Defense {
+    return { armor: this.tier.armor, heading: this.hull.heading };
+  }
+
+  get flashTargets() {
+    return [this, this.turret];
+  }
+
+  /** HP hit 0: the wreck disappears and stops colliding until `respawn`. */
+  die(): void {
+    if (!this.alive) return;
+    this.alive = false;
+    this.hull.speed = 0;
+    this.body.stop();
+    this.body.enable = false;
+    this.setVisible(false);
+    this.turret.setVisible(false);
+    events.emit('player:died', undefined);
+  }
+
+  /** Back in action at (x, y) with full HP and a fresh gun. */
+  respawn(x: number, y: number, heading: number): void {
+    this.body.enable = true;
+    this.teleport(x, y, heading);
+    this.turretAngle = heading;
+    this.hp = this.maxHp;
+    this.gun = initialGun(this.gunStats);
+    this.alive = true;
+    this.setVisible(true);
+    this.turret.setVisible(true);
+    events.emit('hp:changed', { target: this.combatId, hp: this.hp, max: this.maxHp });
+    events.emit('player:respawned', undefined);
   }
 
   private get gunStats(): MainGunStats {
@@ -135,7 +173,7 @@ export class Tank extends Pawn {
       if (shot.fired) {
         const { x, y } = this.pivot();
         const coax = offsetFrom(x, y, this.turretAngle, COAX_FORWARD, COAX_SIDE);
-        this.projectiles.fire(mg, coax.x, coax.y, this.turretAngle, this.level);
+        this.projectiles.fire(mg, coax.x, coax.y, this.turretAngle, this.level, 'player');
         events.emit('weapon:fired', { weapon: mg.id });
       }
     }
@@ -147,7 +185,7 @@ export class Tank extends Pawn {
     const { x, y } = this.pivot();
     const a = this.turretAngle;
     const { x: tipX, y: tipY } = offsetFrom(x, y, a, this.tier.muzzleLength, 0);
-    this.projectiles.fire(weapon, tipX, tipY, a, this.level);
+    this.projectiles.fire(weapon, tipX, tipY, a, this.level, 'player');
     this.recoil = weapon.recoil;
 
     const flash = this.scene.add

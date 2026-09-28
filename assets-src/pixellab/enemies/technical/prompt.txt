@@ -1,0 +1,8 @@
+tool: create_image_pixflux
+job: c4f4fb25-8da9-4a3a-9ce2-dfa9adf4a9d9
+size: 32x32, no_background: true, view: high top-down, shading: basic shading
+seed: 3102
+outline: single color black outline
+detail: medium detail
+direction: east
+description: top-down overhead pixel art technical: rusty white pickup truck with a machine gun mounted in the cargo bed, cab at the right end, facing right, military, desert

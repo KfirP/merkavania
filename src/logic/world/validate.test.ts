@@ -55,6 +55,7 @@ type Obj = {
   type: string;
   x?: number;
   y?: number;
+  polyline?: { x: number; y: number }[];
   properties?: unknown[];
 };
 
@@ -265,6 +266,42 @@ describe('validateWorlds: objects', () => {
       '#5 unknown message key "radio.nope"',
       '#6 spawn needs a name',
       '#7 unknown tier "mk9"',
+    ]);
+  });
+
+  it('checks destructible materials against data/materials.ts', () => {
+    const d = (id: number, material: string): Obj => ({
+      id,
+      type: 'destructible',
+      properties: [prop('material', material), prop('id', `d${id}`)],
+    });
+    const issues = withObjects([d(1, 'sandbag'), d(2, 'armored'), d(3, 'jelly')]);
+    expect(issues.map((i) => `${i.object} ${i.message}`)).toEqual(['#3 unknown material "jelly"']);
+  });
+
+  it('checks enemy types against data/enemies.ts and wants an integer level', () => {
+    const e = (id: number, enemyType: string, level: unknown): Obj => ({
+      id,
+      type: 'enemy',
+      properties: [prop('enemyType', enemyType), prop('level', level)],
+    });
+    const issues = withObjects([e(1, 'technical', 0), e(2, 'dragon', 0), e(3, 'light_tank', 1.5)]);
+    expect(issues.map((i) => `${i.object} ${i.message}`)).toEqual([
+      '#2 unknown enemy type "dragon"',
+      '#3 level must be an integer 0–3, got 1.5',
+    ]);
+  });
+
+  it('accepts patrol polylines and checks that enemy patrols name one in the chunk', () => {
+    const line: Obj = { id: 5, name: 'loop', type: '', polyline: [{ x: 0, y: 0 }] };
+    const e = (id: number, patrol: string): Obj => ({
+      id,
+      type: 'enemy',
+      properties: [prop('enemyType', 'technical'), prop('level', 0), prop('patrol', patrol)],
+    });
+    const issues = withObjects([line, e(1, 'loop'), e(2, 'nowhere')]);
+    expect(issues.map((i) => `${i.object} ${i.message}`)).toEqual([
+      '#2 patrol "nowhere" is not a polyline here',
     ]);
   });
 

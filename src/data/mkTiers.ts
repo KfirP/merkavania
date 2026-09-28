@@ -1,10 +1,12 @@
 import type { HullStats } from '../logic/tank/hull';
 import type { AssetKey } from './assetManifest';
+import type { ArmorId } from './combat';
 import type { WeaponId } from './weapons';
 
 export interface MkTier {
   id: string;
   hp: number;
+  armor: ArmorId;
   hull: HullStats;
   /** Turret traverse, rad/s. */
   traverseRate: number;
@@ -29,6 +31,7 @@ export const mkTiers = {
   mk2: {
     id: 'mk2',
     hp: 100,
+    armor: 'low',
     hull: {
       maxSpeed: 70,
       reverseSpeed: 40,

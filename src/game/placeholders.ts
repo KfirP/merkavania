@@ -8,6 +8,9 @@ const OUTLINE = 0x1f1f10;
 const OLIVE = 0x6b6b3a;
 const OLIVE_LIGHT = 0x85854a;
 const TRACK = 0x3a3a26;
+/** Enemies wear rust and brown so they never read as the olive player tank. */
+const ENEMY_KHAKI = 0xb07a4a;
+const ENEMY_DARK = 0x7a4e2e;
 
 const drawers: Partial<Record<AssetKey, Draw>> = {
   mk2_hull: (g) => {
@@ -83,10 +86,29 @@ const drawers: Partial<Record<AssetKey, Draw>> = {
     g.fillStyle(0xffe070).fillRect(0, 0, 3, 1);
     return { width: 3, height: 1 };
   },
+  missile_atgm: (g) => {
+    g.fillStyle(OUTLINE).fillRect(0, 0, 8, 4);
+    g.fillStyle(0x7a7a6a).fillRect(1, 1, 6, 2);
+    g.fillStyle(0xd6453e).fillRect(6, 1, 2, 2);
+    g.fillStyle(0xffb030).fillRect(0, 1, 1, 2);
+    return { width: 8, height: 4 };
+  },
+  enemy_rifle_soldier: (g) => {
+    // Helmet from above, shoulders and a rifle pointing east.
+    g.fillStyle(OUTLINE).fillCircle(4, 4, 4);
+    g.fillStyle(ENEMY_KHAKI).fillCircle(4, 4, 3);
+    g.fillStyle(ENEMY_DARK).fillCircle(4, 4, 2);
+    g.fillStyle(OUTLINE).fillRect(5, 5, 5, 1);
+    return { width: 10, height: 9 };
+  },
   muzzle_flash: (g) => {
     g.fillStyle(0xffb030).fillTriangle(0, 0, 10, 4, 0, 8);
     g.fillStyle(0xfff4b0).fillTriangle(0, 2, 6, 4, 0, 6);
     return { width: 10, height: 8 };
+  },
+  spark: (g) => {
+    g.fillStyle(0xfff4b0).fillRect(1, 0, 1, 3).fillRect(0, 1, 3, 1);
+    return { width: 3, height: 3 };
   },
   impact_puff: (g) => {
     g.fillStyle(0xcfc3a0).fillCircle(4, 4, 4);

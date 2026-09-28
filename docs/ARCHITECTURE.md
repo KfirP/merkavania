@@ -11,19 +11,20 @@
 src/
   main.ts                 # Phaser.Game config (480x270, pixelArt, Arcade)
   logic/                  # PURE TS: no Phaser imports (ESLint-enforced)
-    state/                # GameState, PlayerState, progression, ability checks
-    combat/               # damage formula, armor, material rules
+    state/                # GameState, PlayerState, progression, ability checks (WorldFlags for now)
+    combat/               # damage formula, armor, material rules, factions, hazards, splash, missile guidance
+    enemy/                # enemy brain (state machine), vehicle steering, getting unstuck
     world/                # world graph, chunk coordinate math, elevation grid, gate reachability
     save/                 # serialize/deserialize, SAVE_VERSION, migrations.ts
     input/                # TankCommand type + device-independent helpers (deadzones, aim math)
     tank/                 # hull momentum, turret traverse, main-gun quick rounds, fire-rate cooldowns
-  data/                   # tables: mkTiers.ts, weapons.ts, abilities.ts, enemies.ts, terrain.ts, assetManifest.ts
+  data/                   # tables: mkTiers.ts, weapons.ts, combat.ts, materials.ts, abilities.ts, enemies.ts, terrain.ts, assetManifest.ts
   game/
     placeholders.ts       # code-drawn textures for manifest entries without a file
     tiledLoader.ts        # loads .tmj + external .tsj and registers the embedded map
     scenes/               # Boot, Preload, Title, World, Hud, TouchControls, Map, Pause, Debug
-    entities/             # Pawn base, Tank, Scout, Drone, Enemy types, Projectile, Pickup...
-    systems/              # ChunkStreamer, ElevationSystem, CombatSystem, SpawnSystem, InputSystem, AudioSystem
+    entities/             # Pawn base, Tank, Scout, Drone, Enemy, Destructible, Projectile, Pickup...
+    systems/              # ChunkStreamer, ElevationSystem, CombatSystem, SpawnSystem, EffectsSystem, ProjectileSystem, InputSystem, AudioSystem
     input/                # KeyboardMouseAdapter, GamepadAdapter, TouchAdapter -> TankCommand
     events.ts             # typed event bus definitions
   i18n/                   # en.json, he.json, i18n.ts (t(key, params))
@@ -31,7 +32,7 @@ public/
   assets/                 # game-ready sprites, tiles, sfx, music
   maps/<biome>/           # <biome>.world, chunk .tmj files, tilesets .tsj
 assets-src/               # raw AI generations + source files (not shipped)
-scripts/                  # validate-maps.ts, asset processing scripts
+scripts/                  # validate-maps.ts, process-sprites.ts (+ pure bitmap ops in sprites.ts)
 tests/e2e/                # Playwright specs
 .github/workflows/        # ci.yml, deploy.yml
 ```
@@ -80,8 +81,9 @@ interface TankCommand {
   - same level → allowed (subject to solid tiles and terrain gates)
   - a difference of one level → allowed only if the lower cell is a ramp pointing toward the higher one (and, if steep, the pawn has `suspension`)
   - anything else → a cliff edge, which blocks
+- `ElevationSystem` works on any `Mover` (kind, level, speedMul, body, pos): the active pawn with the player's abilities, and enemies with none (vehicles use the tank's terrain rules, soldiers the scout's).
 - `constrainMove` sweeps the circle body's leading edge axis by axis, so a blocked axis stops while the other keeps sliding. The body may never straddle a cliff, so a ramp must be wider than the pawn. `ElevationSystem` applies it to the pawn's **body**: Arcade steps bodies before the scene's `update` and copies the result to the sprite only in `postUpdate`, so the sprite is a step behind during `update`. Any gameplay code running in `update` (aim origin, muzzle position, depth, streaming, telemetry) reads the pawn's position through `Pawn.pos` (the body centre), never `x`/`y`. A blocked axis snaps the body to the boundary and zeroes that velocity, and the tank bleeds momentum as it does against walls.
-- A pawn's `level` is the level of the cell under its centre. Entities carry `level`. Physics colliders and overlaps between entities are filtered so that only same-level pairs interact (a process callback checks `a.level === b.level`; this arrives with enemies in M3).
+- A pawn's `level` is the level of the cell under its centre. Entities carry `level`. Physics colliders and overlaps between entities are filtered so that only same-level pairs interact (a process callback checks `a.level === b.level`): tank and enemies, tank and destructibles, enemies with each other and with destructibles, and projectiles through `canHit`.
 - Projectiles inherit the shooter's level. They expire when they enter a cell higher than their level, and walls only stop them on the wall's level or above. They pass over lower cells without hitting anything down there (direct fire flies over).
 - The **mortar** ignores levels while in flight (it arcs, drawn with a shadow) and resolves impact at the target cell's level.
 - Rendering: depth = `level * LEVEL_DEPTH + y`. Cliff face tiles are drawn on the `walls` layer.
@@ -90,13 +92,27 @@ interface TankCommand {
 - A biome is one Tiled `.world` file. Chunks are 30×17 tiles (480×272 px) named `<biome>_x<XX>_y<YY>.tmj`.
 - `ChunkStreamer` computes the player's chunk coordinate each frame. When it changes, it ensures the 3×3 neighbourhood is loaded (tilemap layers, colliders, object spawns) and unloads chunks outside a 5×5 hysteresis window. The window math is in `logic/world/chunks.ts`, and it emits `world:chunks` on the event bus.
 - Chunk JSON is fetched ahead of time with Phaser's loader (`queueTiledWorld` queues the `.world` and then every chunk), so loading a chunk is synchronous. Tilesets are cached by path, so they're loaded once and shared.
-- Terrain (`data/terrain.ts`) gives each terrain id a top-speed multiplier and an optional gate: a required ability (without it the terrain either blocks or is a `hazard`, whose damage arrives in M3) or the pawns allowed on it.
+- Terrain (`data/terrain.ts`) gives each terrain id a top-speed multiplier and an optional gate: a required ability (without it the terrain either blocks or is a `hazard` that deals `hazardDps`) or the pawns allowed on it.
 - Phaser 3 can't read external `.tsj` tilesets, so `game/tiledLoader.ts` loads the `.tmj` as JSON, then queues each referenced `.tsj`, and inlines them (`logic/world/tiled.ts`) before registering the map in the tilemap cache. A tileset's `name` is its image's asset-manifest key.
-- Objects spawn from the chunk's `objects` layer when it loads. Persistent state (pickups taken, destructibles broken, switches, doors) lives in `GameState.flags` keyed by `<chunkId>:<objectId>`, so reloading a chunk respects it. Regular enemies respawn when a chunk reloads.
+- Objects spawn from the chunk's `objects` layer when it loads: `ChunkStreamer` calls `SpawnSystem.onLoad`/`onUnload`, which parse them with `logic/world/objects.ts`. Persistent state (pickups taken, destructibles broken, switches, doors) lives in flags keyed by `<chunkId>:<objectId>` (`logic/state/flags.ts`, session-only until M4 moves it into the saved `GameState`), so reloading a chunk respects it. Regular enemies respawn when a chunk reloads and when the player respawns.
 - The camera follows the pawn, bounded by the world's overall bounds. Chunks are marked visited in `GameState` for the map screen.
 
 ## Combat flow
-Projectile hits a target → `CombatSystem` calls `logic/combat.resolveHit(weapon, target, hitAngle)` → which returns damage/effects → the entity applies them and emits events. Destructibles check `material` against the weapon or ammo rules in `data/weapons.ts`.
+- Everything hittable implements `Damageable` (`combatId`, `faction`, `level`, `hp`, `defense`, `die()`): the tank (`player`), enemies (`enemy`) and destructibles (`neutral`). `Projectile`s carry their `weapon` and `owner`.
+- `CombatSystem.watch()` adds an Arcade overlap between the projectile pool and a target or a physics group of targets. Arcade can't overlap a plain `Group` (it has no collision category), and it swaps the callback pair for a group against a single sprite, so the pair is sorted by type. The process callback is `logic/combat/faction.canHit`: the other side, on the same level.
+- A hit resolves in `logic/combat/damage.ts`. Armored targets use `resolveHit`: weapon damage × `armorMultipliers[armor][weapon.class]` (`data/combat.ts`), ×1.5 when the shot arrives inside the ±45° rear arc of a target that has a hull `heading`. Destructibles use `damageMaterial`: full damage at or above their `minAmmo` (`standard` < `heat` < `apfsds`), none below. A low multiplier or a material the ammo can't break is a **ricochet** (sparks instead of a flash).
+- `logic/combat/health.applyDamage` updates HP; `hp:changed` and `combat:hit` go out, and the entity's `die()` runs on the killing hit. Splash weapons (`weapon.splash`) then damage everything else in range on that level with linear falloff (`logic/combat/splash.ts`); hits on walls and cliffs splash too.
+- Hazard terrain and debug damage go through `CombatSystem.damage` (no armor). A moving tank crushes soldiers on contact (`logic/combat/crush.ts`).
+- Player death: the tank hides and stops colliding, the camera fades, and after `RESPAWN_DELAY` it respawns at the `start` spawn (the last depot from M4) with full HP. Enemies reset on `player:respawned`.
+- `EffectsSystem` owns the short-lived feedback: impact puffs, explosions scaled to the splash radius, ricochet sparks, white hit flashes, missile smoke trails, and camera shake from `logic/combat/shake.ts` (player hits scale with damage; explosions fade with distance from the camera).
+
+## Enemies
+- `data/enemies.ts` holds every number: HP, armor, rear arc, behaviour, squad size, speeds, weapon, sight and fire range, windup and death blast. Behaviours: `infantry`, `raider`, `armor`, `static`, `missile_team`.
+- `logic/enemy/brain.ts` is a pure state machine: `idle` (patrol the Tiled polyline, or return home) → `alert` (aim for `windup` seconds, the telegraph; the ATGM team shows a blinking laser) → `engage` (fire when aimed, in range and cooled down; move per behaviour: infantry scatter from a close tank, raiders orbit, armor closes to range and holds, static never moves) → `search` (hunt the last known spot for a few seconds) → `idle`.
+- Perception: `visible` means the player is alive, on the same level, within sight range and in line of sight by `logic/world/lineOfSight.ts`, which follows the direct-fire rules, so enemies see exactly what they can shoot.
+- `game/entities/Enemy.ts` carries out the intent. Vehicles drive `logic/tank/hull.stepHull` through `logic/enemy/steer.ts`, bleed momentum on impact like the tank, and back off walls with `logic/enemy/unstick.ts`. Soldiers walk straight. Static guns only traverse within `aimArc` of their facing (the Tiled object rotation).
+- ATGMs home in on the player: `ProjectileSystem` steers them each frame with `logic/combat/guidance.steerMissile` at the weapon's `homing` turn rate. They're slower than the tank on a road, so they can be outrun, out-turned or blocked by walls.
+- Damaged enemies show a small HP bar for a few seconds; the tank's HP bar lives in `HudScene`.
 
 ## Save system
 - Keys: `merkavania.save.<slot>` (slots 1–3) and `merkavania.settings` (language, volume, touch-control override, keybinds).
@@ -116,13 +132,13 @@ Projectile hits a target → `CombatSystem` calls `logic/combat.resolveHit(weapo
 
 ## Debug tools
 - Enabled with `?debug=1` or in dev builds. The backtick key toggles `DebugScene`: FPS, pawn position/heading/speed, active input device, gun state, and the current chunk, pawn level and loaded chunk count. `1` toggles physics bodies, and `2` toggles the elevation overlay (levels tinted, ramps cyan, steep ramps red, chunk borders magenta). Planned:
-  - teleport by clicking on the map, jump to chunk, set Mk tier, grant/revoke abilities, god mode, kill all
-- Debug hooks are exposed on `window.__merkavania` (in debug mode only) so Playwright can drive state: `game`, `getPawn()` (last-frame telemetry, including `level` and `chunk`), `getShots()` (shots per weapon id), `getWorld()` (current and loaded chunk ids) and `teleport(x, y, heading?)`.
+  - teleport by clicking on the map, jump to chunk, set Mk tier, grant/revoke abilities, kill all
+- Debug hooks are exposed on `window.__merkavania` (in debug mode only) so Playwright can drive state: `game`, `getPawn()` (last-frame telemetry, including `level`, `chunk`, `hp`, `maxHp` and `alive`), `getShots()` (the player's shots per weapon id), `getWorld()` (current and loaded chunk ids), `teleport(x, y, heading?)`, `worldToCanvas(x, y)` (so specs aim with the real mouse), `damagePlayer(n)`, `setGod(on)`, `getCombatLog()` (recent resolved hits), `getDestructibles()`, `getEnemies()` and `spawnEnemy(type, x, y, facing?)`.
 
 ## Testing
 - **Work test-first** (see `CLAUDE.md`, Workflow). Game code stays a thin shell over tested `src/logic/` functions.
 - **Vitest:** everything in `src/logic/` and `scripts/` (tank handling, input mapping, damage, progression, save migrations, elevation traversal rules, gate reachability, i18n key parity), sanity tests for the `src/data/` tables (ids and asset keys resolve, values in range) and structural tests for hand-built maps.
-- **Playwright** (`tests/e2e/`, shared helpers in `helpers.ts`): boot the game and confirm the title and then `WorldScene` load with no console errors. Behaviour that only exists in a running scene (collisions, turret traverse, fire cadence, the gamepad via a stubbed `navigator.getGamepads`, touch via CDP multi-touch, debug overlay keys) is checked through `window.__merkavania` hooks. Later: grant abilities and test a gate.
+- **Playwright** (`tests/e2e/`, shared helpers in `helpers.ts`): boot the game and confirm the title and then `WorldScene` load with no console errors. Behaviour that only exists in a running scene (collisions, turret traverse, fire cadence, combat and enemies in `combat.spec.ts`, the gamepad via a stubbed `navigator.getGamepads`, touch via CDP multi-touch, debug overlay keys) is checked through `window.__merkavania` hooks. Later: grant abilities and test a gate.
 - **Map validation:** `npm run validate:maps` (see `LEVEL_DESIGN.md`).
 
 ## Deploy
