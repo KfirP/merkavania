@@ -75,19 +75,22 @@ interface TankCommand {
 - The **hatch** deploys the scout (and later the drone) next to the tank's **rear**. The tank becomes stationary and vulnerable, and the camera follows the new pawn. Pressing hatch again recalls it (it walks or flies back). The scout auto-returns if it dies; there's no game over.
 
 ## Elevation
-- Each chunk has an invisible `elevation` tile layer. The tile's `level` property (0–3) gives the height of that cell, and `ramp` tiles connect adjacent levels in a direction (`n|s|e|w`). A `steep: true` ramp requires `suspension`.
-- `ElevationSystem` builds a per-chunk grid. A pawn moving from cell A to cell B:
-  - same level → allowed (subject to normal walls/terrain)
-  - different level → allowed only if A or B is a ramp oriented along the move direction; otherwise it's a cliff edge and blocks
-- Entities carry `level`. Physics colliders and overlaps are filtered so that only same-level pairs interact (a process callback checks `a.level === b.level`).
-- Projectiles inherit the shooter's level and are blocked by cliff edges leading to higher levels. They pass over lower cells without hitting anything down there (direct fire flies over).
+- Each chunk has an invisible `elevation` tile layer (tiles from the shared `maps/shared/elevation.tsj`). The tile's `level` property (0–3) gives the height of that cell; an empty cell is level 0. `ramp` tiles connect adjacent levels in a direction (`n|s|e|w`). A ramp's `level` is its **low** end, and travelling in its `ramp` direction climbs exactly one level. A `steep: true` ramp requires `suspension`.
+- `logic/world/grid.ts` parses each loaded chunk into cells (`level`, `ramp`, `steep`, `terrain` from `ground`, `solid` from `walls`), and `WorldGrid` looks them up by world tile. The rules are in `logic/world/traversal.ts`. A pawn moving from cell A to cell B:
+  - same level → allowed (subject to solid tiles and terrain gates)
+  - a difference of one level → allowed only if the lower cell is a ramp pointing toward the higher one (and, if steep, the pawn has `suspension`)
+  - anything else → a cliff edge, which blocks
+- `constrainMove` sweeps the circle body's leading edge axis by axis, so a blocked axis stops while the other keeps sliding. The body may never straddle a cliff, so a ramp must be wider than the pawn. `ElevationSystem` applies it to the pawn's **body**: Arcade steps bodies before the scene's `update` and copies the result to the sprite only in `postUpdate`, so the sprite is a step behind during `update`. Any gameplay code running in `update` (aim origin, muzzle position, depth, streaming, telemetry) reads the pawn's position through `Pawn.pos` (the body centre), never `x`/`y`. A blocked axis snaps the body to the boundary and zeroes that velocity, and the tank bleeds momentum as it does against walls.
+- A pawn's `level` is the level of the cell under its centre. Entities carry `level`. Physics colliders and overlaps between entities are filtered so that only same-level pairs interact (a process callback checks `a.level === b.level`; this arrives with enemies in M3).
+- Projectiles inherit the shooter's level. They expire when they enter a cell higher than their level, and walls only stop them on the wall's level or above. They pass over lower cells without hitting anything down there (direct fire flies over).
 - The **mortar** ignores levels while in flight (it arcs, drawn with a shadow) and resolves impact at the target cell's level.
 - Rendering: depth = `level * LEVEL_DEPTH + y`. Cliff face tiles are drawn on the `walls` layer.
 
 ## Chunk streaming
 - A biome is one Tiled `.world` file. Chunks are 30×17 tiles (480×272 px) named `<biome>_x<XX>_y<YY>.tmj`.
-- `ChunkStreamer` computes the player's chunk coordinate each frame. When it changes, it ensures the 3×3 neighbourhood is loaded (tilemap layers, colliders, object spawns) and unloads chunks outside a 5×5 hysteresis window.
-- Chunk JSON is fetched ahead of time with Phaser's loader. Tilesets are shared per biome and loaded once.
+- `ChunkStreamer` computes the player's chunk coordinate each frame. When it changes, it ensures the 3×3 neighbourhood is loaded (tilemap layers, colliders, object spawns) and unloads chunks outside a 5×5 hysteresis window. The window math is in `logic/world/chunks.ts`, and it emits `world:chunks` on the event bus.
+- Chunk JSON is fetched ahead of time with Phaser's loader (`queueTiledWorld` queues the `.world` and then every chunk), so loading a chunk is synchronous. Tilesets are cached by path, so they're loaded once and shared.
+- Terrain (`data/terrain.ts`) gives each terrain id a top-speed multiplier and an optional gate: a required ability (without it the terrain either blocks or is a `hazard`, whose damage arrives in M3) or the pawns allowed on it.
 - Phaser 3 can't read external `.tsj` tilesets, so `game/tiledLoader.ts` loads the `.tmj` as JSON, then queues each referenced `.tsj`, and inlines them (`logic/world/tiled.ts`) before registering the map in the tilemap cache. A tileset's `name` is its image's asset-manifest key.
 - Objects spawn from the chunk's `objects` layer when it loads. Persistent state (pickups taken, destructibles broken, switches, doors) lives in `GameState.flags` keyed by `<chunkId>:<objectId>`, so reloading a chunk respects it. Regular enemies respawn when a chunk reloads.
 - The camera follows the pawn, bounded by the world's overall bounds. Chunks are marked visited in `GameState` for the map screen.
@@ -112,11 +115,9 @@ Projectile hits a target → `CombatSystem` calls `logic/combat.resolveHit(weapo
 - Radio messages are keys too (`radio.desert.intro_01`).
 
 ## Debug tools
-- Enabled with `?debug=1` or in dev builds. The backtick key toggles `DebugScene` (M1 has FPS, pawn position/heading/speed, active input device and gun state; `1` toggles physics bodies). Planned:
-  - show physics bodies, the elevation grid, chunk borders and the current chunk id
-  - teleport (click on the map), jump to chunk, set Mk tier, grant/revoke abilities, god mode, kill all
-  - FPS and loaded chunk count
-- Debug hooks are exposed on `window.__merkavania` (in debug mode only) so Playwright can drive state: `game`, `getPawn()` (last-frame telemetry) and `getShots()` (shots per weapon id).
+- Enabled with `?debug=1` or in dev builds. The backtick key toggles `DebugScene`: FPS, pawn position/heading/speed, active input device, gun state, and the current chunk, pawn level and loaded chunk count. `1` toggles physics bodies, and `2` toggles the elevation overlay (levels tinted, ramps cyan, steep ramps red, chunk borders magenta). Planned:
+  - teleport by clicking on the map, jump to chunk, set Mk tier, grant/revoke abilities, god mode, kill all
+- Debug hooks are exposed on `window.__merkavania` (in debug mode only) so Playwright can drive state: `game`, `getPawn()` (last-frame telemetry, including `level` and `chunk`), `getShots()` (shots per weapon id), `getWorld()` (current and loaded chunk ids) and `teleport(x, y, heading?)`.
 
 ## Testing
 - **Work test-first** (see `CLAUDE.md`, Workflow). Game code stays a thin shell over tested `src/logic/` functions.

@@ -1,5 +1,29 @@
 import { describe, expect, it } from 'vitest';
-import { speedAfterImpact, stepHull, type HullState, type HullStats } from './hull';
+import { speedAfterImpact, stepHull, withSpeedMul, type HullState, type HullStats } from './hull';
+
+describe('withSpeedMul', () => {
+  const base: HullStats = {
+    maxSpeed: 100,
+    reverseSpeed: 50,
+    accel: 50,
+    brake: 200,
+    drag: 100,
+    turnRate: 2,
+  };
+
+  it('scales only the top speeds (terrain speed multiplier)', () => {
+    expect(withSpeedMul(base, 0.5)).toEqual({ ...base, maxSpeed: 50, reverseSpeed: 25 });
+  });
+
+  it('returns the same stats for 1', () => {
+    expect(withSpeedMul(base, 1)).toBe(base);
+  });
+
+  it('lets a faster terrain raise the target speed', () => {
+    const fast = withSpeedMul(base, 1.25);
+    expect(stepHull({ heading: 0, speed: 100 }, 1, 0, fast, 0.1).speed).toBeGreaterThan(100);
+  });
+});
 
 describe('speedAfterImpact', () => {
   it('drops to zero when a wall stopped the tank head-on', () => {

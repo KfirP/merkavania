@@ -7,5 +7,6 @@
   "debug.input": "Input: {device}",
   "debug.gun": "Gun {rounds}/{max}",
   "debug.gun_refill": "Gun refill {seconds}s",
-  "debug.hint": "[`] overlay  [1] bodies"
+  "debug.world": "Chunk {chunk}  level {level}  loaded {loaded}",
+  "debug.hint": "[`] overlay  [1] bodies  [2] elevation"
 }

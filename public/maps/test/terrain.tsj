@@ -1,0 +1,157 @@
+{
+  "columns": 8,
+  "image": "../../assets/tiles/test/terrain.png",
+  "imageheight": 32,
+  "imagewidth": 128,
+  "margin": 0,
+  "name": "tiles_test_terrain",
+  "spacing": 0,
+  "tilecount": 14,
+  "tiledversion": "1.11.2",
+  "tileheight": 16,
+  "tiles": [
+    {
+      "id": 0,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "rock"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "water_shallow"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "water_deep"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "mud"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "rubble"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "minefield"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "crawlspace"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "chasm"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "missile_zone"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "sand"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "sand"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "sand"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "sand"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "sand"
+        }
+      ]
+    }
+  ],
+  "tilewidth": 16,
+  "type": "tileset",
+  "version": "1.10"
+}

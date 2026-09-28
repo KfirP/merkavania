@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { t } from '../../i18n/i18n';
-import { events, type GameEvents, type PawnTelemetry } from '../events';
+import { events, type GameEvents, type PawnTelemetry, type WorldState } from '../events';
 import { SceneKey } from './keys';
 
 const TEXT_STYLE: Phaser.Types.GameObjects.Text.TextStyle = {
@@ -16,6 +16,7 @@ export class DebugScene extends Phaser.Scene {
   private text!: Phaser.GameObjects.Text;
   private pawn: PawnTelemetry | null = null;
   private gun: GameEvents['gun:state'] | null = null;
+  private world: WorldState | null = null;
   /** DOM `code`s pressed since the last frame, in order. */
   private pressed: string[] = [];
 
@@ -36,11 +37,14 @@ export class DebugScene extends Phaser.Scene {
 
     const onPawn = (p: PawnTelemetry) => (this.pawn = p);
     const onGun = (g: GameEvents['gun:state']) => (this.gun = g);
+    const onWorld = (w: WorldState) => (this.world = w);
     events.on('debug:pawn', onPawn);
     events.on('gun:state', onGun);
+    events.on('world:chunks', onWorld);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       events.off('debug:pawn', onPawn);
       events.off('gun:state', onGun);
+      events.off('world:chunks', onWorld);
       window.removeEventListener('keydown', onKey);
     });
   }
@@ -49,6 +53,8 @@ export class DebugScene extends Phaser.Scene {
     for (const code of this.pressed.splice(0)) {
       if (code === 'Backquote') this.text.setVisible(!this.text.visible);
       else if (code === 'Digit1' && this.text.visible) events.emit('debug:toggleBodies', undefined);
+      else if (code === 'Digit2' && this.text.visible)
+        events.emit('debug:toggleElevation', undefined);
     }
     if (!this.text.visible) return;
     const deg = (rad: number) => Math.round(Phaser.Math.RadToDeg(rad));
@@ -65,6 +71,10 @@ export class DebugScene extends Phaser.Scene {
         }),
         t('debug.input', { device: p.device }),
       );
+      if (this.world)
+        lines.push(
+          t('debug.world', { chunk: p.chunk, level: p.level, loaded: this.world.loaded.length }),
+        );
     }
     if (this.gun)
       lines.push(

@@ -7,5 +7,6 @@
   "debug.input": "קלט: {device}",
   "debug.gun": "תותח {rounds}/{max}",
   "debug.gun_refill": "טעינת תותח {seconds} שנ׳",
-  "debug.hint": "[`] שכבה  [1] גופים"
+  "debug.world": "מקטע {chunk}  גובה {level}  טעונים {loaded}",
+  "debug.hint": "[`] שכבה  [1] גופים  [2] גבהים"
 }

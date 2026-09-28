@@ -5,7 +5,7 @@ import { QUICK_ROUND_REFILL_SECONDS, weapons } from '../../data/weapons';
 import type { TankCommand } from '../../logic/input/TankCommand';
 import { tickCooldown, tryTrigger } from '../../logic/tank/cooldown';
 import { offsetFrom } from '../../logic/tank/geometry';
-import { speedAfterImpact, stepHull, type HullState } from '../../logic/tank/hull';
+import { speedAfterImpact, stepHull, withSpeedMul, type HullState } from '../../logic/tank/hull';
 import {
   initialGun,
   tickGun,
@@ -27,6 +27,7 @@ const COAX_SIDE = 4;
 
 /** The player's Merkava: hull with momentum, an independently traversing turret, main gun + coax MG. */
 export class Tank extends Pawn {
+  readonly kind = 'tank';
   readonly turret: Phaser.GameObjects.Image;
   private tier: MkTier;
   private hull: HullState;
@@ -86,7 +87,8 @@ export class Tank extends Pawn {
   applyCommand(cmd: TankCommand, dt: number): void {
     this.bleedMomentumOnImpact();
 
-    this.hull = stepHull(this.hull, cmd.throttle, cmd.turn, this.tier.hull, dt);
+    const stats = withSpeedMul(this.tier.hull, this.speedMul);
+    this.hull = stepHull(this.hull, cmd.throttle, cmd.turn, stats, dt);
     this.setRotation(this.hull.heading);
     this.scene.physics.velocityFromRotation(this.hull.heading, this.hull.speed, this.body.velocity);
 
@@ -94,7 +96,7 @@ export class Tank extends Pawn {
       this.turretAngle = stepTurret(this.turretAngle, cmd.aimAngle, this.tier.traverseRate, dt);
 
     this.updateWeapons(cmd, dt);
-    this.setDepth(depthFor(this.level, this.y));
+    this.setDepth(depthFor(this.level, this.pos.y));
   }
 
   /** Carries a wall hit into the hull speed (see `speedAfterImpact`). */
@@ -102,6 +104,17 @@ export class Tank extends Pawn {
     if (this.body.blocked.none && this.body.touching.none) return;
     const v = this.body.velocity;
     this.hull.speed = speedAfterImpact(this.hull.speed, this.hull.heading, v.x, v.y);
+  }
+
+  /** Cliffs and gated terrain bleed momentum the same way walls do. */
+  override onBlocked(vx: number, vy: number): void {
+    this.hull.speed = speedAfterImpact(this.hull.speed, this.hull.heading, vx, vy);
+  }
+
+  override teleport(x: number, y: number, heading?: number): void {
+    super.teleport(x, y);
+    this.hull = { heading: heading ?? this.hull.heading, speed: 0 };
+    this.setRotation(this.hull.heading);
   }
 
   private updateWeapons(cmd: TankCommand, dt: number): void {
@@ -166,7 +179,8 @@ export class Tank extends Pawn {
 
   /** Turret ring position: offset toward the rear of the hull. */
   private pivot(): { x: number; y: number } {
-    return offsetFrom(this.x, this.y, this.hull.heading, this.tier.turretOffset, 0);
+    const { x, y } = this.pos;
+    return offsetFrom(x, y, this.hull.heading, this.tier.turretOffset, 0);
   }
 
   private syncTurret(): void {

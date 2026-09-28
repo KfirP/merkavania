@@ -17,11 +17,11 @@ Current target: **Vertical slice** (desert biome, M0–M8). Tick milestones off 
 - [x] Test room in Tiled format (`public/maps/test/test_room.tmj`)
 - [x] Feel review: played on keyboard/mouse and touch; controls reworked (right-click cannon, touch release-to-fire, MG mode toggle)
 
-## M2: World
-- [ ] `.world` loading + `ChunkStreamer` (3×3 load, 5×5 unload)
-- [ ] Elevation grid, ramps, cliff edges, level-filtered collision, depth sorting
-- [ ] Terrain rules from `data/terrain.ts`
-- [ ] `validate:maps` v1 (structure, ids, edges)
+## M2: World ✅
+- [x] `.world` loading + `ChunkStreamer` (3×3 load, 5×5 unload); the test room is now the 4×2 `test` world
+- [x] Elevation grid, ramps, cliff edges, level-filtered collision (walls and projectiles; entity-vs-entity filtering lands with enemies in M3), depth sorting
+- [x] Terrain rules from `data/terrain.ts` (speed multipliers, ability/pawn gates; hazard damage waits for M3)
+- [x] `validate:maps` v1 (structure, ids, edges)
 
 ## M3: Combat
 - [ ] Damage model (`logic/combat`), rear-arc bonus, destructible materials
