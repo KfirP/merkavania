@@ -1,8 +1,25 @@
 import Phaser from 'phaser';
+import type { WeaponId } from '../data/weapons';
+
+export interface PawnTelemetry {
+  x: number;
+  y: number;
+  /** Radians */
+  heading: number;
+  speed: number;
+  turretAngle: number;
+  device: string;
+}
 
 /** Event name → payload. Scenes communicate only through this bus and the shared GameState. */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- filled in from M1 onward
-export interface GameEvents {}
+export interface GameEvents {
+  'weapon:fired': { weapon: WeaponId };
+  /** Main-gun quick rounds; emitted when the displayed value changes. */
+  'gun:state': { rounds: number; max: number; refillRemaining: number };
+  /** Debug builds only: emitted every frame by WorldScene. */
+  'debug:pawn': PawnTelemetry;
+  'debug:toggleBodies': undefined;
+}
 
 type EventName = keyof GameEvents & string;
 

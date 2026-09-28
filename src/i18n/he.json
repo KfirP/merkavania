@@ -1,5 +1,11 @@
 {
   "title.name": "מרכבניה",
   "title.press_start": "לחצו על מקש כלשהו",
-  "boot.loading": "טוען..."
+  "boot.loading": "טוען...",
+  "debug.fps": "FPS {fps}",
+  "debug.pawn": "x {x} y {y}  תובה {heading}°  צריח {turret}°  מהירות {speed}",
+  "debug.input": "קלט: {device}",
+  "debug.gun": "תותח {rounds}/{max}",
+  "debug.gun_refill": "טעינת תותח {seconds} שנ׳",
+  "debug.hint": "[`] שכבה  [1] גופים"
 }

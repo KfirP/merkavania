@@ -1,5 +1,11 @@
 {
   "title.name": "MERKAVANIA",
   "title.press_start": "Press any key",
-  "boot.loading": "Loading..."
+  "boot.loading": "Loading...",
+  "debug.fps": "FPS {fps}",
+  "debug.pawn": "x {x} y {y}  hull {heading}°  turret {turret}°  speed {speed}",
+  "debug.input": "Input: {device}",
+  "debug.gun": "Gun {rounds}/{max}",
+  "debug.gun_refill": "Gun refill {seconds}s",
+  "debug.hint": "[`] overlay  [1] bodies"
 }
