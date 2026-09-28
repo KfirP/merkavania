@@ -9,7 +9,9 @@ import { stickAngle, stickMagnitude, wrapAngle } from './stick';
  * - The released shot waits until the turret has lined up, so a quick flick doesn't fire
  *   mid-swing. It clears when the gun fires, and is dropped if the gun can't fire within
  *   FIRE_WINDOW of lining up (e.g. while the quick rounds refill).
- * - With MG mode on (ALT toggle), dragging past TOUCH_MG_THRESHOLD fires the coax while held.
+ * - ALT toggles MG mode, which switches the stick from the cannon to the coax: dragging past
+ *   TOUCH_MG_THRESHOLD fires the MG while held, inside it only aims, and lifting never fires the
+ *   cannon.
  */
 export const TOUCH_AIM_DEADZONE = 0.3;
 export const TOUCH_MG_THRESHOLD = 0.7;
@@ -48,12 +50,15 @@ export function initialTouchAim(): TouchAimState {
   return { target: null, wasActive: false, armed: false, pending: null };
 }
 
-/** Where the knob sits: inside the cancel zone, armed, or firing the MG (for UI feedback). */
+/**
+ * Where the knob sits, for UI feedback: 'cancel' (lifting does nothing), 'armed' (lifting fires
+ * the cannon; cannon mode only) or 'mg' (the coax is firing; MG mode only).
+ */
 export type TouchAimZone = 'cancel' | 'armed' | 'mg';
 
 export function touchAimZone(magnitude: number, mgOn: boolean): TouchAimZone {
-  if (magnitude <= TOUCH_AIM_DEADZONE) return 'cancel';
-  return mgOn && magnitude > TOUCH_MG_THRESHOLD ? 'mg' : 'armed';
+  if (mgOn) return magnitude > TOUCH_MG_THRESHOLD ? 'mg' : 'cancel';
+  return magnitude > TOUCH_AIM_DEADZONE ? 'armed' : 'cancel';
 }
 
 export function stepTouchAim(state: TouchAimState, input: TouchAimInput): TouchAimOutput {
@@ -63,8 +68,10 @@ export function stepTouchAim(state: TouchAimState, input: TouchAimInput): TouchA
   let armed: boolean;
 
   if (right.active) {
-    armed = mag > TOUCH_AIM_DEADZONE;
-    if (armed) {
+    const aiming = mag > TOUCH_AIM_DEADZONE;
+    // In MG mode the stick is the MG's trigger, so lifting never fires the cannon.
+    armed = aiming && !input.mgOn;
+    if (aiming) {
       target = stickAngle(right.x, right.y);
       pending = null; // re-aiming cancels a shot still waiting for the turret
     }

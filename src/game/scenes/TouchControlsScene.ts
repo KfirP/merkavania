@@ -29,8 +29,9 @@ interface VirtualStick {
 /**
  * Dual floating virtual sticks: each appears where the thumb lands in its half of the screen.
  * Left drives the hull. Right aims; lifting it fires the cannon, and dragging back to the centre
- * first cancels. The ALT button toggles MG mode, in which the right stick's outer ring (shown
- * only in MG mode) fires the coax. Writes `touchState` for TouchAdapter; rules in touchAim.ts.
+ * first cancels. The ALT button toggles MG mode, which switches the right stick to the coax: its
+ * outer ring (shown only in MG mode) fires the MG, and lifting never fires the cannon. Writes
+ * `touchState` for TouchAdapter; rules in touchAim.ts.
  * Always running but hidden until the first real touch: many desktop browsers report touch
  * support, and a touchscreen laptop may never be touched.
  */
