@@ -62,6 +62,8 @@ interface TankCommand {
 - Keyboard/mouse: `aimAngle` is the angle from the pawn's world position to the mouse's world position.
 - Gamepad/touch: `aimAngle` comes from the right stick when it's past the deadzone. Touch fires while the right stick is held past about 60% deflection.
 - `fire`/`altFire` are held states. `cycleNext`/`cyclePrev`/`hatch`/`interact`/`map`/`pause` are edge-triggered: true only on the frame they're pressed.
+- The mapping rules themselves (mouse buttons, stick deadzones, touch fire threshold, device selection, virtual-stick clamping) are pure functions in `logic/input/` (`mapping.ts`, `device.ts`, `virtualStick.ts`). The adapters only read devices and call them.
+- Phaser quirk: its `KeyboardManager` re-dispatches the whole per-frame key queue on every DOM key event, so `keydown-*` listeners can fire more than once for one press when several key events land in a frame. `Key.JustDown` has the opposite problem: it loses a press whose down and up land in the same frame. Gameplay polls `isDown` through `RisingEdge`; one-shot toggles such as the debug keys read DOM `keydown` events and consume them once per frame.
 - `InputSystem` polls every adapter each frame and uses the command from the **most recently active** device, so an idle mouse can't override the gamepad's aim. Mouse input is ignored for a moment after any touch, because browsers emulate mouse events from touches.
 - Touch: `TouchControlsScene` draws two floating sticks (each appears where the thumb lands in its half of the screen) plus an alt-fire button, and writes a small shared store (`game/input/touchState.ts`) that `TouchAdapter` reads. It's launched on touch-capable devices but stays hidden until the first real touch, since many desktop browsers report touch support.
 - The active pawn consumes the command. The scout and drone read throttle/turn as direct 8-way movement rather than tank controls.
@@ -116,8 +118,9 @@ Projectile hits a target → `CombatSystem` calls `logic/combat.resolveHit(weapo
 - Debug hooks are exposed on `window.__merkavania` (in debug mode only) so Playwright can drive state: `game`, `getPawn()` (last-frame telemetry) and `getShots()` (shots per weapon id).
 
 ## Testing
-- **Vitest:** everything in `src/logic/` and `scripts/` (damage, progression, save migrations, elevation traversal rules, gate reachability, i18n key parity).
-- **Playwright:** boot the game, confirm the title and then `WorldScene` load with no console errors, drive the tank a bit via keyboard, take a screenshot, and use `window.__merkavania` to grant abilities and test a gate.
+- **Work test-first** (see `CLAUDE.md`, Workflow). Game code stays a thin shell over tested `src/logic/` functions.
+- **Vitest:** everything in `src/logic/` and `scripts/` (tank handling, input mapping, damage, progression, save migrations, elevation traversal rules, gate reachability, i18n key parity), sanity tests for the `src/data/` tables (ids and asset keys resolve, values in range) and structural tests for hand-built maps.
+- **Playwright** (`tests/e2e/`, shared helpers in `helpers.ts`): boot the game and confirm the title and then `WorldScene` load with no console errors. Behaviour that only exists in a running scene (collisions, turret traverse, fire cadence, the gamepad via a stubbed `navigator.getGamepads`, touch via CDP multi-touch, debug overlay keys) is checked through `window.__merkavania` hooks. Later: grant abilities and test a gate.
 - **Map validation:** `npm run validate:maps` (see `LEVEL_DESIGN.md`).
 
 ## Deploy
