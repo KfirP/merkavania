@@ -8,7 +8,7 @@ Current target: **Vertical slice** (desert biome, M0–M8). Tick milestones off 
 - [x] Vitest + Playwright set up, with one passing test each
 - [x] Folder layout per `ARCHITECTURE.md`; integer-scaled 480×270 canvas; Boot/Preload/Title/World scenes stubbed
 - [x] GitHub Actions: `ci.yml`, `deploy.yml` (Pages, `VITE_BASE`) (written; not yet run, since there's no GitHub remote)
-- [ ] PixelLab + ElevenLabs MCP connected (see `ASSET_PIPELINE.md`)
+- [x] PixelLab + ElevenLabs MCP connected (see `ASSET_PIPELINE.md`)
 
 ## M1: Tank feel
 - [ ] `TankCommand` + keyboard/mouse, gamepad and touch (dual stick) adapters

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Merkavania** is a web metroidvania with top-down pixel art. The player drives a Merkava tank. It starts as a Mk2 and upgrades to Mk3 and then Mk4; each Mk tier is a major milestone. Other upgrades are pickups that open new areas. The stack is Phaser 3, TypeScript, Vite and Tiled. It targets desktop browsers (keyboard/mouse and gamepad) and mobile (touch), and deploys to GitHub Pages.
 
-**Status:** M0 scaffold done (see `docs/ROADMAP.md` for the current milestone). The commands below are the `package.json` scripts. If you change a script name, update this file too. Phaser is pinned to 3.x (`phaser@^3`); don't upgrade to Phaser 4 without an explicit decision.
+**Status:** M0 complete; next up is M1 (tank feel). See `docs/ROADMAP.md` for the current milestone. The commands below are the `package.json` scripts. If you change a script name, update this file too. Phaser is pinned to 3.x (`phaser@^3`); don't upgrade to Phaser 4 without an explicit decision.
 
 Design docs (read the relevant one before working in its area):
 - `docs/GAME_DESIGN.md`: mechanics, Mk tiers, the ability→gate table, biomes and the vertical-slice spec. This is the source of truth for ability and terrain ids.
