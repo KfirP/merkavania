@@ -1,11 +1,15 @@
 import Phaser from 'phaser';
-import { assetManifest } from '../../data/assetManifest';
+import { assetManifest, type AssetEntry } from '../../data/assetManifest';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../logic/scale';
 import { t } from '../../i18n/i18n';
+import { generatePlaceholder } from '../placeholders';
+import { queueTiledMap, registerTiledMap } from '../tiledLoader';
 import { SceneKey } from './keys';
 
 const BAR_WIDTH = 200;
 const BAR_HEIGHT = 8;
+
+const isTiledMap = (path: string) => path.endsWith('.tmj');
 
 /** Loads everything in the asset manifest while drawing a progress bar. */
 export class PreloadScene extends Phaser.Scene {
@@ -23,8 +27,8 @@ export class PreloadScene extends Phaser.Scene {
     const fill = this.add.rectangle(x + 1, y + 1, 0, BAR_HEIGHT - 2, 0xc2b280).setOrigin(0);
     this.load.on('progress', (p: number) => (fill.width = (BAR_WIDTH - 2) * p));
 
-    for (const asset of assetManifest) {
-      if (asset.status === 'placeholder') continue;
+    for (const asset of assetManifest as readonly AssetEntry[]) {
+      if (asset.path === '') continue; // drawn in code in create()
       if (asset.type === 'image') this.load.image(asset.key, asset.path);
       else if (asset.type === 'spritesheet' && asset.frame)
         this.load.spritesheet(asset.key, asset.path, {
@@ -32,10 +36,19 @@ export class PreloadScene extends Phaser.Scene {
           frameHeight: asset.frame.height,
         });
       else if (asset.type === 'audio') this.load.audio(asset.key, asset.path);
+      else if (asset.type === 'json') {
+        if (isTiledMap(asset.path)) queueTiledMap(this.load, asset.key, asset.path);
+        else this.load.json(asset.key, asset.path);
+      }
     }
   }
 
   create(): void {
+    for (const asset of assetManifest) {
+      if (asset.path === '' && !generatePlaceholder(this, asset.key))
+        console.warn(`No file or placeholder drawer for asset "${asset.key}"`);
+      if (asset.type === 'json' && isTiledMap(asset.path)) registerTiledMap(this, asset.key);
+    }
     this.scene.start(SceneKey.Title);
   }
 }
