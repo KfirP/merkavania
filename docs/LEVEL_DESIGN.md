@@ -42,7 +42,8 @@ Terrain → requirement mapping (defined in `data/terrain.ts`):
 | `depot` | `id` | Repair/save station |
 | `pickup` | `ability` or `minor`, `id` | Persistent once collected |
 | `mk_upgrade` | `tier` | Usually spawned by the boss's death |
-| `enemy` | `enemyType`, `level`, optional `patrol` (polyline name) | |
+| `enemy` | `enemyType`, `level`, optional `patrol` (polyline name) | Point object; its rotation is the facing (static guns only traverse around it). A `rifle_squad` spawns three soldiers |
+| *(untyped polyline)* | `name` | Patrol path for an enemy in the same chunk; the route loops |
 | `boss` | `bossType`, `arena` (rect name) | |
 | `destructible` | `material`: `sandbag`/`wood`/`concrete`/`armored`, `id` | Persistent |
 | `boulder` | `id` | Pushable with `dozer_blade` |
@@ -65,7 +66,7 @@ The rules are in `src/logic/world/validate.ts`; `scripts/validate-maps.ts` only 
 1. Every chunk listed in a `.world` exists, is named after its position, is 30×17, and has the required layers in order, with `elevation` hidden.
 2. All tilesets are external `.tsj` named after a manifest image with the same file, every `terrain`/`level`/`ramp`/`steep`/`solid` value is known, and every tile gid belongs to a tileset.
 3. Every object type and its properties are known (ability, minor pickup, tier, material, `activatedBy`, zone `kind` and message ids exist in `src/data/` and `src/i18n/en.json`). Enemy ids are checked from M3 on; boss ids are only checked for presence until the boss table exists in M7.
-4. Persistent object ids are unique per chunk, door `opensWith` points to a switch in the same chunk, and exits point to existing biomes, chunks and spawns.
+4. Persistent object ids are unique per chunk, door `opensWith` points to a switch in the same chunk, enemy `patrol` names a polyline in the same chunk, and exits point to existing biomes, chunks and spawns.
 5. Neighbouring chunks agree on elevation where they meet: facing cells are on the same level or joined by a ramp, unless either one is solid.
 6. **Progression reachability:** starting at `start` with Mk2 and no abilities, it simulates collecting pickups in dependency order through a coarse chunk/region graph (built by `src/logic/world`). It confirms every pickup, depot and boss is eventually reachable and no required ability is locked behind itself.
 

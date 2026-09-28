@@ -37,6 +37,10 @@ export interface DebugHooks {
   worldToCanvas(x: number, y: number): { fx: number; fy: number };
   /** Live destructibles as of the last frame. */
   getDestructibles(): EntitiesTelemetry['destructibles'];
+  /** Live enemies as of the last frame. */
+  getEnemies(): EntitiesTelemetry['enemies'];
+  /** Spawns an enemy (a whole squad for `rifle_squad`) at world (x, y), facing `facing` rad. */
+  spawnEnemy(type: string, x: number, y: number, facing?: number): void;
 }
 
 declare global {
@@ -52,7 +56,7 @@ export function installDebugHooks(game: Phaser.Game): void {
   let world: WorldState | null = null;
   const shots: Record<string, number> = {};
   const hits: CombatHit[] = [];
-  let entities: EntitiesTelemetry = { destructibles: [] };
+  let entities: EntitiesTelemetry = { destructibles: [], enemies: [] };
   events.on('debug:entities', (e) => (entities = e));
   events.on('debug:pawn', (p) => (pawn = p));
   events.on('world:chunks', (w) => (world = w));
@@ -75,5 +79,7 @@ export function installDebugHooks(game: Phaser.Game): void {
       return { fx: (x - cam.worldView.x) / cam.width, fy: (y - cam.worldView.y) / cam.height };
     },
     getDestructibles: () => entities.destructibles.map((d) => ({ ...d })),
+    getEnemies: () => entities.enemies.map((e) => ({ ...e })),
+    spawnEnemy: (type, x, y, facing = 0) => events.emit('debug:spawnEnemy', { type, x, y, facing }),
   };
 }

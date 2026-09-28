@@ -172,4 +172,21 @@ describe('test world', () => {
       expect(cell.solid).toBe(false);
     }
   });
+
+  it('has one of each desert enemy in x03_y01, out of sight of the start and the M2 specs', () => {
+    const { chunk, raw } = maps.get('test_x03_y01')!;
+    const objects = (raw.layers as Layer[]).find((l) => l.name === 'objects')!.objects!;
+    const { enemies } = parseChunkObjects(chunk, objects as RawObject[]);
+    expect(enemies.map((e) => e.enemyType).sort()).toEqual(
+      ['atgm_team', 'bunker_mg', 'light_tank', 'rifle_squad', 'technical'].sort(),
+    );
+    expect(enemies.find((e) => e.enemyType === 'technical')!.patrol!.length).toBeGreaterThan(2);
+    for (const e of enemies) {
+      const cell = cellAt(Math.floor(e.x / TILE), Math.floor(e.y / TILE))!;
+      expect(cell.solid).toBe(false);
+      expect(cell.level).toBe(e.level);
+      // Rows 27+ keep them away from the plateau and road the world specs drive on.
+      expect(e.y).toBeGreaterThanOrEqual(27 * TILE);
+    }
+  });
 });

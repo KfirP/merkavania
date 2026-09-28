@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import type { WeaponDef } from '../../data/weapons';
 import type { Owner } from '../../logic/combat/faction';
+import { steerMissile } from '../../logic/combat/guidance';
+import type { Vec2 } from '../../logic/input/stick';
 import { TILE } from '../../logic/world/chunks';
 import {
   projectileBlocked,
@@ -16,6 +18,8 @@ export type ImpactHandler = (p: Projectile) => void;
 export class ProjectileSystem {
   readonly group: Phaser.Physics.Arcade.Group;
   onImpact: ImpactHandler | null = null;
+  /** What guided missiles fired by `owner` home in on; null flies straight. */
+  homingTarget: (owner: Owner) => Vec2 | null = () => null;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -60,9 +64,16 @@ export class ProjectileSystem {
     p.expire();
   }
 
-  /** Direct fire stops against rising ground (cliff faces) and flies over lower cells. */
-  update(): void {
+  /**
+   * Steers guided missiles, and stops direct fire against rising ground (cliff faces); lower cells
+   * are flown over.
+   */
+  update(dt: number): void {
     for (const p of this.group.getMatching('active', true) as Projectile[]) {
+      if (p.weapon.homing) {
+        const target = this.homingTarget(p.owner);
+        p.setHeading(steerMissile(p.angleOfTravel, p, target, p.weapon.homing, dt));
+      }
       const cell = this.cellAt(Math.floor(p.x / TILE), Math.floor(p.y / TILE));
       if (projectileBlocked(p.level, cell)) this.impact(p);
     }

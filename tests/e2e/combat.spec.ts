@@ -7,9 +7,11 @@ import {
   enterWorld,
   getCombatLog,
   getDestructibles,
+  getEnemies,
   getPawn,
   getWorld,
   setGod,
+  spawnEnemy,
   teleport,
 } from './helpers';
 
@@ -111,5 +113,107 @@ test.describe('destructibles', () => {
     expect(hits.every((h) => h.ricochet && h.damage === 0)).toBe(true);
     const concrete = (await getDestructibles(page)).find((d) => d.key === key('concrete_1'));
     expect(concrete?.hp).toBe(80);
+  });
+});
+
+/**
+ * Enemies spawned through the debug hook in chunk x00_y00's open ground, away from the map's own
+ * enemies (x03_y01). The tank parks at (20.5, 12) tiles facing north; the enemy sits 7 tiles up.
+ */
+test.describe('enemies', () => {
+  const TANK = { x: 20.5 * TILE, y: 12 * TILE };
+  const FOE = { x: 20.5 * TILE, y: 5 * TILE };
+  const SOUTH = Math.PI / 2;
+  const hitsOn = async (page: Page, type: string) => {
+    const ids = new Set((await getEnemies(page)).filter((e) => e.type === type).map((e) => e.id));
+    return (await getCombatLog(page)).filter((h) => ids.has(h.target) || h.target.includes(type));
+  };
+
+  async function faceOff(page: Page, type: string, god = true) {
+    await enterWorld(page);
+    await setGod(page, god);
+    await teleport(page, TANK.x, TANK.y, NORTH);
+    await spawnEnemy(page, type, FOE.x, FOE.y, SOUTH);
+    await expect.poll(async () => (await getEnemies(page)).length).toBeGreaterThan(0);
+  }
+
+  test('the cannon kills a rifle-squad soldier', async ({ page }) => {
+    const errors = collectErrors(page);
+    await faceOff(page, 'rifle_squad');
+    expect((await getEnemies(page)).filter((e) => e.type === 'rifle_squad')).toHaveLength(3);
+    await aimAt(page, FOE.x, FOE.y);
+    await page.mouse.down({ button: 'right' });
+    await expect
+      .poll(async () => (await getEnemies(page)).filter((e) => e.type === 'rifle_squad').length)
+      .toBeLessThan(3);
+    await page.mouse.up({ button: 'right' });
+    const kills = (await getCombatLog(page)).filter((h) => h.killed && h.weapon === 'gun_105');
+    expect(kills.length).toBeGreaterThan(0);
+    expect(errors).toEqual([]);
+  });
+
+  test('the coax MG ricochets off a bunker', async ({ page }) => {
+    await faceOff(page, 'bunker_mg');
+    await aimAt(page, FOE.x, FOE.y);
+    await page.mouse.down();
+    await expect.poll(async () => (await hitsOn(page, 'bunker_mg')).length).toBeGreaterThan(3);
+    await page.mouse.up();
+    const hits = await hitsOn(page, 'bunker_mg');
+    expect(hits.every((h) => h.weapon === 'coax_mg' && h.ricochet && h.damage < 0.5)).toBe(true);
+  });
+
+  test('a technical shoots back', async ({ page }) => {
+    await faceOff(page, 'technical', false);
+    await expect.poll(async () => (await getPawn(page)).hp, { timeout: 8_000 }).toBeLessThan(100);
+    const log = await getCombatLog(page);
+    expect(log.some((h) => h.target === 'player' && h.weapon === 'mg_technical')).toBe(true);
+  });
+
+  test('the ATGM team telegraphs, then its missile finds the tank', async ({ page }) => {
+    await faceOff(page, 'atgm_team');
+    await expect
+      .poll(
+        async () =>
+          (await getCombatLog(page)).some((h) => h.target === 'player' && h.weapon === 'atgm'),
+        { timeout: 12_000 },
+      )
+      .toBe(true);
+  });
+
+  test('a shell fired on level 0 cannot hit an enemy on the plateau', async ({ page }) => {
+    await enterWorld(page);
+    await setGod(page, true);
+    // The level-1 plateau spans rows 2–10 above x=70..109; its south face is row 11.
+    await teleport(page, 78.5 * TILE, 14 * TILE, NORTH);
+    await spawnEnemy(page, 'bunker_mg', 78.5 * TILE, 6 * TILE, SOUTH);
+    // x03_y01's own enemies stream in here too, so look at the debug spawn only.
+    const bunker = async () => (await getEnemies(page)).find((e) => e.id.startsWith('debug'));
+    await expect.poll(bunker).toBeDefined();
+    expect((await bunker())!.level).toBe(1);
+    await aimAt(page, 78.5 * TILE, 6 * TILE);
+    await page.mouse.down({ button: 'right' });
+    await page.waitForTimeout(2_000);
+    await page.mouse.up({ button: 'right' });
+    const b = (await bunker())!;
+    expect((await getCombatLog(page)).filter((h) => h.target === b.id)).toEqual([]);
+    expect(b.hp).toBe(b.maxHp);
+  });
+
+  test('the tank crushes infantry it drives over', async ({ page }) => {
+    await enterWorld(page);
+    await setGod(page, true);
+    await teleport(page, TANK.x, TANK.y, NORTH);
+    await spawnEnemy(page, 'rifle_squad', TANK.x, TANK.y - 40, SOUTH);
+    await expect.poll(async () => (await getEnemies(page)).length).toBe(3);
+    await page.keyboard.down('w');
+    await expect.poll(async () => (await getEnemies(page)).length).toBeLessThan(3);
+    await page.keyboard.up('w');
+  });
+
+  test('respawning clears the fight', async ({ page }) => {
+    await faceOff(page, 'technical', false);
+    await damagePlayer(page, 999);
+    await expect.poll(async () => (await getPawn(page)).alive, { timeout: 5_000 }).toBe(true);
+    expect((await getEnemies(page)).filter((e) => e.id.startsWith('debug'))).toEqual([]);
   });
 });

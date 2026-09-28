@@ -48,13 +48,15 @@ export class CombatSystem {
   watch(
     targets: Target | Phaser.Physics.Arcade.Group | Phaser.Physics.Arcade.StaticGroup,
   ): Phaser.Physics.Arcade.Collider {
+    // Arcade swaps the pair for a group against a single sprite, so sort them out by type.
+    const pair = (a: unknown, b: unknown) =>
+      (a instanceof Projectile ? [a, b] : [b, a]) as [Projectile, Target];
     return this.scene.physics.add.overlap(
       this.projectiles.group,
       targets,
-      (p, t) => this.directHit(p as Projectile, t as Target),
-      (p, t) => {
-        const shot = p as Projectile;
-        const target = t as Target;
+      (a, b) => this.directHit(...pair(a, b)),
+      (a, b) => {
+        const [shot, target] = pair(a, b);
         return shot.active && target.alive && canHit(shot, target);
       },
     );

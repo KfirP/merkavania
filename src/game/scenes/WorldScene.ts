@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { getAsset } from '../../data/assetManifest';
 import { RESPAWN_DELAY } from '../../data/combat';
+import { crushes } from '../../logic/combat/crush';
 import { hazardDamage } from '../../logic/combat/hazard';
 import { WorldFlags } from '../../logic/state/flags';
 import { CHUNK_H, CHUNK_PX_H, CHUNK_PX_W, CHUNK_W, TILE } from '../../logic/world/chunks';
@@ -8,7 +9,7 @@ import { ABOVE_DEPTH } from '../../logic/world/depth';
 import { WorldGrid } from '../../logic/world/grid';
 import { findSpawn, parseWorld, worldBounds, type TiledWorld } from '../../logic/world/world';
 import { isDebug } from '../debug';
-import { Destructible } from '../entities/Destructible';
+import type { Enemy, EnemyContext } from '../entities/Enemy';
 import { Tank } from '../entities/Tank';
 import { events, type GameEvents } from '../events';
 import { ChunkStreamer } from '../systems/ChunkStreamer';
@@ -41,6 +42,7 @@ export class WorldScene extends Phaser.Scene {
   private effects!: EffectsSystem;
   private combat!: CombatSystem;
   private spawner!: SpawnSystem;
+  private enemyContext!: EnemyContext;
   private grid!: WorldGrid;
   /** Where the tank respawns; M4 replaces it with the last depot. */
   private respawnPoint!: { x: number; y: number; heading: number };
@@ -80,18 +82,26 @@ export class WorldScene extends Phaser.Scene {
     const flags = new WorldFlags();
     this.spawner = new SpawnSystem(this, this.combat, this.effects, flags, this.elevation.cellAt);
     this.combat.watch(this.spawner.solids);
-    this.physics.add.collider(
-      this.tank,
-      this.spawner.solids,
-      undefined,
-      (_tank, d) => (d as Destructible).level === this.tank.level,
-    );
+    this.combat.watch(this.spawner.enemies);
+    this.addEntityColliders();
+    this.projectiles.homingTarget = (owner) =>
+      owner === 'enemy' && this.tank.alive ? this.tank.pos : null;
+    this.enemyContext = {
+      player: this.tank,
+      cellAt: this.elevation.cellAt,
+      projectiles: this.projectiles,
+    };
+    events.on('player:respawned', this.onPlayerRespawned, this);
 
     this.streamer = new ChunkStreamer(
       this,
       world,
       this.grid,
-      (walls) => [this.physics.add.collider(this.tank, walls), this.projectiles.addWalls(walls)],
+      (walls) => [
+        this.physics.add.collider(this.tank, walls),
+        this.physics.add.collider(this.spawner.enemies, walls),
+        this.projectiles.addWalls(walls),
+      ],
       this.spawner,
     );
     this.streamer.update(this.tank.x, this.tank.y);
@@ -114,6 +124,7 @@ export class WorldScene extends Phaser.Scene {
       events.on('debug:teleport', this.teleport, this);
       events.on('debug:damagePlayer', this.debugDamage, this);
       events.on('debug:god', this.debugGod, this);
+      events.on('debug:spawnEnemy', this.debugSpawnEnemy, this);
       events.on('world:chunks', this.redrawElevation, this);
     }
 
@@ -126,8 +137,10 @@ export class WorldScene extends Phaser.Scene {
       events.off('debug:teleport', this.teleport, this);
       events.off('debug:damagePlayer', this.debugDamage, this);
       events.off('debug:god', this.debugGod, this);
+      events.off('debug:spawnEnemy', this.debugSpawnEnemy, this);
       events.off('world:chunks', this.redrawElevation, this);
       events.off('player:died', this.onPlayerDied, this);
+      events.off('player:respawned', this.onPlayerRespawned, this);
       this.scene.stop(SceneKey.Hud);
       this.scene.stop(SceneKey.TouchControls);
       this.scene.stop(SceneKey.Debug);
@@ -148,7 +161,8 @@ export class WorldScene extends Phaser.Scene {
       this.elevation.constrain(this.tank, dt);
       this.applyHazards(dt);
     }
-    this.projectiles.update();
+    this.updateEnemies(dt);
+    this.projectiles.update(dt);
 
     if (isDebug())
       events.emit('debug:pawn', {
@@ -164,7 +178,47 @@ export class WorldScene extends Phaser.Scene {
         maxHp: this.tank.maxHp,
         alive: this.tank.alive,
       });
-    if (isDebug()) events.emit('debug:entities', { destructibles: this.spawner.destructibles() });
+    if (isDebug())
+      events.emit('debug:entities', {
+        destructibles: this.spawner.destructibles(),
+        enemies: this.spawner.enemyTelemetry(),
+      });
+  }
+
+  private updateEnemies(dt: number): void {
+    for (const e of [...this.spawner.enemies.getChildren()] as Enemy[]) {
+      if (!e.active) continue;
+      this.elevation.prepare(e);
+      e.think(this.enemyContext, dt);
+      if (e.active) this.elevation.constrain(e, dt, []);
+    }
+  }
+
+  /**
+   * Bodies only meet on the same level (docs/ARCHITECTURE.md, Elevation). The tank shoves
+   * vehicles, stops against bunkers and destructibles, and flattens soldiers.
+   */
+  private addEntityColliders(): void {
+    const sameLevel = (a: unknown, b: unknown) =>
+      (a as { level: number }).level === (b as { level: number }).level;
+    this.physics.add.collider(this.tank, this.spawner.solids, undefined, sameLevel);
+    this.physics.add.collider(this.tank, this.spawner.enemies, undefined, (_t, other) => {
+      const e = other as Enemy;
+      if (!this.tank.alive || !e.alive || e.level !== this.tank.level) return false;
+      if (!crushes(e.def.behaviour, this.tank.speed)) return true;
+      this.combat.damage(e, e.hp);
+      return false;
+    });
+    this.physics.add.collider(this.spawner.enemies, this.spawner.enemies, undefined, sameLevel);
+    this.physics.add.collider(this.spawner.enemies, this.spawner.solids, undefined, sameLevel);
+  }
+
+  private onPlayerRespawned(): void {
+    this.spawner.resetEnemies();
+  }
+
+  private debugSpawnEnemy({ type, x, y, facing }: GameEvents['debug:spawnEnemy']): void {
+    this.spawner.spawnDebugEnemy(type, x, y, facing);
   }
 
   /** Minefields and missile zones hurt a tank without the matching ability. */

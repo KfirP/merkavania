@@ -1,4 +1,5 @@
 import { abilityIds, minorPickupIds } from '../../data/abilities';
+import { isEnemyId } from '../../data/enemies';
 import { isMaterialId } from '../../data/materials';
 import { allMkTierIds } from '../../data/mkTiers';
 import { isTerrainId } from '../../data/terrain';
@@ -105,6 +106,7 @@ interface RawObject {
   id: number;
   name?: string;
   type?: string;
+  polyline?: unknown[];
   properties?: Property[];
 }
 
@@ -156,7 +158,13 @@ const OBJECT_RULES: Record<string, ObjectRule> = {
       tier: (v) => (allMkTierIds.includes(v as never) ? null : `unknown tier ${JSON.stringify(v)}`),
     },
   },
-  enemy: { required: ['enemyType', 'level'] },
+  enemy: {
+    required: ['enemyType', 'level'],
+    checks: {
+      enemyType: (v) => (isEnemyId(v) ? null : `unknown enemy type ${JSON.stringify(v)}`),
+      level: (value) => tilePropertyIssue({ name: 'level', value }),
+    },
+  },
   boss: { required: ['bossType', 'arena'] },
   destructible: {
     required: ['material', 'id'],
@@ -191,6 +199,8 @@ function validateObjects(file: string, objects: RawObject[], known: KnownIds): M
     issues.push({ file, layer: 'objects', object: `#${o.id}`, message });
 
   for (const o of objects) {
+    // Untyped polylines are patrol paths, referenced by name from enemies.
+    if (o.polyline && !o.type) continue;
     const rule = OBJECT_RULES[o.type ?? ''];
     if (!rule) {
       at(o, `unknown object type ${JSON.stringify(o.type ?? '')}`);
@@ -216,6 +226,13 @@ function validateObjects(file: string, objects: RawObject[], known: KnownIds): M
     if (id === undefined) continue;
     if (seen.has(String(id))) at(o, `duplicate id "${id}"`);
     seen.add(String(id));
+  }
+
+  const polylines = new Set(objects.filter((o) => o.polyline).map((o) => o.name));
+  for (const o of objects) {
+    const patrol = propsOf(o).patrol;
+    if (o.type === 'enemy' && patrol !== undefined && !polylines.has(String(patrol)))
+      at(o, `patrol "${patrol}" is not a polyline here`);
   }
 
   const switches = new Set(

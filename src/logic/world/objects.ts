@@ -13,6 +13,8 @@ export interface RawObject {
   y: number;
   width?: number;
   height?: number;
+  /** Degrees clockwise. */
+  rotation?: number;
   polyline?: { x: number; y: number }[];
   properties?: { name: string; value: unknown }[];
 }
@@ -35,6 +37,8 @@ export interface EnemySpec {
   level: number;
   x: number;
   y: number;
+  /** Radians, 0 = east (Tiled rotation); static guns face this way. */
+  facing: number;
   /** Waypoints, world px, from the polyline named by the `patrol` property. */
   patrol?: { x: number; y: number }[];
 }
@@ -76,6 +80,7 @@ export function parseChunkObjects(
         level: Number(props.level ?? 0),
         x: ox + o.x,
         y: oy + o.y,
+        facing: ((o.rotation ?? 0) * Math.PI) / 180,
       };
       if (line?.polyline)
         spec.patrol = line.polyline.map((p) => ({ x: ox + line.x + p.x, y: oy + line.y + p.y }));

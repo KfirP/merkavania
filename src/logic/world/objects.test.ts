@@ -64,12 +64,27 @@ describe('parseChunkObjects', () => {
         level: 1,
         x: ox + 100,
         y: oy + 50,
+        facing: 0,
         patrol: [
           { x: ox + 10, y: oy + 20 },
           { x: ox + 40, y: oy + 20 },
         ],
       },
     ]);
+  });
+
+  it('reads the enemy facing from the Tiled rotation (degrees clockwise, 0 = east)', () => {
+    const raw: RawObject[] = [
+      {
+        id: 4,
+        type: 'enemy',
+        x: 0,
+        y: 0,
+        rotation: 180,
+        properties: props({ enemyType: 'bunker_mg', level: 0 }),
+      },
+    ];
+    expect(parseChunkObjects(chunk, raw).enemies[0]?.facing).toBeCloseTo(Math.PI);
   });
 
   it('ignores other object types and enemies whose patrol is missing keep no patrol', () => {

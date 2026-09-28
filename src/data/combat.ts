@@ -44,3 +44,6 @@ export const HIT_FLASH_MS = 60;
 
 /** Seconds from the player's death to the respawn. */
 export const RESPAWN_DELAY = 1.5;
+
+/** The tank runs over soldiers when moving at least this fast, px/s. */
+export const CRUSH_SPEED = 15;

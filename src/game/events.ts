@@ -29,9 +29,23 @@ export interface DestructibleTelemetry {
   level: number;
 }
 
+export interface EnemyTelemetry {
+  /** Combat id: `<chunkId>:<object id>`, `#n` per squad member; debug spawns start `debug:`. */
+  id: string;
+  type: string;
+  hp: number;
+  maxHp: number;
+  x: number;
+  y: number;
+  level: number;
+  /** Brain mode: idle, alert, engage or search. */
+  mode: string;
+}
+
 /** Debug builds only: everything spawned from chunk objects, emitted every frame. */
 export interface EntitiesTelemetry {
   destructibles: DestructibleTelemetry[];
+  enemies: EnemyTelemetry[];
 }
 
 /** One resolved hit, for the debug combat log and specs. */
@@ -79,6 +93,8 @@ export interface GameEvents {
   /** Deals `amount` damage to the player, ignoring armor. */
   'debug:damagePlayer': { amount: number };
   'debug:god': { on: boolean };
+  /** Spawns an enemy at world (x, y); `facing` in radians. */
+  'debug:spawnEnemy': { type: string; x: number; y: number; facing: number };
 }
 
 type EventName = keyof GameEvents & string;

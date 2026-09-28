@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { abilityIds } from './abilities';
 import { assetManifest, getAsset, type AssetKey } from './assetManifest';
 import { ammoTypes, armorIds, armorMultipliers, REAR_ARC, weaponClasses } from './combat';
+import { enemies, enemyBehaviours, enemyIds } from './enemies';
 import { materialIds, materials } from './materials';
 import { allMkTierIds, mkTiers } from './mkTiers';
 import { terrains } from './terrain';
@@ -202,5 +203,47 @@ describe('materials', () => {
       expect(m.hp).toBeGreaterThan(0);
       expect(keys).toContain(m.sprite);
     }
+  });
+});
+
+describe('enemies', () => {
+  it('match the GAME_DESIGN.md desert roster', () => {
+    expect([...enemyIds].sort()).toEqual(
+      ['atgm_team', 'bunker_mg', 'light_tank', 'rifle_squad', 'technical'].sort(),
+    );
+    expect(Object.keys(enemies).sort()).toEqual([...enemyIds].sort());
+  });
+
+  it('reference existing weapons, sprites, armor and behaviours', () => {
+    for (const e of Object.values(enemies)) {
+      expect(weapons[e.weapon]).toBeDefined();
+      expect(keys).toContain(e.sprites.body);
+      if (e.sprites.turret) expect(keys).toContain(e.sprites.turret);
+      expect(armorIds).toContain(e.armor);
+      expect(enemyBehaviours).toContain(e.behaviour);
+    }
+  });
+
+  it('have sane numbers', () => {
+    for (const e of Object.values(enemies)) {
+      expect(e.hp).toBeGreaterThan(0);
+      expect(e.count).toBeGreaterThanOrEqual(1);
+      expect(e.windup).toBeGreaterThanOrEqual(0);
+      expect(e.traverseRate).toBeGreaterThan(0);
+      expect(e.fireRange).toBeLessThanOrEqual(e.sightRange);
+      expect(e.fireRange).toBeLessThanOrEqual(weapons[e.weapon].range);
+      expect(e.bodyRadius * 2).toBeLessThan(48);
+      if (e.behaviour === 'static') expect(e.speed).toBe(0);
+      else expect(e.speed).toBeGreaterThan(0);
+    }
+  });
+
+  it('only guided weapons are ATGMs, and the team telegraphs them', () => {
+    expect(weapons[enemies.atgm_team.weapon].homing).toBeGreaterThan(0);
+    expect(enemies.atgm_team.windup).toBeGreaterThanOrEqual(1);
+  });
+
+  it('keeps the mk2 able to outrun a guided missile on the road', () => {
+    expect(weapons.atgm.speed).toBeLessThan(mkTiers.mk2.hull.maxSpeed * terrains.road.speedMul);
   });
 });
