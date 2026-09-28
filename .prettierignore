@@ -1,0 +1,10 @@
+dist/
+coverage/
+test-results/
+playwright-report/
+package-lock.json
+public/maps/
+assets-src/
+.claude/
+# Hand-written design docs; keep their formatting as authored.
+*.md

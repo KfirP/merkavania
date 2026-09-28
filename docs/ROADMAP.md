@@ -1,0 +1,56 @@
+# Merkavania: Roadmap
+
+Current target: **Vertical slice** (desert biome, M0–M8). Tick milestones off as they're completed.
+
+## M0: Scaffold
+- [x] `git init`, Vite + TypeScript (strict) + Phaser 3, npm scripts from CLAUDE.md (`dev`, `build`, `preview`, `typecheck`, `lint`, `test`, `test:e2e`, `validate:maps`, `check`)
+- [x] ESLint (with `no-restricted-imports` banning `phaser` in `src/logic/**`), Prettier
+- [x] Vitest + Playwright set up, with one passing test each
+- [x] Folder layout per `ARCHITECTURE.md`; integer-scaled 480×270 canvas; Boot/Preload/Title/World scenes stubbed
+- [x] GitHub Actions: `ci.yml`, `deploy.yml` (Pages, `VITE_BASE`) (written; not yet run, since there's no GitHub remote)
+- [ ] PixelLab + ElevenLabs MCP connected (see `ASSET_PIPELINE.md`)
+
+## M1: Tank feel
+- [ ] `TankCommand` + keyboard/mouse, gamepad and touch (dual stick) adapters
+- [ ] Mk2 tank: hull momentum/turning, turret traverse, main gun + coax MG, placeholder sprites
+- [ ] Debug overlay basics (`?debug=1`, bodies, FPS)
+- [ ] Test room hand-built in Tiled
+
+## M2: World
+- [ ] `.world` loading + `ChunkStreamer` (3×3 load, 5×5 unload)
+- [ ] Elevation grid, ramps, cliff edges, level-filtered collision, depth sorting
+- [ ] Terrain rules from `data/terrain.ts`
+- [ ] `validate:maps` v1 (structure, ids, edges)
+
+## M3: Combat
+- [ ] Damage model (`logic/combat`), rear-arc bonus, destructible materials
+- [ ] Desert enemies: `rifle_squad`, `technical`, `bunker_mg`, `atgm_team`, `light_tank`
+- [ ] Explosions, hit feedback, screen shake
+
+## M4: Progression & saves
+- [ ] `GameState`, abilities, pickups, persistent flags per `<chunkId>:<id>`
+- [ ] Gates: `rubble`/dozer, `mortar` arc + mortar switches, doors/switches
+- [ ] Depots, 3 save slots, versioned save + migrations, respawn on death
+- [ ] `validate:maps` progression reachability
+
+## M5: Rear hatch
+- [ ] Pawn switching, scout pawn, `crawlspace`, scout switches, recall
+
+## M6: UI & i18n
+- [ ] HUD (HP, ammo, selected secondary, minimap hint), map screen, pause/settings, title/slot select
+- [ ] i18n with `en`/`he`, RTL text, Hebrew-capable pixel font chosen and verified
+- [ ] Touch UI polish, rotate-device prompt
+
+## M7: Vertical slice content
+- [ ] Desert biome, 15–20 chunks, per the `GAME_DESIGN.md` slice spec
+- [ ] `boss_desert`, Mk3 upgrade (sprites, 120mm, `suspension` + steep ramps)
+- [ ] Radio messages, final generated art replacing placeholders
+
+## M8: Polish & audio
+- [ ] ElevenLabs SFX + desert music, AudioSystem with volume settings
+- [ ] Playwright smoke suite covering boot → play → gate → save/load
+- [ ] Performance pass on mobile; public deploy
+
+## Later
+- Biome 2 `hills` (`ammo_heat`, `snorkel`), biome 3 `city` (`ammo_apfsds`, `mine_plow`, `smoke`), biome 4 `underground` (`wide_tracks`, `lahat`, `hatch_drone`, Mk4 + `trophy`), biome 5 `core` finale
+- Drone pawn, remaining enemies/bosses, full-map polish, credits/ending
