@@ -11,6 +11,9 @@ import {
 } from '../../logic/world/traversal';
 import { Projectile } from '../entities/Projectile';
 
+/** Seconds between smoke puffs behind a guided missile. */
+const TRAIL_INTERVAL = 0.06;
+
 /** Called when a projectile hits a wall, a cliff face or (from CombatSystem) a target. */
 export type ImpactHandler = (p: Projectile) => void;
 
@@ -20,6 +23,8 @@ export class ProjectileSystem {
   onImpact: ImpactHandler | null = null;
   /** What guided missiles fired by `owner` home in on; null flies straight. */
   homingTarget: (owner: Owner) => Vec2 | null = () => null;
+  /** Leaves smoke behind guided missiles so they're easy to read and dodge. */
+  onTrail: ((p: Projectile) => void) | null = null;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -73,6 +78,11 @@ export class ProjectileSystem {
       if (p.weapon.homing) {
         const target = this.homingTarget(p.owner);
         p.setHeading(steerMissile(p.angleOfTravel, p, target, p.weapon.homing, dt));
+        p.trailTimer -= dt;
+        if (p.trailTimer <= 0) {
+          p.trailTimer = TRAIL_INTERVAL;
+          this.onTrail?.(p);
+        }
       }
       const cell = this.cellAt(Math.floor(p.x / TILE), Math.floor(p.y / TILE));
       if (projectileBlocked(p.level, cell)) this.impact(p);

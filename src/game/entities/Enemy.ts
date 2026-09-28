@@ -5,9 +5,16 @@ import type { PawnKind } from '../../data/terrain';
 import { weapons, type WeaponDef } from '../../data/weapons';
 import { initialBrain, stepBrain, type BrainState, type Intent } from '../../logic/enemy/brain';
 import { clampToArc, steerToward } from '../../logic/enemy/steer';
+import { initialUnstick, stepUnstick, type UnstickState } from '../../logic/enemy/unstick';
 import { wrapAngle, type Vec2 } from '../../logic/input/stick';
 import { offsetFrom } from '../../logic/tank/geometry';
-import { stepHull, withSpeedMul, type HullState, type HullStats } from '../../logic/tank/hull';
+import {
+  speedAfterImpact,
+  stepHull,
+  withSpeedMul,
+  type HullState,
+  type HullStats,
+} from '../../logic/tank/hull';
 import { stepTurret } from '../../logic/tank/turret';
 import { depthFor } from '../../logic/world/depth';
 import { hasLineOfSight } from '../../logic/world/lineOfSight';
@@ -57,6 +64,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite implements Damageable {
   speedMul = 1;
   declare body: Phaser.Physics.Arcade.Body;
   private brain: BrainState = initialBrain();
+  private unstick: UnstickState = initialUnstick();
   private hull: HullState;
   private aimAngle: number;
   private readonly home: Vec2;
@@ -182,9 +190,15 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite implements Damageable {
       return;
     }
     if (isVehicle(this.def)) {
-      const { throttle, turn } = intent.moveTo
+      // `v` still holds what Arcade let the body do last step: walls zero the blocked axis.
+      if (!this.body.blocked.none || !this.body.touching.none)
+        this.hull.speed = speedAfterImpact(this.hull.speed, this.hull.heading, v.x, v.y);
+      const steer = intent.moveTo
         ? steerToward(this.hull.heading, this.pos, intent.moveTo, WAYPOINT_REACHED)
         : { throttle: 0, turn: 0 };
+      const u = stepUnstick(this.unstick, steer.throttle > 0, this.body.speed, dt);
+      this.unstick = u.state;
+      const { throttle, turn } = u.override ?? steer;
       this.hull = stepHull(
         this.hull,
         throttle,

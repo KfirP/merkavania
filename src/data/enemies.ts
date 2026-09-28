@@ -177,3 +177,8 @@ export const ORBIT_SHARE = 0.6;
 export const ORBIT_LEAD = 0.6;
 /** Armor stops closing in at this share of its fire range. */
 export const APPROACH_SHARE = 0.8;
+/** A vehicle that tries to move but stays below `STUCK_SPEED` px/s for `STUCK_TIME` s is stuck… */
+export const STUCK_SPEED = 5;
+export const STUCK_TIME = 0.8;
+/** …and backs up while turning for this long. */
+export const STUCK_RECOVER_TIME = 0.7;

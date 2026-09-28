@@ -8,6 +8,8 @@ export class Projectile extends Phaser.Physics.Arcade.Image {
   level = 0;
   owner: Owner = 'player';
   weapon!: WeaponDef;
+  /** Seconds until the next smoke puff (guided missiles). */
+  trailTimer = 0;
   private remaining = 0;
 
   launch(

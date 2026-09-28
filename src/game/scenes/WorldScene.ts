@@ -84,6 +84,7 @@ export class WorldScene extends Phaser.Scene {
     this.combat.watch(this.spawner.solids);
     this.combat.watch(this.spawner.enemies);
     this.addEntityColliders();
+    this.projectiles.onTrail = (p) => this.effects.trail(p.x, p.y, p.depth);
     this.projectiles.homingTarget = (owner) =>
       owner === 'enemy' && this.tank.alive ? this.tank.pos : null;
     this.enemyContext = {

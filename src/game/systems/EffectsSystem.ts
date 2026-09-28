@@ -24,6 +24,21 @@ export class EffectsSystem {
     });
   }
 
+  /** A small smoke puff left behind a missile. */
+  trail(x: number, y: number, depth: number): void {
+    const puff = this.scene.add
+      .image(x, y, 'impact_puff')
+      .setDepth(depth - 1)
+      .setScale(0.35);
+    this.scene.tweens.add({
+      targets: puff,
+      scale: 0.8,
+      alpha: 0,
+      duration: 500,
+      onComplete: () => puff.destroy(),
+    });
+  }
+
   /** A few sparks flying back from armor that shrugged the hit off. */
   ricochet(x: number, y: number, depth: number, shotAngle: number): void {
     for (let i = 0; i < 3; i++) {
