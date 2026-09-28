@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { abilityIds } from './abilities';
 import { assetManifest, getAsset, type AssetKey } from './assetManifest';
@@ -27,6 +28,12 @@ describe('assetManifest', () => {
         expect(v).toBeLessThanOrEqual(1);
       }
     }
+  });
+
+  it('points every file entry at a file that exists under public/', () => {
+    for (const a of assetManifest)
+      if (a.path !== '')
+        expect(existsSync(new URL(`../../public/${a.path}`, import.meta.url)), a.key).toBe(true);
   });
 
   it('getAsset throws on an unknown key', () => {

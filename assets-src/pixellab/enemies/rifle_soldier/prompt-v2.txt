@@ -1,0 +1,7 @@
+tool: create_image_pixflux (img2img)
+job: f5392624-697d-4849-8ae7-965fb1c8fe6b
+init_image: the code placeholder (src/game/placeholders.ts) scaled x3 with nearest neighbour, centred on 32x32
+init_image_strength: 120
+size: 32x32, no_background: true, outline: single color black outline, shading: basic shading
+seed: 3201
+description: pixel art soldier viewed from directly above (bird's eye), round tan helmet in the centre, brown shoulders, rifle pointing right, desert militia

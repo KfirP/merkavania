@@ -1,0 +1,8 @@
+tool: create_image_pixflux
+job: babd1b57-9d91-4a2e-b7ec-bf8840464482
+size: 32x32, no_background: true, view: high top-down, shading: basic shading
+seed: 3105
+outline: single color black outline
+detail: medium detail
+direction: east
+description: top-down overhead pixel art light tank hull without turret, tracks on both sides, rust brown and dark tan camouflage, front facing right, military, transparent background

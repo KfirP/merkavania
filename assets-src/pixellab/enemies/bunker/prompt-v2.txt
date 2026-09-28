@@ -1,0 +1,7 @@
+tool: create_image_pixflux (img2img)
+job: ea7e82a3-ea3a-4c77-b686-2728ef99c26a
+init_image: the code placeholder (src/game/placeholders.ts) scaled x1 with nearest neighbour, centred on 32x32
+init_image_strength: 120
+size: 32x32, no_background: true, outline: single color black outline, shading: basic shading
+seed: 3203
+description: pixel art concrete pillbox bunker viewed from directly above (bird's eye), flat rounded square sandy concrete roof, dark firing slit on the right edge, desert

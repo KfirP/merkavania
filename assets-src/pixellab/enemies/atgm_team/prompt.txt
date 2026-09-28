@@ -1,0 +1,8 @@
+tool: create_image_pixflux
+job: b43d6917-6705-43f1-b28a-d202c2f60b38
+size: 32x32, no_background: true, view: high top-down, shading: basic shading
+seed: 3104
+outline: single color black outline
+detail: low detail
+direction: east
+description: top-down overhead pixel art anti-tank missile team: two crouching soldiers seen from above with a missile launcher tube on a tripod pointing right, brown desert militia, military

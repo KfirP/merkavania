@@ -1,0 +1,8 @@
+tool: create_image_pixflux
+job: 93bfc5bf-f315-464e-ad62-efde7309cc29
+size: 32x32, no_background: true, view: high top-down, shading: basic shading
+seed: 3108
+outline: single color black outline
+detail: low detail
+direction: none
+description: top-down pixel art wooden supply crate seen from above, planks with cross bracing, military, square

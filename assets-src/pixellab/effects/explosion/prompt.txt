@@ -1,0 +1,8 @@
+tool: create_image_pixflux
+job: 675c2dc9-1851-45dd-8f76-fbf76867bbb8
+size: 32x32, no_background: true, view: high top-down, shading: basic shading
+seed: 3111
+outline: lineless
+detail: low detail
+direction: none
+description: top-down pixel art cartoon explosion fireball burst seen from above, round, bright yellow core, orange and red flames, dark smoke edges

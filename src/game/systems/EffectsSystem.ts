@@ -2,9 +2,6 @@ import Phaser from 'phaser';
 import { HIT_FLASH_MS, SHAKE } from '../../data/combat';
 import { explosionShake, hitShake } from '../../logic/combat/shake';
 
-/** Explosion sprite diameter, px; blasts scale it to their splash radius. */
-const EXPLOSION_SIZE = 32;
-
 /** Short-lived visual feedback: impacts, explosions, ricochets, hit flashes and camera shake. */
 export class EffectsSystem {
   constructor(private readonly scene: Phaser.Scene) {}
@@ -58,12 +55,13 @@ export class EffectsSystem {
 
   /** A fireball sized to `radius` px, plus smoke and a shake if it's near the camera. */
   explosion(x: number, y: number, radius: number, depth: number): void {
-    const scale = (radius * 2) / EXPLOSION_SIZE;
     const blast = this.scene.add
       .image(x, y, 'explosion')
       .setDepth(depth)
-      .setScale(scale * 0.3)
       .setRotation(Phaser.Math.FloatBetween(0, Math.PI * 2));
+    // Sized so the fireball's diameter matches the blast.
+    const scale = (radius * 2) / blast.width;
+    blast.setScale(scale * 0.3);
     this.scene.tweens.add({
       targets: blast,
       scale,

@@ -1,0 +1,8 @@
+tool: create_image_pixflux
+job: f06a0278-78e8-4cdd-9b60-937565db436c
+size: 32x32, no_background: true, view: high top-down, shading: basic shading
+seed: 3101
+outline: single color black outline
+detail: low detail
+direction: east
+description: top-down overhead pixel art enemy rifleman soldier seen from directly above, helmet and shoulders, rifle pointing right, desert militia, tan and brown clothing, military

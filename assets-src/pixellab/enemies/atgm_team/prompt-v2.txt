@@ -1,0 +1,7 @@
+tool: create_image_pixflux (img2img)
+job: 3040bee1-1ff3-43a6-b188-58723466fc06
+init_image: the code placeholder (src/game/placeholders.ts) scaled x2 with nearest neighbour, centred on 32x32
+init_image_strength: 120
+size: 32x32, no_background: true, outline: single color black outline, shading: basic shading
+seed: 3204
+description: pixel art two soldiers viewed from directly above (bird's eye), round tan helmets, with an anti-tank missile launcher tube between them pointing right, desert militia
