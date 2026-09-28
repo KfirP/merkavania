@@ -10,12 +10,12 @@ Current target: **Vertical slice** (desert biome, M0–M8). Tick milestones off 
 - [x] GitHub Actions: `ci.yml`, `deploy.yml` (Pages, `VITE_BASE`) (green on first push; Pages live at https://kfirp.github.io/merkavania/)
 - [x] PixelLab + ElevenLabs MCP connected (see `ASSET_PIPELINE.md`)
 
-## M1: Tank feel
+## M1: Tank feel ✅
 - [x] `TankCommand` + keyboard/mouse, gamepad and touch (dual stick) adapters
 - [x] Mk2 tank: hull momentum/turning, turret traverse, main gun + coax MG, placeholder sprites
 - [x] Debug overlay basics (`?debug=1`, bodies, FPS)
 - [x] Test room in Tiled format (`public/maps/test/test_room.tmj`)
-- [ ] Feel review: play it and tune `data/mkTiers.ts` / `data/weapons.ts`
+- [x] Feel review: played on keyboard/mouse and touch; controls reworked (right-click cannon, touch release-to-fire, MG mode toggle)
 
 ## M2: World
 - [ ] `.world` loading + `ChunkStreamer` (3×3 load, 5×5 unload)
