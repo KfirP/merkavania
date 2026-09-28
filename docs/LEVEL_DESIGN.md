@@ -6,7 +6,8 @@ The map validator (`npm run validate:maps`) enforces everything here. Ids must m
 - One folder per biome: `public/maps/<biome>/`
   - `<biome>.world`: a Tiled world file listing every chunk and its pixel offset
   - `<biome>_x<XX>_y<YY>.tmj`: chunk maps, JSON format, zero-padded coordinates
-  - `*.tsj`: external tilesets in JSON (never embedded in maps)
+  - `*.tsj`: external tilesets in JSON (never embedded in maps). The tileset `name` must be the asset-manifest key of its image.
+- `public/maps/test/test_room.tmj` is a standalone 60×34 sandbox for tank feel (not part of any `.world`, so the chunk-size rule doesn't apply).
 - Chunk size is fixed at **30×17 tiles** of 16px (480×272). World offsets must be multiples of the chunk size.
 - Chunks that connect across biomes use an `exit` object pointing to the target biome, chunk and spawn.
 

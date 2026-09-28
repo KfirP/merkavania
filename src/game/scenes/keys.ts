@@ -3,4 +3,6 @@ export const SceneKey = {
   Preload: 'Preload',
   Title: 'Title',
   World: 'World',
+  TouchControls: 'TouchControls',
+  Debug: 'Debug',
 } as const;

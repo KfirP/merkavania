@@ -16,8 +16,11 @@ src/
     world/                # world graph, chunk coordinate math, elevation grid, gate reachability
     save/                 # serialize/deserialize, SAVE_VERSION, migrations.ts
     input/                # TankCommand type + device-independent helpers (deadzones, aim math)
+    tank/                 # hull momentum, turret traverse, main-gun quick rounds, fire-rate cooldowns
   data/                   # tables: mkTiers.ts, weapons.ts, abilities.ts, enemies.ts, terrain.ts, assetManifest.ts
   game/
+    placeholders.ts       # code-drawn textures for manifest entries without a file
+    tiledLoader.ts        # loads .tmj + external .tsj and registers the embedded map
     scenes/               # Boot, Preload, Title, World, Hud, TouchControls, Map, Pause, Debug
     entities/             # Pawn base, Tank, Scout, Drone, Enemy types, Projectile, Pickup...
     systems/              # ChunkStreamer, ElevationSystem, CombatSystem, SpawnSystem, InputSystem, AudioSystem
@@ -58,6 +61,9 @@ interface TankCommand {
 ```
 - Keyboard/mouse: `aimAngle` is the angle from the pawn's world position to the mouse's world position.
 - Gamepad/touch: `aimAngle` comes from the right stick when it's past the deadzone. Touch fires while the right stick is held past about 60% deflection.
+- `fire`/`altFire` are held states. `cycleNext`/`cyclePrev`/`hatch`/`interact`/`map`/`pause` are edge-triggered: true only on the frame they're pressed.
+- `InputSystem` polls every adapter each frame and uses the command from the **most recently active** device, so an idle mouse can't override the gamepad's aim. Mouse input is ignored for a moment after any touch, because browsers emulate mouse events from touches.
+- Touch: `TouchControlsScene` draws two floating sticks (each appears where the thumb lands in its half of the screen) plus an alt-fire button, and writes a small shared store (`game/input/touchState.ts`) that `TouchAdapter` reads. It's launched on touch-capable devices but stays hidden until the first real touch, since many desktop browsers report touch support.
 - The active pawn consumes the command. The scout and drone read throttle/turn as direct 8-way movement rather than tank controls.
 
 ## Pawns
@@ -79,6 +85,7 @@ interface TankCommand {
 - A biome is one Tiled `.world` file. Chunks are 30×17 tiles (480×272 px) named `<biome>_x<XX>_y<YY>.tmj`.
 - `ChunkStreamer` computes the player's chunk coordinate each frame. When it changes, it ensures the 3×3 neighbourhood is loaded (tilemap layers, colliders, object spawns) and unloads chunks outside a 5×5 hysteresis window.
 - Chunk JSON is fetched ahead of time with Phaser's loader. Tilesets are shared per biome and loaded once.
+- Phaser 3 can't read external `.tsj` tilesets, so `game/tiledLoader.ts` loads the `.tmj` as JSON, then queues each referenced `.tsj`, and inlines them (`logic/world/tiled.ts`) before registering the map in the tilemap cache. A tileset's `name` is its image's asset-manifest key.
 - Objects spawn from the chunk's `objects` layer when it loads. Persistent state (pickups taken, destructibles broken, switches, doors) lives in `GameState.flags` keyed by `<chunkId>:<objectId>`, so reloading a chunk respects it. Regular enemies respawn when a chunk reloads.
 - The camera follows the pawn, bounded by the world's overall bounds. Chunks are marked visited in `GameState` for the map screen.
 
@@ -102,11 +109,11 @@ Projectile hits a target → `CombatSystem` calls `logic/combat.resolveHit(weapo
 - Radio messages are keys too (`radio.desert.intro_01`).
 
 ## Debug tools
-- Enabled with `?debug=1` or in dev builds. The backtick key toggles `DebugScene`:
+- Enabled with `?debug=1` or in dev builds. The backtick key toggles `DebugScene` (M1 has FPS, pawn position/heading/speed, active input device and gun state; `1` toggles physics bodies). Planned:
   - show physics bodies, the elevation grid, chunk borders and the current chunk id
   - teleport (click on the map), jump to chunk, set Mk tier, grant/revoke abilities, god mode, kill all
   - FPS and loaded chunk count
-- Debug hooks are exposed on `window.__merkavania` (in debug mode only) so Playwright can drive state.
+- Debug hooks are exposed on `window.__merkavania` (in debug mode only) so Playwright can drive state: `game`, `getPawn()` (last-frame telemetry) and `getShots()` (shots per weapon id).
 
 ## Testing
 - **Vitest:** everything in `src/logic/` and `scripts/` (damage, progression, save migrations, elevation traversal rules, gate reachability, i18n key parity).

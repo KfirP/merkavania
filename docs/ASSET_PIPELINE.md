@@ -56,4 +56,4 @@ SFX: `cannon_105`, `cannon_120`, `coax_mg`, `mortar_launch`, `mortar_impact`, `e
 Music: `music_title`, `music_desert`, `music_desert_boss`, then one per biome plus a boss track.
 
 ## Placeholders
-Until an asset exists, `Preload` generates a placeholder texture in code (coloured shapes with a direction marker) under the same manifest key. Each manifest entry has `status: 'placeholder' | 'generated' | 'final'`, so missing art is easy to list.
+Until an asset exists, `Preload` generates a placeholder texture in code (coloured shapes with a direction marker) under the same manifest key; the drawers live in `src/game/placeholders.ts`. A manifest entry with an empty `path` is code-drawn. A placeholder can still have a file when a tool needs one (the flat-colour test tileset that Tiled opens). Each manifest entry has `status: 'placeholder' | 'generated' | 'final'`, so missing art is easy to list.

@@ -20,8 +20,8 @@ The same actions are available on every input device, and all of them feed into 
 | Throttle fwd/back | W / S | Left stick Y | Left virtual stick Y |
 | Rotate hull | A / D | Left stick X | Left virtual stick X |
 | Aim turret | Mouse position | Right stick | Right virtual stick |
-| Fire main gun | Left click | RT | Right stick: fires while held past a threshold |
-| Alt fire (coax MG / mortar / missile) | Right click | LT | Alt button |
+| Fire main gun | Right click | RT | Right stick: fires while held past a threshold |
+| Alt fire (coax MG / mortar / missile) | Left click | LT | Alt button |
 | Cycle ammo / secondary | Q / E, wheel | LB / RB | Swap button |
 | Rear hatch (deploy/recall pawn) | F | Y | Hatch button |
 | Interact | Space | A | Context button (appears when relevant) |

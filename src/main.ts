@@ -3,8 +3,10 @@ import { GAME_HEIGHT, GAME_WIDTH } from './logic/scale';
 import { installDebugHooks } from './game/debug';
 import { installIntegerScaling } from './game/scale';
 import { BootScene } from './game/scenes/BootScene';
+import { DebugScene } from './game/scenes/DebugScene';
 import { PreloadScene } from './game/scenes/PreloadScene';
 import { TitleScene } from './game/scenes/TitleScene';
+import { TouchControlsScene } from './game/scenes/TouchControlsScene';
 import { WorldScene } from './game/scenes/WorldScene';
 
 const game = new Phaser.Game({
@@ -16,12 +18,13 @@ const game = new Phaser.Game({
   pixelArt: true,
   roundPixels: true,
   scale: { mode: Phaser.Scale.NONE },
-  input: { gamepad: true },
+  // Two thumbs plus the alt button.
+  input: { gamepad: true, activePointers: 3 },
   physics: {
     default: 'arcade',
     arcade: { gravity: { x: 0, y: 0 }, debug: false },
   },
-  scene: [BootScene, PreloadScene, TitleScene, WorldScene],
+  scene: [BootScene, PreloadScene, TitleScene, WorldScene, TouchControlsScene, DebugScene],
 });
 
 installIntegerScaling(game);

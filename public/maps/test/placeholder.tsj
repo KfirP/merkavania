@@ -1,0 +1,77 @@
+{
+  "columns": 4,
+  "image": "../../assets/tiles/test/placeholder.png",
+  "imageheight": 32,
+  "imagewidth": 64,
+  "margin": 0,
+  "name": "tiles_test",
+  "spacing": 0,
+  "tilecount": 8,
+  "tiledversion": "1.11.2",
+  "tileheight": 16,
+  "tiles": [
+    {
+      "id": 0,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "sand"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "sand"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "road"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "properties": [
+        {
+          "name": "solid",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "properties": [
+        {
+          "name": "level",
+          "type": "int",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "properties": [
+        {
+          "name": "solid",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    }
+  ],
+  "tilewidth": 16,
+  "type": "tileset",
+  "version": "1.10"
+}
