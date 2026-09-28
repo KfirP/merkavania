@@ -145,7 +145,7 @@ test.describe('touch', () => {
     expect((await getPawn(page)).turretAngle).toBeCloseTo(0, 1);
   });
 
-  test('with MG mode on, the outer ring fires the coax while driving; lifting still fires the cannon', async ({
+  test('with MG mode on, the outer ring fires the coax while driving and lifting never fires the cannon', async ({
     page,
     context,
   }) => {
@@ -177,8 +177,20 @@ test.describe('touch', () => {
     await page.waitForTimeout(500);
     expect((await getShots(page)).coax_mg).toBe(coax);
 
-    // Lifting fires the cannon; no main-gun shots happened before that.
+    // MG mode switches the stick away from the cannon: lifting, from the ring or the rim, fires nothing.
+    await f.up(2);
+    await f.down(2, RIGHT.x, RIGHT.y);
+    await f.move(2, RIGHT.x + STICK_PX, RIGHT.y);
+    await page.waitForTimeout(200);
+    await f.up(2);
+    await page.waitForTimeout(1_000);
     expect((await getShots(page)).gun_105).toBeUndefined();
+
+    // Toggling MG mode off switches back to the cannon.
+    await f.tap(3, ALT_BUTTON.x, ALT_BUTTON.y);
+    await f.down(2, RIGHT.x, RIGHT.y);
+    await f.move(2, RIGHT.x + STICK_PX, RIGHT.y);
+    await page.waitForTimeout(200);
     await f.up(2);
     await expect.poll(async () => (await getShots(page)).gun_105).toBe(1);
     expect(errors).toEqual([]);

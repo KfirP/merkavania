@@ -21,7 +21,7 @@ The same actions are available on every input device, and all of them feed into 
 | Rotate hull | A / D | Left stick X | Left virtual stick X |
 | Aim turret | Mouse position | Right stick | Right virtual stick |
 | Fire main gun | Right click | RT | Right stick: drag to aim, lift to fire (drag back to the centre first to cancel) |
-| Alt fire (coax MG / mortar / missile) | Left click | LT | Alt button toggles MG mode; the right stick then fires the coax while dragged past its outer ring. The mortar and missile will need their own touch gesture (decide in M4) |
+| Alt fire (coax MG / mortar / missile) | Left click | LT | Alt button toggles MG mode, which switches the right stick from the cannon to the coax: it fires while dragged past its outer ring, and lifting never fires the cannon. The mortar and missile will need their own touch gesture (decide in M4) |
 | Cycle ammo / secondary | Q / E, wheel | LB / RB | Swap button |
 | Rear hatch (deploy/recall pawn) | F | Y | Hatch button |
 | Interact | Space | A | Context button (appears when relevant) |

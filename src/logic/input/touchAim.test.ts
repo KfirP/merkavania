@@ -101,11 +101,16 @@ describe('stepTouchAim: coax MG', () => {
     expect(r.altFire).toBe(false);
   });
 
-  it('still fires the cannon on release with MG mode on', () => {
-    let r = step(initialTouchAim(), { right: east(1), mgOn: true });
-    r = step(r.state, { mgOn: true });
-    expect(r.altFire).toBe(false);
-    expect(r.fire).toBe(true);
+  it('never fires the cannon in MG mode: ALT switches the stick from cannon to MG', () => {
+    for (const mag of [0.5, 1]) {
+      let r = step(initialTouchAim(), { right: east(mag), mgOn: true });
+      for (let i = 0; i < 30; i++) {
+        r = step(r.state, { mgOn: true });
+        expect(r.fire).toBe(false);
+        expect(r.altFire).toBe(false);
+      }
+      expect(r.aimAngle).toBeCloseTo(0); // the aim still sticks
+    }
   });
 
   it('never fires the MG with MG mode off', () => {
@@ -114,10 +119,15 @@ describe('stepTouchAim: coax MG', () => {
 });
 
 describe('touchAimZone', () => {
-  it('splits the stick into cancel, armed and (with MG mode on) MG rings', () => {
-    expect(touchAimZone(TOUCH_AIM_DEADZONE, true)).toBe('cancel');
-    expect(touchAimZone(0.5, true)).toBe('armed');
-    expect(touchAimZone(0.9, true)).toBe('mg');
+  it('cannon mode: cancel inside the deadzone, armed (lifting fires) outside it', () => {
+    expect(touchAimZone(TOUCH_AIM_DEADZONE, false)).toBe('cancel');
+    expect(touchAimZone(0.5, false)).toBe('armed');
     expect(touchAimZone(0.9, false)).toBe('armed');
+  });
+
+  it('MG mode: never armed; aim-only inside the ring, MG past it', () => {
+    expect(touchAimZone(TOUCH_AIM_DEADZONE, true)).toBe('cancel');
+    expect(touchAimZone(0.5, true)).toBe('cancel');
+    expect(touchAimZone(0.9, true)).toBe('mg');
   });
 });
