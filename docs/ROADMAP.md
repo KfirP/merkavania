@@ -11,10 +11,11 @@ Current target: **Vertical slice** (desert biome, M0–M8). Tick milestones off 
 - [x] PixelLab + ElevenLabs MCP connected (see `ASSET_PIPELINE.md`)
 
 ## M1: Tank feel
-- [ ] `TankCommand` + keyboard/mouse, gamepad and touch (dual stick) adapters
-- [ ] Mk2 tank: hull momentum/turning, turret traverse, main gun + coax MG, placeholder sprites
-- [ ] Debug overlay basics (`?debug=1`, bodies, FPS)
-- [ ] Test room hand-built in Tiled
+- [x] `TankCommand` + keyboard/mouse, gamepad and touch (dual stick) adapters
+- [x] Mk2 tank: hull momentum/turning, turret traverse, main gun + coax MG, placeholder sprites
+- [x] Debug overlay basics (`?debug=1`, bodies, FPS)
+- [x] Test room in Tiled format (`public/maps/test/test_room.tmj`)
+- [ ] Feel review: play it and tune `data/mkTiers.ts` / `data/weapons.ts`
 
 ## M2: World
 - [ ] `.world` loading + `ChunkStreamer` (3×3 load, 5×5 unload)
