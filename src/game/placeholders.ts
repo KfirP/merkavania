@@ -83,6 +83,51 @@ const drawers: Partial<Record<AssetKey, Draw>> = {
     g.fillStyle(0xffe070).fillRect(0, 0, 3, 1);
     return { width: 3, height: 1 };
   },
+  missile_atgm: (g) => {
+    g.fillStyle(OUTLINE).fillRect(0, 0, 8, 4);
+    g.fillStyle(0x7a7a6a).fillRect(1, 1, 6, 2);
+    g.fillStyle(0xd6453e).fillRect(6, 1, 2, 2);
+    g.fillStyle(0xffb030).fillRect(0, 1, 1, 2);
+    return { width: 8, height: 4 };
+  },
+  destructible_sandbag: (g) => {
+    g.fillStyle(OUTLINE).fillRect(0, 2, 16, 12);
+    g.fillStyle(0xc2a66b);
+    for (const [x, y] of [
+      [1, 3],
+      [6, 3],
+      [11, 3],
+      [3, 8],
+      [8, 8],
+    ] as const)
+      g.fillRoundedRect(x, y, 5, 4, 1);
+    return { width: 16, height: 16 };
+  },
+  destructible_wood: (g) => {
+    g.fillStyle(OUTLINE).fillRect(1, 1, 14, 14);
+    g.fillStyle(0x8a5a2b).fillRect(2, 2, 12, 12);
+    g.fillStyle(0x6b4220).fillRect(2, 7, 12, 2).fillRect(7, 2, 2, 12);
+    return { width: 16, height: 16 };
+  },
+  destructible_concrete: (g) => {
+    g.fillStyle(OUTLINE).fillRect(0, 0, 16, 16);
+    g.fillStyle(0x9a9a92).fillRect(1, 1, 14, 14);
+    g.fillStyle(0x6e6e68).fillRect(4, 3, 1, 5).fillRect(5, 7, 4, 1).fillRect(10, 9, 1, 4);
+    return { width: 16, height: 16 };
+  },
+  destructible_armored: (g) => {
+    g.fillStyle(OUTLINE).fillRect(0, 0, 16, 16);
+    g.fillStyle(0x4c5560).fillRect(1, 1, 14, 14);
+    g.fillStyle(0x8a95a3);
+    for (const [x, y] of [
+      [3, 3],
+      [11, 3],
+      [3, 11],
+      [11, 11],
+    ] as const)
+      g.fillRect(x, y, 2, 2);
+    return { width: 16, height: 16 };
+  },
   muzzle_flash: (g) => {
     g.fillStyle(0xffb030).fillTriangle(0, 0, 10, 4, 0, 8);
     g.fillStyle(0xfff4b0).fillTriangle(0, 2, 6, 4, 0, 6);

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { abilityIds } from './abilities';
 import { assetManifest, getAsset, type AssetKey } from './assetManifest';
+import { ammoTypes, armorIds, armorMultipliers, REAR_ARC, weaponClasses } from './combat';
+import { materialIds, materials } from './materials';
 import { allMkTierIds, mkTiers } from './mkTiers';
 import { terrains } from './terrain';
 import { QUICK_ROUND_REFILL_SECONDS, weapons } from './weapons';
@@ -41,6 +43,16 @@ describe('weapons', () => {
     }
   });
 
+  it('have a known class and ammo, and sane combat numbers', () => {
+    for (const w of Object.values(weapons)) {
+      expect(weaponClasses).toContain(w.class);
+      expect(ammoTypes).toContain(w.ammo);
+      expect(w.damage).toBeGreaterThan(0);
+      expect(w.splash ?? 0).toBeGreaterThanOrEqual(0);
+      if (w.homing !== undefined) expect(w.homing).toBeGreaterThan(0);
+    }
+  });
+
   it('coax MG is automatic', () => {
     expect(weapons.coax_mg.interval).toBeGreaterThan(0);
   });
@@ -67,6 +79,10 @@ describe('mkTiers', () => {
       expect(keys).toContain(tier.sprites.turret);
       expect(weapons[tier.mainGun]).toBeDefined();
     }
+  });
+
+  it('have a known armor', () => {
+    for (const tier of Object.values(mkTiers)) expect(armorIds).toContain(tier.armor);
   });
 
   it('have sane handling', () => {
@@ -140,7 +156,51 @@ describe('terrain', () => {
     }
   });
 
+  it('gives every hazard terrain a damage rate, and only hazards', () => {
+    for (const t of Object.values(terrains)) {
+      if (t.requires?.without === 'hazard') expect(t.hazardDps).toBeGreaterThan(0);
+      else expect(t.hazardDps).toBeUndefined();
+    }
+  });
+
   it('makes road faster than sand', () => {
     expect(terrains.road.speedMul).toBeGreaterThan(terrains.sand.speedMul);
+  });
+});
+
+describe('combat', () => {
+  it('has a multiplier in 0..1 for every armor and weapon class', () => {
+    for (const armor of armorIds)
+      for (const cls of weaponClasses) {
+        const m = armorMultipliers[armor][cls];
+        expect(m).toBeGreaterThanOrEqual(0);
+        expect(m).toBeLessThanOrEqual(1);
+      }
+  });
+
+  it('unarmored targets take full damage', () => {
+    for (const cls of weaponClasses) expect(armorMultipliers.none[cls]).toBe(1);
+  });
+
+  it('has a rear arc narrower than a half circle', () => {
+    expect(REAR_ARC).toBeGreaterThan(0);
+    expect(REAR_ARC).toBeLessThan(Math.PI / 2);
+  });
+});
+
+describe('materials', () => {
+  it('match the GAME_DESIGN.md destructible materials', () => {
+    expect([...materialIds].sort()).toEqual(['armored', 'concrete', 'sandbag', 'wood']);
+    expect(materials.sandbag.minAmmo).toBe('standard');
+    expect(materials.wood.minAmmo).toBe('standard');
+    expect(materials.concrete.minAmmo).toBe('heat');
+    expect(materials.armored.minAmmo).toBe('apfsds');
+  });
+
+  it('have positive HP and existing sprites', () => {
+    for (const m of Object.values(materials)) {
+      expect(m.hp).toBeGreaterThan(0);
+      expect(keys).toContain(m.sprite);
+    }
   });
 });

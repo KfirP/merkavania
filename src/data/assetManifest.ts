@@ -27,6 +27,11 @@ export const assetManifest = [
   },
   { key: 'shell_105', type: 'image', path: '', status: 'placeholder' },
   { key: 'bullet_mg', type: 'image', path: '', status: 'placeholder' },
+  { key: 'missile_atgm', type: 'image', path: '', status: 'placeholder' },
+  { key: 'destructible_sandbag', type: 'image', path: '', status: 'placeholder' },
+  { key: 'destructible_wood', type: 'image', path: '', status: 'placeholder' },
+  { key: 'destructible_concrete', type: 'image', path: '', status: 'placeholder' },
+  { key: 'destructible_armored', type: 'image', path: '', status: 'placeholder' },
   { key: 'muzzle_flash', type: 'image', path: '', status: 'placeholder', origin: { x: 0, y: 0.5 } },
   { key: 'impact_puff', type: 'image', path: '', status: 'placeholder' },
   {
