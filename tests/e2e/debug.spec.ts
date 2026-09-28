@@ -71,7 +71,12 @@ test.describe('debug overlay', () => {
   test('exposes pawn telemetry through window.__merkavania', async ({ page }) => {
     await enterWorld(page);
     const pawn = await getPawn(page);
-    expect(pawn).toMatchObject({ x: 480, device: 'keyboardMouse' });
+    expect(pawn).toMatchObject({
+      x: 480,
+      device: 'keyboardMouse',
+      level: 0,
+      chunk: 'test_x01_y01',
+    });
     expect(pawn.heading).toBeCloseTo(-Math.PI / 2);
   });
 });
