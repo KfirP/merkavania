@@ -20,7 +20,7 @@ import { Pawn } from './Pawn';
 
 /** Recoil recovery, px/s. */
 const RECOIL_RECOVERY = 20;
-/** Coax MG sits beside the main gun: distance along the barrel and to the side, px. */
+/** Coax MG sits to the left of the main gun: distance along the barrel and to its left, px. */
 const COAX_FORWARD = 12;
 const COAX_SIDE = 4;
 
@@ -125,8 +125,8 @@ export class Tank extends Pawn {
       if (shot.fired) {
         const { x, y } = this.pivot();
         const a = this.turretAngle;
-        const px = x + Math.cos(a) * COAX_FORWARD - Math.sin(a) * COAX_SIDE;
-        const py = y + Math.sin(a) * COAX_FORWARD + Math.cos(a) * COAX_SIDE;
+        const px = x + Math.cos(a) * COAX_FORWARD + Math.sin(a) * COAX_SIDE;
+        const py = y + Math.sin(a) * COAX_FORWARD - Math.cos(a) * COAX_SIDE;
         this.projectiles.fire(mg, px, py, a, this.level);
         events.emit('weapon:fired', { weapon: mg.id });
       }

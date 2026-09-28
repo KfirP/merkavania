@@ -35,13 +35,13 @@ test('boots to the title, starts the world, drives and fires the tank', async ({
   expect(moving.y).toBeLessThan(start.y - 10);
   expect(moving.speed).toBeGreaterThan(0);
 
-  // Left click fires the main gun, right click the coax MG.
-  await page.mouse.down();
-  await page.waitForTimeout(100);
-  await page.mouse.up();
+  // Right click fires the main gun, left click the coax MG.
   await page.mouse.down({ button: 'right' });
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(100);
   await page.mouse.up({ button: 'right' });
+  await page.mouse.down();
+  await page.waitForTimeout(300);
+  await page.mouse.up();
   await expect.poll(() => getShots(page)).toMatchObject({ gun_105: 1 });
   expect((await getShots(page)).coax_mg).toBeGreaterThan(1);
 

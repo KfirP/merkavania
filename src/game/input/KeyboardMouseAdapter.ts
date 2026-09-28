@@ -7,7 +7,10 @@ import { recentlyTouched } from './touchState';
 
 const K = Phaser.Input.Keyboard.KeyCodes;
 
-/** WASD/arrows drive the hull; the mouse aims (world position) and fires. See GAME_DESIGN.md controls. */
+/**
+ * WASD/arrows drive the hull and the mouse aims (world position). Right click fires the main gun,
+ * left click is alt fire. See GAME_DESIGN.md controls.
+ */
 export class KeyboardMouseAdapter implements InputAdapter {
   private readonly keys;
   private readonly edges = {
@@ -80,8 +83,8 @@ export class KeyboardMouseAdapter implements InputAdapter {
     const world = mouse.positionToCamera(cam) as Phaser.Math.Vector2;
     cmd.aimAngle = angleTo(origin.x, origin.y, world.x, world.y);
     if (!mouse.leftButtonDown() && !mouse.rightButtonDown()) this.buttonsArmed = true;
-    cmd.fire = this.buttonsArmed && mouse.leftButtonDown();
-    cmd.altFire = this.buttonsArmed && mouse.rightButtonDown();
+    cmd.fire = this.buttonsArmed && mouse.rightButtonDown();
+    cmd.altFire = this.buttonsArmed && mouse.leftButtonDown();
 
     const moved = mouse.x !== this.lastPointer.x || mouse.y !== this.lastPointer.y;
     this.lastPointer = { x: mouse.x, y: mouse.y };
