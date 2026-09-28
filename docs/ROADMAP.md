@@ -2,12 +2,12 @@
 
 Current target: **Vertical slice** (desert biome, M0–M8). Tick milestones off as they're completed.
 
-## M0: Scaffold
+## M0: Scaffold ✅
 - [x] `git init`, Vite + TypeScript (strict) + Phaser 3, npm scripts from CLAUDE.md (`dev`, `build`, `preview`, `typecheck`, `lint`, `test`, `test:e2e`, `validate:maps`, `check`)
 - [x] ESLint (with `no-restricted-imports` banning `phaser` in `src/logic/**`), Prettier
 - [x] Vitest + Playwright set up, with one passing test each
 - [x] Folder layout per `ARCHITECTURE.md`; integer-scaled 480×270 canvas; Boot/Preload/Title/World scenes stubbed
-- [x] GitHub Actions: `ci.yml`, `deploy.yml` (Pages, `VITE_BASE`) (written; not yet run, since there's no GitHub remote)
+- [x] GitHub Actions: `ci.yml`, `deploy.yml` (Pages, `VITE_BASE`) (green on first push; Pages live at https://kfirp.github.io/merkavania/)
 - [x] PixelLab + ElevenLabs MCP connected (see `ASSET_PIPELINE.md`)
 
 ## M1: Tank feel
