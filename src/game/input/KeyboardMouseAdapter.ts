@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
 import { RisingEdge } from '../../logic/input/edge';
+import { keyAxis, mouseButtons } from '../../logic/input/mapping';
 import { angleTo } from '../../logic/input/stick';
 import type { TankCommand } from '../../logic/input/TankCommand';
-import type { AimOrigin, InputAdapter } from './InputAdapter';
+import type { InputAdapter, InputContext } from './InputAdapter';
 import { recentlyTouched } from './touchState';
 
 const K = Phaser.Input.Keyboard.KeyCodes;
@@ -53,13 +54,12 @@ export class KeyboardMouseAdapter implements InputAdapter {
     scene.input.on('wheel', this.onWheel);
   }
 
-  poll(cmd: TankCommand, origin: AimOrigin): boolean {
+  poll(cmd: TankCommand, origin: InputContext): boolean {
     const k = this.keys;
     const down = (...names: string[]) => names.some((n) => k[n]?.isDown);
-    const axis = (neg: boolean, pos: boolean) => (pos ? 1 : 0) - (neg ? 1 : 0);
 
-    cmd.throttle = axis(down('s', 'down'), down('w', 'up'));
-    cmd.turn = axis(down('a', 'left'), down('d', 'right'));
+    cmd.throttle = keyAxis(down('s', 'down'), down('w', 'up'));
+    cmd.turn = keyAxis(down('a', 'left'), down('d', 'right'));
 
     const wheel = Math.sign(this.wheel);
     this.wheel = 0;
@@ -82,9 +82,14 @@ export class KeyboardMouseAdapter implements InputAdapter {
     const cam = this.scene.cameras.main;
     const world = mouse.positionToCamera(cam) as Phaser.Math.Vector2;
     cmd.aimAngle = angleTo(origin.x, origin.y, world.x, world.y);
-    if (!mouse.leftButtonDown() && !mouse.rightButtonDown()) this.buttonsArmed = true;
-    cmd.fire = this.buttonsArmed && mouse.rightButtonDown();
-    cmd.altFire = this.buttonsArmed && mouse.leftButtonDown();
+    const buttons = mouseButtons(
+      mouse.leftButtonDown(),
+      mouse.rightButtonDown(),
+      this.buttonsArmed,
+    );
+    this.buttonsArmed = buttons.armed;
+    cmd.fire = buttons.fire;
+    cmd.altFire = buttons.altFire;
 
     const moved = mouse.x !== this.lastPointer.x || mouse.y !== this.lastPointer.y;
     this.lastPointer = { x: mouse.x, y: mouse.y };

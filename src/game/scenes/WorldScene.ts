@@ -58,7 +58,12 @@ export class WorldScene extends Phaser.Scene {
 
   override update(_time: number, delta: number): void {
     const dt = Math.min(delta / 1000, MAX_DT);
-    const cmd = this.inputSystem.update({ x: this.tank.x, y: this.tank.y });
+    const cmd = this.inputSystem.update({
+      x: this.tank.x,
+      y: this.tank.y,
+      turretAngle: this.tank.aim,
+      dt,
+    });
     this.tank.applyCommand(cmd, dt);
 
     if (isDebug())

@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+import type Phaser from 'phaser';
 import type { AssetKey } from '../data/assetManifest';
 
 /** Code-drawn stand-ins for manifest entries without a file. All face east (0 rad). */
@@ -104,4 +104,8 @@ export function generatePlaceholder(scene: Phaser.Scene, key: AssetKey): boolean
   g.generateTexture(key, width, height);
   g.destroy();
   return true;
+}
+
+export function hasPlaceholder(key: AssetKey): boolean {
+  return key in drawers;
 }

@@ -42,6 +42,18 @@ npm run check          # typecheck + lint + test + validate:maps (what CI runs)
 - **Elevation:** every tile and entity has an integer `level`. Collisions only happen between things on the same level. A pawn changes level only on ramp tiles, and cliffs are derived edges between cells of different level. Render depth is sorted by level, then y. Mortar shells are the exception: they travel in an arc, ignore levels and land on the level of the tile they hit. Details are in `docs/ARCHITECTURE.md`.
 - **Saves:** repair depots heal the tank and save the game. Saves are versioned JSON in localStorage (`merkavania.save.<slot>`). **Any change to the save shape needs a `SAVE_VERSION` bump plus a migration in `src/logic/save/migrations.ts` with a test.**
 
+## Workflow: test-driven
+
+From M2 onward, every change is test-first:
+1. **Red:** write the test for the new behaviour and run it to see it fail for the expected reason.
+2. **Green:** write the minimum code that makes it pass.
+3. **Refactor** with the tests green, then run `npm run check` (and `npm run test:e2e` for scene behaviour).
+
+- Rules and math go in `src/logic/` and get Vitest tests. If game code needs a decision or a formula, extract it into `src/logic/` so it can be tested first. Keep `src/game/` a thin Phaser shell.
+- Behaviour that only exists in a running scene (collisions, input devices, overlays) gets a Playwright spec in `tests/e2e/`, driven through `window.__merkavania` debug hooks. Add a hook when a spec needs to observe something new.
+- Data tables (`src/data/`) and maps get sanity tests: every referenced id and asset key exists and every value is in range.
+- A bug fix starts with a test that reproduces the bug.
+
 ## Conventions
 
 - Ability, terrain, material, object-type and enemy ids are `snake_case` strings defined once, in `src/data/`, and mirror `docs/GAME_DESIGN.md` and `docs/LEVEL_DESIGN.md`. Adding an id means updating the data table, the validator and the doc together.

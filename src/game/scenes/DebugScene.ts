@@ -16,6 +16,8 @@ export class DebugScene extends Phaser.Scene {
   private text!: Phaser.GameObjects.Text;
   private pawn: PawnTelemetry | null = null;
   private gun: GameEvents['gun:state'] | null = null;
+  /** DOM `code`s pressed since the last frame, in order. */
+  private pressed: string[] = [];
 
   constructor() {
     super(SceneKey.Debug);
@@ -24,11 +26,13 @@ export class DebugScene extends Phaser.Scene {
   create(): void {
     this.text = this.add.text(2, 2, '', TEXT_STYLE).setScrollFactor(0);
 
-    const kb = this.input.keyboard;
-    kb?.on('keydown-BACKTICK', () => this.text.setVisible(!this.text.visible));
-    kb?.on('keydown-ONE', () => {
-      if (this.text.visible) events.emit('debug:toggleBodies', undefined);
-    });
+    // Plain DOM presses, consumed once per frame. Phaser re-dispatches its per-frame key queue on
+    // every key event (so `keydown-*` listeners can fire twice), and JustDown loses a press whose
+    // down and up land in the same frame.
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.repeat) this.pressed.push(e.code);
+    };
+    window.addEventListener('keydown', onKey);
 
     const onPawn = (p: PawnTelemetry) => (this.pawn = p);
     const onGun = (g: GameEvents['gun:state']) => (this.gun = g);
@@ -37,10 +41,15 @@ export class DebugScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       events.off('debug:pawn', onPawn);
       events.off('gun:state', onGun);
+      window.removeEventListener('keydown', onKey);
     });
   }
 
   override update(): void {
+    for (const code of this.pressed.splice(0)) {
+      if (code === 'Backquote') this.text.setVisible(!this.text.visible);
+      else if (code === 'Digit1' && this.text.visible) events.emit('debug:toggleBodies', undefined);
+    }
     if (!this.text.visible) return;
     const deg = (rad: number) => Math.round(Phaser.Math.RadToDeg(rad));
     const lines = [t('debug.fps', { fps: Math.round(this.game.loop.actualFps) })];
