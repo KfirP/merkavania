@@ -268,6 +268,16 @@ describe('validateWorlds: objects', () => {
     ]);
   });
 
+  it('checks destructible materials against data/materials.ts', () => {
+    const d = (id: number, material: string): Obj => ({
+      id,
+      type: 'destructible',
+      properties: [prop('material', material), prop('id', `d${id}`)],
+    });
+    const issues = withObjects([d(1, 'sandbag'), d(2, 'armored'), d(3, 'jelly')]);
+    expect(issues.map((i) => `${i.object} ${i.message}`)).toEqual(['#3 unknown material "jelly"']);
+  });
+
   it('reports duplicate persistent ids and doors without their switch', () => {
     const issues = withObjects([
       { id: 1, type: 'depot', properties: [prop('id', 'a')] },

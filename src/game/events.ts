@@ -19,6 +19,21 @@ export interface PawnTelemetry {
   alive: boolean;
 }
 
+export interface DestructibleTelemetry {
+  /** `<chunkId>:<id>` */
+  key: string;
+  material: string;
+  hp: number;
+  x: number;
+  y: number;
+  level: number;
+}
+
+/** Debug builds only: everything spawned from chunk objects, emitted every frame. */
+export interface EntitiesTelemetry {
+  destructibles: DestructibleTelemetry[];
+}
+
 /** One resolved hit, for the debug combat log and specs. */
 export interface CombatHit {
   /** `player`, an enemy id or a destructible's `<chunkId>:<id>`. */
@@ -55,6 +70,8 @@ export interface GameEvents {
   'world:chunks': WorldState;
   /** Debug builds only: emitted every frame by WorldScene. */
   'debug:pawn': PawnTelemetry;
+  /** Debug builds only: emitted every frame by WorldScene. */
+  'debug:entities': EntitiesTelemetry;
   'debug:toggleBodies': undefined;
   'debug:toggleElevation': undefined;
   /** Moves the active pawn and stops it; `heading` in radians, kept if omitted. */

@@ -1,5 +1,11 @@
 import type Phaser from 'phaser';
-import { events, type CombatHit, type PawnTelemetry, type WorldState } from './events';
+import {
+  events,
+  type CombatHit,
+  type EntitiesTelemetry,
+  type PawnTelemetry,
+  type WorldState,
+} from './events';
 
 export function isDebug(): boolean {
   return import.meta.env.DEV || new URLSearchParams(window.location.search).get('debug') === '1';
@@ -24,6 +30,13 @@ export interface DebugHooks {
   setGod(on: boolean): void;
   /** The most recent resolved hits, oldest first. */
   getCombatLog(): CombatHit[];
+  /**
+   * Where world point (x, y) is on the canvas, as fractions (0..1) of its size, per the World
+   * scene's camera. Specs use it to aim with the mouse.
+   */
+  worldToCanvas(x: number, y: number): { fx: number; fy: number };
+  /** Live destructibles as of the last frame. */
+  getDestructibles(): EntitiesTelemetry['destructibles'];
 }
 
 declare global {
@@ -39,6 +52,8 @@ export function installDebugHooks(game: Phaser.Game): void {
   let world: WorldState | null = null;
   const shots: Record<string, number> = {};
   const hits: CombatHit[] = [];
+  let entities: EntitiesTelemetry = { destructibles: [] };
+  events.on('debug:entities', (e) => (entities = e));
   events.on('debug:pawn', (p) => (pawn = p));
   events.on('world:chunks', (w) => (world = w));
   events.on('weapon:fired', ({ weapon }) => (shots[weapon] = (shots[weapon] ?? 0) + 1));
@@ -55,5 +70,10 @@ export function installDebugHooks(game: Phaser.Game): void {
     damagePlayer: (amount) => events.emit('debug:damagePlayer', { amount }),
     setGod: (on) => events.emit('debug:god', { on }),
     getCombatLog: () => hits.map((h) => ({ ...h })),
+    worldToCanvas: (x, y) => {
+      const cam = game.scene.getScene('World').cameras.main;
+      return { fx: (x - cam.worldView.x) / cam.width, fy: (y - cam.worldView.y) / cam.height };
+    },
+    getDestructibles: () => entities.destructibles.map((d) => ({ ...d })),
   };
 }

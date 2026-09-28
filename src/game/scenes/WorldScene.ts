@@ -2,11 +2,13 @@ import Phaser from 'phaser';
 import { getAsset } from '../../data/assetManifest';
 import { RESPAWN_DELAY } from '../../data/combat';
 import { hazardDamage } from '../../logic/combat/hazard';
+import { WorldFlags } from '../../logic/state/flags';
 import { CHUNK_H, CHUNK_PX_H, CHUNK_PX_W, CHUNK_W, TILE } from '../../logic/world/chunks';
 import { ABOVE_DEPTH } from '../../logic/world/depth';
 import { WorldGrid } from '../../logic/world/grid';
 import { findSpawn, parseWorld, worldBounds, type TiledWorld } from '../../logic/world/world';
 import { isDebug } from '../debug';
+import { Destructible } from '../entities/Destructible';
 import { Tank } from '../entities/Tank';
 import { events, type GameEvents } from '../events';
 import { ChunkStreamer } from '../systems/ChunkStreamer';
@@ -15,6 +17,7 @@ import { EffectsSystem } from '../systems/EffectsSystem';
 import { ElevationSystem } from '../systems/ElevationSystem';
 import { InputSystem } from '../systems/InputSystem';
 import { ProjectileSystem } from '../systems/ProjectileSystem';
+import { SpawnSystem } from '../systems/SpawnSystem';
 import { SceneKey } from './keys';
 
 /** Longest step fed to pawns, so a tab-switch hitch doesn't launch the tank through a wall. */
@@ -37,6 +40,7 @@ export class WorldScene extends Phaser.Scene {
   private projectiles!: ProjectileSystem;
   private effects!: EffectsSystem;
   private combat!: CombatSystem;
+  private spawner!: SpawnSystem;
   private grid!: WorldGrid;
   /** Where the tank respawns; M4 replaces it with the last depot. */
   private respawnPoint!: { x: number; y: number; heading: number };
@@ -69,12 +73,27 @@ export class WorldScene extends Phaser.Scene {
       this.projectiles,
     );
     this.combat.add(this.tank);
+    this.combat.watch(this.tank);
     events.on('player:died', this.onPlayerDied, this);
 
-    this.streamer = new ChunkStreamer(this, world, this.grid, (walls) => [
-      this.physics.add.collider(this.tank, walls),
-      this.projectiles.addWalls(walls),
-    ]);
+    // Session-only until M4 puts it in the saved GameState.
+    const flags = new WorldFlags();
+    this.spawner = new SpawnSystem(this, this.combat, this.effects, flags, this.elevation.cellAt);
+    this.combat.watch(this.spawner.solids);
+    this.physics.add.collider(
+      this.tank,
+      this.spawner.solids,
+      undefined,
+      (_tank, d) => (d as Destructible).level === this.tank.level,
+    );
+
+    this.streamer = new ChunkStreamer(
+      this,
+      world,
+      this.grid,
+      (walls) => [this.physics.add.collider(this.tank, walls), this.projectiles.addWalls(walls)],
+      this.spawner,
+    );
     this.streamer.update(this.tank.x, this.tank.y);
 
     const b = worldBounds(world.chunks);
@@ -101,6 +120,7 @@ export class WorldScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.inputSystem.destroy();
       this.streamer.destroy();
+      this.spawner.destroy();
       events.off('debug:toggleBodies', this.toggleBodies, this);
       events.off('debug:toggleElevation', this.toggleElevation, this);
       events.off('debug:teleport', this.teleport, this);
@@ -144,6 +164,7 @@ export class WorldScene extends Phaser.Scene {
         maxHp: this.tank.maxHp,
         alive: this.tank.alive,
       });
+    if (isDebug()) events.emit('debug:entities', { destructibles: this.spawner.destructibles() });
   }
 
   /** Minefields and missile zones hurt a tank without the matching ability. */

@@ -1,4 +1,5 @@
 import { abilityIds, minorPickupIds } from '../../data/abilities';
+import { isMaterialId } from '../../data/materials';
 import { allMkTierIds } from '../../data/mkTiers';
 import { isTerrainId } from '../../data/terrain';
 import { CHUNK_H, CHUNK_W, chunkId } from './chunks';
@@ -9,8 +10,8 @@ import { parseWorld, type TiledWorld, type WorldChunk } from './world';
 
 /**
  * Map validation rules v1 (docs/LEVEL_DESIGN.md, "What validate:maps checks", rules 1–5).
- * Pure: files come in through `load(path)` with public/-relative paths. Enemy, boss and material
- * ids are only checked for presence until their tables exist (M3); reachability arrives in M4.
+ * Pure: files come in through `load(path)` with public/-relative paths. Boss ids are only checked
+ * for presence until their table exists (M7); reachability arrives in M4.
  */
 
 export interface MapIssue {
@@ -157,7 +158,12 @@ const OBJECT_RULES: Record<string, ObjectRule> = {
   },
   enemy: { required: ['enemyType', 'level'] },
   boss: { required: ['bossType', 'arena'] },
-  destructible: { required: ['material', 'id'] },
+  destructible: {
+    required: ['material', 'id'],
+    checks: {
+      material: (v) => (isMaterialId(v) ? null : `unknown material ${JSON.stringify(v)}`),
+    },
+  },
   boulder: { required: ['id'] },
   switch: {
     required: ['id', 'activatedBy'],

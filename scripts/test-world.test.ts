@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { assetManifest } from '../src/data/assetManifest';
 import { CHUNK_H, CHUNK_W, TILE } from '../src/logic/world/chunks';
 import { parseChunkGrid, type Cell, type Dir, type GridMap } from '../src/logic/world/grid';
+import { parseChunkObjects, type RawObject } from '../src/logic/world/objects';
 import { embedTilesets, resolveRelativePath, type TiledMap } from '../src/logic/world/tiled';
 import { canEnter, type MoveContext } from '../src/logic/world/traversal';
 import { parseWorld, type TiledWorld } from '../src/logic/world/world';
@@ -155,5 +156,20 @@ describe('test world', () => {
     const used = new Set([...cells.values()].map((c) => c.terrain));
     for (const t of ['road', 'rock', 'water_shallow', 'water_deep', 'mud', 'rubble', 'minefield'])
       expect(used).toContain(t);
+  });
+
+  it('has a row of every destructible material on open level-0 ground (combat specs)', () => {
+    const objects = (maps.get('test_x00_y01')!.raw.layers as Layer[]).find(
+      (l) => l.name === 'objects',
+    )!.objects!;
+    const found = parseChunkObjects(maps.get('test_x00_y01')!.chunk, objects as RawObject[]);
+    expect(found.destructibles.map((d) => d.material).sort()).toEqual(
+      ['armored', 'concrete', 'sandbag', 'wood'].sort(),
+    );
+    for (const d of found.destructibles) {
+      const cell = cellAt(Math.floor(d.x / TILE), Math.floor(d.y / TILE))!;
+      expect(cell.level).toBe(0);
+      expect(cell.solid).toBe(false);
+    }
   });
 });

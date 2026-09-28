@@ -64,7 +64,7 @@ Every object that has persistent state needs an `id` that is unique within its c
 The rules are in `src/logic/world/validate.ts`; `scripts/validate-maps.ts` only reads the files. Rules 1–5 have been live since M2, and rule 6 arrives in M4.
 1. Every chunk listed in a `.world` exists, is named after its position, is 30×17, and has the required layers in order, with `elevation` hidden.
 2. All tilesets are external `.tsj` named after a manifest image with the same file, every `terrain`/`level`/`ramp`/`steep`/`solid` value is known, and every tile gid belongs to a tileset.
-3. Every object type and its properties are known (ability, minor pickup, tier, `activatedBy`, zone `kind` and message ids exist in `src/data/` and `src/i18n/en.json`). Enemy, boss and material ids are only checked for presence until their tables exist in M3.
+3. Every object type and its properties are known (ability, minor pickup, tier, material, `activatedBy`, zone `kind` and message ids exist in `src/data/` and `src/i18n/en.json`). Enemy ids are checked from M3 on; boss ids are only checked for presence until the boss table exists in M7.
 4. Persistent object ids are unique per chunk, door `opensWith` points to a switch in the same chunk, and exits point to existing biomes, chunks and spawns.
 5. Neighbouring chunks agree on elevation where they meet: facing cells are on the same level or joined by a ramp, unless either one is solid.
 6. **Progression reachability:** starting at `start` with Mk2 and no abilities, it simulates collecting pickups in dependency order through a coarse chunk/region graph (built by `src/logic/world`). It confirms every pickup, depot and boss is eventually reachable and no required ability is locked behind itself.

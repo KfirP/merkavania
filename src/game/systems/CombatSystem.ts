@@ -25,22 +25,32 @@ interface HitInfo {
  * changes, events go out and effects play. Splash weapons also hurt everything nearby on that level.
  */
 export class CombatSystem {
-  /** Everything that can be hit; entities add themselves when they spawn. */
-  readonly targets: Phaser.GameObjects.Group;
+  /** Everything that can be hit (for splash); entities are added as they spawn. */
+  private readonly targets = new Set<Target>();
   /** Debug: the player takes no damage. */
   god = false;
   /** Target of the direct hit being resolved, so its splash doesn't hit it twice. */
   private direct: Target | null = null;
 
   constructor(
-    scene: Phaser.Scene,
+    private readonly scene: Phaser.Scene,
     private readonly projectiles: ProjectileSystem,
     private readonly effects: EffectsSystem,
   ) {
-    this.targets = scene.add.group();
-    scene.physics.add.overlap(
-      projectiles.group,
-      this.targets,
+    projectiles.onImpact = (p) => this.impact(p);
+  }
+
+  /**
+   * Lets projectiles hit a target, or every member of a physics group of targets. Arcade can't
+   * overlap against a plain Group (it has no collision category), so each physics object or
+   * physics group that holds targets is watched once.
+   */
+  watch(
+    targets: Target | Phaser.Physics.Arcade.Group | Phaser.Physics.Arcade.StaticGroup,
+  ): Phaser.Physics.Arcade.Collider {
+    return this.scene.physics.add.overlap(
+      this.projectiles.group,
+      targets,
       (p, t) => this.directHit(p as Projectile, t as Target),
       (p, t) => {
         const shot = p as Projectile;
@@ -48,15 +58,12 @@ export class CombatSystem {
         return shot.active && target.alive && canHit(shot, target);
       },
     );
-    projectiles.onImpact = (p) => this.impact(p);
   }
 
+  /** Registers a target for splash damage; it leaves again when destroyed. */
   add(target: Target): void {
     this.targets.add(target);
-  }
-
-  remove(target: Target): void {
-    this.targets.remove(target);
+    target.once(Phaser.GameObjects.Events.DESTROY, () => this.targets.delete(target));
   }
 
   /** Damage from outside a weapon (hazard terrain, debug); ignores armor. */
@@ -83,7 +90,7 @@ export class CombatSystem {
       return;
     }
     this.effects.explosion(p.x, p.y, radius, p.depth);
-    for (const t of this.targets.getChildren() as Target[]) {
+    for (const t of [...this.targets]) {
       if (t === this.direct || !t.alive || !canHit(p, t)) continue;
       const falloff = splashFalloff(
         Phaser.Math.Distance.Between(p.x, p.y, t.pos.x, t.pos.y),

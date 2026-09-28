@@ -70,6 +70,38 @@ export async function canvasPoint(page: Page, fx: number, fy: number) {
   return { x: box.x + box.width * fx, y: box.y + box.height * fy };
 }
 
+/**
+ * Moves the mouse over world point (x, y) and waits until the turret points at it. Waits for the
+ * camera (which follows with lerp) to settle first, or the point would drift under the mouse.
+ */
+export async function aimAt(page: Page, x: number, y: number) {
+  const toCanvas = () =>
+    page.evaluate(([x, y]) => window.__merkavania!.worldToCanvas(x!, y!), [x, y]);
+  let f = await toCanvas();
+  await expect
+    .poll(async () => {
+      const prev = f;
+      f = await toCanvas();
+      return Math.abs(f.fx - prev.fx) + Math.abs(f.fy - prev.fy) < 1e-4;
+    })
+    .toBe(true);
+  const p = await canvasPoint(page, f.fx, f.fy);
+  await page.mouse.move(p.x, p.y);
+  await expect
+    .poll(async () => {
+      const pawn = await getPawn(page);
+      const want = Math.atan2(y - pawn.y, x - pawn.x);
+      return Math.abs(
+        Math.atan2(Math.sin(want - pawn.turretAngle), Math.cos(want - pawn.turretAngle)),
+      );
+    })
+    .toBeLessThan(0.05);
+}
+
+export function getDestructibles(page: Page) {
+  return page.evaluate(() => window.__merkavania?.getDestructibles() ?? []);
+}
+
 /** Holds a key for `ms` and returns the pawn telemetry sampled just before release. */
 export async function holdKey(page: Page, key: string, ms: number) {
   await page.keyboard.down(key);
