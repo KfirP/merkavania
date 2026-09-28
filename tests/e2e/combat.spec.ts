@@ -213,7 +213,11 @@ test.describe('enemies', () => {
   test('respawning clears the fight', async ({ page }) => {
     await faceOff(page, 'technical', false);
     await damagePlayer(page, 999);
+    // Telemetry is a frame old: see the death land before waiting for the respawn.
+    await expect.poll(async () => (await getPawn(page)).alive).toBe(false);
     await expect.poll(async () => (await getPawn(page)).alive, { timeout: 5_000 }).toBe(true);
-    expect((await getEnemies(page)).filter((e) => e.id.startsWith('debug'))).toEqual([]);
+    await expect
+      .poll(async () => (await getEnemies(page)).filter((e) => e.id.startsWith('debug')))
+      .toEqual([]);
   });
 });

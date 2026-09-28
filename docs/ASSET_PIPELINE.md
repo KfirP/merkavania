@@ -45,8 +45,11 @@ src/data/assetManifest.ts        # the ONLY place paths appear; code uses keys
 - Enemy: `top-down overhead pixel art <enemy description>, facing right, military, <size>, transparent background`
 - Tileset: `top-down desert sand to cracked rock transition tileset, 16x16, pixel art`
 - Adjust these per the PixelLab MCP tool parameters (size, view, outline, shading, palette) and always record the final values.
+- `create_image_pixflux` (1 generation) often draws units in **side view** even when asked for top-down. What works: pass the code placeholder as `init_image` (captured from the running game and scaled up with nearest-neighbour to at least 32×32) at `init_image_strength` ~120, so the layout stays top-down and east-facing while the detail gets redrawn. Keep both attempts in the asset's folder (`raw.png`/`prompt.txt`, `raw-v2.png`/`prompt-v2.txt`).
+- pixflux needs a canvas of at least 32×32 px, so sprites smaller than that are generated at 32 and shrunk by an integer factor.
 
 ## Post-processing
+- `npx tsx scripts/process-sprites.ts` turns raw generations into `public/assets/sprites/`. Each asset lists its steps (`trim`, `rotate90`, `downscale<n>` (majority colour, no blending), `key<n>` (clear an opaque background)); the pixel ops live in `scripts/sprites.ts` with tests. It prints output sizes, so check turret origins in the manifest after re-running it.
 - Check sizes and trim transparent padding consistently (the pivot must stay correct).
 - Multi-frame sprites become a uniform-grid spritesheet plus a frame config in the manifest. Once the sprite count grows, add an atlas packer script under `scripts/`.
 - Audio: convert raw output to `.ogg` and `.mp3` (ffmpeg) and normalise loudness: SFX about -16 LUFS short-term peak, music about -18 LUFS integrated. Trim silence and make music loops seamless.
