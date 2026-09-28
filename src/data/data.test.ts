@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { abilityIds } from './abilities';
 import { assetManifest, getAsset, type AssetKey } from './assetManifest';
-import { mkTiers } from './mkTiers';
+import { allMkTierIds, mkTiers } from './mkTiers';
 import { terrains } from './terrain';
 import { QUICK_ROUND_REFILL_SECONDS, weapons } from './weapons';
 
@@ -55,6 +55,10 @@ describe('mkTiers', () => {
     expect(mkTiers.mk2.hp).toBe(100);
     expect(mkTiers.mk2.mainGun).toBe('gun_105');
     expect(mkTiers.mk2.quickRounds).toBe(6);
+  });
+
+  it('are all listed in allMkTierIds', () => {
+    for (const id of Object.keys(mkTiers)) expect(allMkTierIds).toContain(id);
   });
 
   it('reference existing sprites and weapons', () => {

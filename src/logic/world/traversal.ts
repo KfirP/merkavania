@@ -27,6 +27,13 @@ function levelStep(from: Cell, to: Cell, dir: Dir, ctx: MoveContext): boolean {
   return !ramp.steep || ctx.abilities.includes('suspension');
 }
 
+const ANY_TANK: MoveContext = { pawn: 'tank', abilities: ['suspension'] };
+
+/** Whether two adjacent cells are joined in elevation: the same level, or a ramp of any kind. */
+export function levelsConnect(from: Cell, to: Cell, dir: Dir): boolean {
+  return levelStep(from, to, dir, ANY_TANK);
+}
+
 function terrainAllows(cell: Cell, ctx: MoveContext): boolean {
   if (cell.terrain === null || !isTerrainId(cell.terrain)) return true;
   const def = terrains[cell.terrain];

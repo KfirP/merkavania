@@ -21,6 +21,9 @@ export interface MkTier {
   sprites: { hull: AssetKey; turret: AssetKey };
 }
 
+/** Every tier in the design (GAME_DESIGN.md), including those without stats yet. */
+export const allMkTierIds = ['mk2', 'mk3', 'mk4'] as const;
+
 // Only mk2 exists until M7 adds mk3; mk4 arrives with the underground biome.
 export const mkTiers = {
   mk2: {

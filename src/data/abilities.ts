@@ -17,3 +17,8 @@ export const abilityIds = [
 ] as const;
 
 export type AbilityId = (typeof abilityIds)[number];
+
+/** Minor pickups (GAME_DESIGN.md): stat bumps, not gates. */
+export const minorPickupIds = ['armor_plate', 'ammo_rack', 'repair_kit'] as const;
+
+export type MinorPickupId = (typeof minorPickupIds)[number];
