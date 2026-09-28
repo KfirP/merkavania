@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { keyAxis, mouseButtons, padAnalog, touchAnalog } from './mapping';
+import { keyAxis, mouseButtons, padAnalog, touchMove } from './mapping';
 
 describe('keyAxis', () => {
   it('maps a key pair to -1, 0 or 1', () => {
@@ -42,25 +42,18 @@ describe('padAnalog', () => {
   });
 });
 
-describe('touchAnalog', () => {
-  const idle = { x: 0, y: 0, active: false };
-
-  it('drives with the left stick', () => {
-    const c = touchAnalog({ x: 0, y: -1, active: true }, idle);
+describe('touchMove', () => {
+  it('drives with the left stick (up = forward)', () => {
+    const c = touchMove({ x: 0, y: -1, active: true });
     expect(c.throttle).toBeCloseTo(1);
     expect(c.turn).toBe(0);
   });
 
-  it('aims with the right stick and fires only past 60%', () => {
-    const half = touchAnalog(idle, { x: 0.5, y: 0, active: true });
-    expect(half.aimAngle).toBeCloseTo(0);
-    expect(half.fire).toBe(false);
-    expect(touchAnalog(idle, { x: 0.7, y: 0, active: true }).fire).toBe(true);
+  it('ignores a thumb resting near the centre', () => {
+    expect(touchMove({ x: 0.1, y: 0.05, active: true })).toEqual({ throttle: 0, turn: 0 });
   });
 
-  it('neither aims nor fires when the right stick is released', () => {
-    const c = touchAnalog(idle, { x: 1, y: 0, active: false });
-    expect(c.aimAngle).toBeNull();
-    expect(c.fire).toBe(false);
+  it('stops when the stick is released', () => {
+    expect(touchMove({ x: 0, y: 0, active: false })).toEqual({ throttle: 0, turn: 0 });
   });
 });

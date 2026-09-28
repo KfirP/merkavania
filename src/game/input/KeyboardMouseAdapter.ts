@@ -3,7 +3,7 @@ import { RisingEdge } from '../../logic/input/edge';
 import { keyAxis, mouseButtons } from '../../logic/input/mapping';
 import { angleTo } from '../../logic/input/stick';
 import type { TankCommand } from '../../logic/input/TankCommand';
-import type { AimOrigin, InputAdapter } from './InputAdapter';
+import type { InputAdapter, InputContext } from './InputAdapter';
 import { recentlyTouched } from './touchState';
 
 const K = Phaser.Input.Keyboard.KeyCodes;
@@ -54,7 +54,7 @@ export class KeyboardMouseAdapter implements InputAdapter {
     scene.input.on('wheel', this.onWheel);
   }
 
-  poll(cmd: TankCommand, origin: AimOrigin): boolean {
+  poll(cmd: TankCommand, origin: InputContext): boolean {
     const k = this.keys;
     const down = (...names: string[]) => names.some((n) => k[n]?.isDown);
 

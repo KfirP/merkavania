@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { collectErrors, enterWorld, getPawn, getShots, isSceneActive } from './helpers';
 
 test.describe('gamepad', () => {
@@ -52,50 +52,144 @@ test.describe('gamepad', () => {
   });
 });
 
+/**
+ * Multi-finger touch over CDP. The canvas is 2x (960×540 for 480×270), so page px = 2 × game px.
+ * Every event carries all fingers still down; lifting sends the remaining ones.
+ */
+async function fingers(page: Page, context: BrowserContext) {
+  const cdp = await context.newCDPSession(page);
+  const down = new Map<number, { x: number; y: number }>();
+  const points = () => [...down].map(([id, p]) => ({ id, ...p }));
+  const send = (type: string, touchPoints = points()) =>
+    cdp.send('Input.dispatchTouchEvent', { type, touchPoints } as never);
+  return {
+    async down(id: number, x: number, y: number) {
+      down.set(id, { x, y });
+      await send('touchStart');
+    },
+    async move(id: number, x: number, y: number) {
+      down.set(id, { x, y });
+      await send('touchMove');
+    },
+    async up(id: number) {
+      down.delete(id);
+      await send('touchEnd', []);
+      // CDP ends every touch on touchEnd; put the fingers still held back down.
+      if (down.size) await send('touchStart');
+    },
+    async tap(id: number, x: number, y: number) {
+      await this.down(id, x, y);
+      await this.up(id);
+    },
+  };
+}
+
+// Right stick base where the thumb lands; the stick radius is 28 game px = 56 page px.
+const RIGHT = { x: 800, y: 440 };
+const STICK_PX = 56;
+const LEFT = { x: 120, y: 440 };
+const ALT_BUTTON = { x: 900, y: 320 };
+
+async function enterTouchWorld(page: Page) {
+  await page.goto('/?debug=1');
+  await expect.poll(() => isSceneActive(page, 'Title')).toBe(true);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => isSceneActive(page, 'TouchControls')).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.__merkavania?.getPawn() != null)).toBe(true);
+}
+
 test.describe('touch', () => {
   test.use({ hasTouch: true, isMobile: true, viewport: { width: 960, height: 540 } });
 
-  test('controls stay hidden until the first touch, then the sticks drive, aim and fire', async ({
+  test('controls appear on the first touch; the right stick aims without firing and lifting fires once', async ({
     page,
     context,
   }) => {
     const errors = collectErrors(page);
-    await page.goto('/?debug=1');
-    await expect.poll(() => isSceneActive(page, 'Title')).toBe(true);
-    await page.keyboard.press('Enter');
-    await expect.poll(() => isSceneActive(page, 'TouchControls')).toBe(true);
+    await enterTouchWorld(page);
     const controlsVisible = () =>
       page.evaluate(
         () => window.__merkavania!.game.scene.getScene('TouchControls').cameras.main.visible,
       );
     expect(await controlsVisible()).toBe(false);
-    const start = await getPawn(page);
 
-    // The canvas is 2x (960×540 for 480×270). Left thumb pushes up, right thumb pushes east fully.
-    const cdp = await context.newCDPSession(page);
-    const touch = (type: string, touchPoints: { x: number; y: number; id: number }[]) =>
-      cdp.send('Input.dispatchTouchEvent', { type, touchPoints } as never);
-    await touch('touchStart', [{ x: 120, y: 440, id: 1 }]);
+    const f = await fingers(page, context);
+    await f.down(2, RIGHT.x, RIGHT.y);
     expect(await controlsVisible()).toBe(true);
-    await touch('touchMove', [{ x: 120, y: 360, id: 1 }]);
-    await touch('touchStart', [
-      { x: 120, y: 360, id: 1 },
-      { x: 800, y: 440, id: 2 },
-    ]);
-    for (let i = 0; i < 10; i++) {
-      await touch('touchMove', [
-        { x: 120, y: 360 + (i % 2), id: 1 },
-        { x: 900, y: 440 + (i % 2), id: 2 },
-      ]);
-      await page.waitForTimeout(100);
-    }
-    const pawn = await getPawn(page);
-    await touch('touchEnd', []);
+    await f.move(2, RIGHT.x + STICK_PX + 20, RIGHT.y);
+    await expect.poll(async () => (await getPawn(page)).turretAngle).toBeCloseTo(0, 1);
+    await page.waitForTimeout(300);
+    expect(await getShots(page)).toEqual({});
+    expect((await getPawn(page)).device).toBe('touch');
 
-    expect(pawn.device).toBe('touch');
-    expect(pawn.y).toBeLessThan(start.y - 10);
-    expect(pawn.turretAngle).toBeCloseTo(0, 1);
-    expect((await getShots(page)).gun_105).toBeGreaterThanOrEqual(1);
+    await f.up(2);
+    await expect.poll(() => getShots(page)).toEqual({ gun_105: 1 });
+    await page.waitForTimeout(1_000);
+    expect(await getShots(page)).toEqual({ gun_105: 1 });
     expect(errors).toEqual([]);
+  });
+
+  test('dragging back to the centre before lifting cancels the shot but keeps the aim', async ({
+    page,
+    context,
+  }) => {
+    await enterTouchWorld(page);
+    const f = await fingers(page, context);
+    await f.down(2, RIGHT.x, RIGHT.y);
+    await f.move(2, RIGHT.x + STICK_PX, RIGHT.y);
+    await expect.poll(async () => (await getPawn(page)).turretAngle).toBeCloseTo(0, 1);
+    await f.move(2, RIGHT.x + 5, RIGHT.y);
+    await f.up(2);
+    await page.waitForTimeout(800);
+    expect(await getShots(page)).toEqual({});
+    expect((await getPawn(page)).turretAngle).toBeCloseTo(0, 1);
+  });
+
+  test('with MG mode on, the outer ring fires the coax while driving; lifting still fires the cannon', async ({
+    page,
+    context,
+  }) => {
+    const errors = collectErrors(page);
+    await enterTouchWorld(page);
+    const start = await getPawn(page);
+    const f = await fingers(page, context);
+    await f.tap(3, ALT_BUTTON.x, ALT_BUTTON.y);
+
+    // Left thumb drives forward the whole time.
+    await f.down(1, LEFT.x, LEFT.y);
+    await f.move(1, LEFT.x, LEFT.y - STICK_PX);
+
+    // Halfway: aims, no MG.
+    await f.down(2, RIGHT.x, RIGHT.y);
+    await f.move(2, RIGHT.x + STICK_PX / 2, RIGHT.y);
+    await page.waitForTimeout(500);
+    expect(await getShots(page)).toEqual({});
+
+    // Rim: the MG fires.
+    await f.move(2, RIGHT.x + STICK_PX, RIGHT.y);
+    await expect.poll(async () => (await getShots(page)).coax_mg ?? 0).toBeGreaterThan(3);
+    expect((await getPawn(page)).y).toBeLessThan(start.y - 10);
+
+    // Back inside the ring: the MG stops.
+    await f.move(2, RIGHT.x + STICK_PX / 2, RIGHT.y);
+    await page.waitForTimeout(150);
+    const coax = (await getShots(page)).coax_mg!;
+    await page.waitForTimeout(500);
+    expect((await getShots(page)).coax_mg).toBe(coax);
+
+    // Lifting fires the cannon; no main-gun shots happened before that.
+    expect((await getShots(page)).gun_105).toBeUndefined();
+    await f.up(2);
+    await expect.poll(async () => (await getShots(page)).gun_105).toBe(1);
+    expect(errors).toEqual([]);
+  });
+
+  test('with MG mode off, a full drag never fires the coax', async ({ page, context }) => {
+    await enterTouchWorld(page);
+    const f = await fingers(page, context);
+    await f.down(2, RIGHT.x, RIGHT.y);
+    await f.move(2, RIGHT.x + STICK_PX + 20, RIGHT.y);
+    await page.waitForTimeout(800);
+    expect((await getShots(page)).coax_mg).toBeUndefined();
   });
 });

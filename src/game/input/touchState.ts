@@ -12,7 +12,8 @@ export interface StickState {
 export const touchState = {
   left: { x: 0, y: 0, active: false } as StickState,
   right: { x: 0, y: 0, active: false } as StickState,
-  altFire: false,
+  /** MG mode (ALT toggle): the right stick's outer ring fires the coax. */
+  mgOn: false,
   /** performance.now() of the last touch, used to ignore browser-emulated mouse events. */
   lastTouchAt: -Infinity,
 };

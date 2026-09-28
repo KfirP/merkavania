@@ -60,12 +60,13 @@ interface TankCommand {
 }
 ```
 - Keyboard/mouse: `aimAngle` is the angle from the pawn's world position to the mouse's world position.
-- Gamepad/touch: `aimAngle` comes from the right stick when it's past the deadzone. Touch fires while the right stick is held past about 60% deflection.
+- Gamepad/touch: `aimAngle` comes from the right stick when it's past the deadzone.
+- Touch right stick (`logic/input/touchAim.ts`): dragging past the deadzone aims and arms the cannon, and lifting fires it. Dragging back inside the deadzone first cancels, and a tap never fires. The aim is sticky, so the turret finishes its swing after the thumb lifts. The released shot waits until the turret lines up, clears when the gun fires, and is dropped if the gun can't fire within a short window (e.g. during a quick-round refill). With MG mode on (the ALT button toggles it), the stick's outer ring fires the coax while held. The knob is grey in the cancel zone, orange when a lift would fire and yellow while the MG fires.
 - `fire`/`altFire` are held states. `cycleNext`/`cyclePrev`/`hatch`/`interact`/`map`/`pause` are edge-triggered: true only on the frame they're pressed.
-- The mapping rules themselves (mouse buttons, stick deadzones, touch fire threshold, device selection, virtual-stick clamping) are pure functions in `logic/input/` (`mapping.ts`, `device.ts`, `virtualStick.ts`). The adapters only read devices and call them.
+- The mapping rules themselves (mouse buttons, stick deadzones, touch aim/fire, device selection, virtual-stick clamping) are pure functions in `logic/input/` (`mapping.ts`, `touchAim.ts`, `device.ts`, `virtualStick.ts`). The adapters only read devices and call them.
 - Phaser quirk: its `KeyboardManager` re-dispatches the whole per-frame key queue on every DOM key event, so `keydown-*` listeners can fire more than once for one press when several key events land in a frame. `Key.JustDown` has the opposite problem: it loses a press whose down and up land in the same frame. Gameplay polls `isDown` through `RisingEdge`; one-shot toggles such as the debug keys read DOM `keydown` events and consume them once per frame.
 - `InputSystem` polls every adapter each frame and uses the command from the **most recently active** device, so an idle mouse can't override the gamepad's aim. Mouse input is ignored for a moment after any touch, because browsers emulate mouse events from touches.
-- Touch: `TouchControlsScene` draws two floating sticks (each appears where the thumb lands in its half of the screen) plus an alt-fire button, and writes a small shared store (`game/input/touchState.ts`) that `TouchAdapter` reads. It's launched on touch-capable devices but stays hidden until the first real touch, since many desktop browsers report touch support.
+- Touch: `TouchControlsScene` draws two floating sticks (each appears where the thumb lands in its half of the screen) plus the ALT (MG mode) toggle, and writes a small shared store (`game/input/touchState.ts`) that `TouchAdapter` reads. It's launched on touch-capable devices but stays hidden until the first real touch, since many desktop browsers report touch support.
 - The active pawn consumes the command. The scout and drone read throttle/turn as direct 8-way movement rather than tank controls.
 
 ## Pawns
