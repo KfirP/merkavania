@@ -28,10 +28,29 @@
         image-rendering: pixelated;
         image-rendering: crisp-edges;
       }
+      #rotate {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: #000;
+        color: #f0e6c8;
+        font:
+          16px font_ui,
+          monospace;
+        line-height: 1.6;
+        text-align: center;
+      }
+      #rotate[hidden] {
+        display: none;
+      }
     </style>
   </head>
   <body>
     <div id="game"></div>
+    <div id="rotate" hidden></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

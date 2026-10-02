@@ -15,3 +15,12 @@ export function computeZoom(
   if (!Number.isFinite(fit) || fit <= 0) return 1;
   return fit >= 1 ? Math.floor(fit) : fit;
 }
+
+/** Touch devices held in portrait get a "rotate your device" prompt (docs/ARCHITECTURE.md). */
+export function shouldPromptRotate(
+  windowWidth: number,
+  windowHeight: number,
+  touch: boolean,
+): boolean {
+  return touch && windowHeight > windowWidth;
+}

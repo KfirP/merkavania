@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from './logic/scale';
 import { installDebugHooks } from './game/debug';
+import { installRotatePrompt } from './game/rotate';
 import { installIntegerScaling } from './game/scale';
 import { applySettings } from './game/settings';
 import { BootScene } from './game/scenes/BootScene';
@@ -47,3 +48,4 @@ const game = new Phaser.Game({
 
 installIntegerScaling(game);
 installDebugHooks(game);
+installRotatePrompt(game);

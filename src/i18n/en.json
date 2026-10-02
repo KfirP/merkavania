@@ -75,5 +75,6 @@
   "map.legend_you": "You",
   "map.legend_depot": "Depot",
   "map.legend_pickup": "Item",
-  "map.legend_taken": "Taken"
+  "map.legend_taken": "Taken",
+  "ui.rotate_device": "Rotate your device: the Merkava only fits sideways"
 }

@@ -75,5 +75,6 @@
   "map.legend_you": "אתם",
   "map.legend_depot": "מוסך",
   "map.legend_pickup": "פריט",
-  "map.legend_taken": "נאסף"
+  "map.legend_taken": "נאסף",
+  "ui.rotate_device": "סובבו את המכשיר: המרכבה נכנסת רק לרוחב"
 }

@@ -10,7 +10,9 @@ import {
   type PawnTelemetry,
   type WorldState,
 } from './events';
+import { touchButtonIds, type TouchButtonId } from '../logic/input/touchButtons';
 import type { MapView } from '../logic/world/mapScreen';
+import type { TouchControlsScene } from './scenes/TouchControlsScene';
 import type { HudScene, HudSnapshot } from './scenes/HudScene';
 import { openMapView } from './scenes/MapScene';
 import { menuSnapshot, type MenuSnapshot } from './ui/Menu';
@@ -67,6 +69,8 @@ export interface DebugHooks {
   getObjects(): ObjectsTelemetry;
   /** Where mortar shells came down since boot, oldest first. */
   getMortarLandings(): GameEvents['mortar:landed'][];
+  /** Ids of the touch buttons on screen, or null without touch controls. */
+  getTouchButtons(): TouchButtonId[] | null;
   /** The open map screen's layout, or null while it's closed. */
   getMapView(): MapView | null;
   /** What the HUD shows, or null while it isn't running. */
@@ -141,6 +145,11 @@ export function installDebugHooks(game: Phaser.Game): void {
     getMortarLandings: () => landings.map((l) => ({ ...l })),
     getMenu: (scene) => menuSnapshot(scene),
     getMapView: () => openMapView(),
+    getTouchButtons: () => {
+      if (!game.scene.isActive('TouchControls')) return null;
+      const scene = game.scene.getScene('TouchControls') as TouchControlsScene;
+      return touchButtonIds.filter((id) => scene.isShown(id));
+    },
     getHud: () =>
       game.scene.isActive('Hud') ? (game.scene.getScene('Hud') as HudScene).snapshot() : null,
   };

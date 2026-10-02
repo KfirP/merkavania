@@ -144,6 +144,8 @@ export interface GameEvents {
   'map:changed': MapState;
   /** The pawn entered another chunk, or chunks were streamed in or out. */
   'world:chunks': WorldState;
+  /** Pause the game if it's running (the rotate-device prompt went up). */
+  'ui:pause': undefined;
   /** Debug builds only: emitted every frame by WorldScene. */
   'debug:pawn': PawnTelemetry;
   /** Debug builds only: the tank, emitted every frame (also while the scout is the active pawn). */

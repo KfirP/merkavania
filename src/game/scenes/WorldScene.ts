@@ -186,7 +186,8 @@ export class WorldScene extends Phaser.Scene {
     this.emitMap();
     this.scene.launch(SceneKey.Hud);
     events.emit('hp:changed', { target: 'player', hp: this.tank.hp, max: this.tank.maxHp });
-    if (this.sys.game.device.input.touch) this.scene.launch(SceneKey.TouchControls);
+    this.applyTouchSetting();
+    events.on('ui:pause', this.onPauseRequest, this);
     if (isDebug()) {
       this.scene.launch(SceneKey.Debug);
       events.on('debug:toggleBodies', this.toggleBodies, this);
@@ -219,6 +220,7 @@ export class WorldScene extends Phaser.Scene {
       events.off('debug:spawnEnemy', this.debugSpawnEnemy, this);
       events.off('world:chunks', this.redrawElevation, this);
       events.off('player:died', this.onPlayerDied, this);
+      events.off('ui:pause', this.onPauseRequest, this);
       events.off('player:respawned', this.onPlayerRespawned, this);
       this.scene.stop(SceneKey.Hud);
       this.scene.stop(SceneKey.TouchControls);
@@ -237,6 +239,26 @@ export class WorldScene extends Phaser.Scene {
     this.overlayGuard = 2;
     this.inputSystem.useBindings(settings().keybinds);
     if (this.scene.isSleeping(SceneKey.TouchControls)) this.scene.wake(SceneKey.TouchControls);
+    this.applyTouchSetting();
+  }
+
+  /**
+   * Touch controls per the setting: `auto` on touch devices (hidden until the first touch), `on`
+   * always and shown at once, `off` never. Re-applied after the settings screen.
+   */
+  private applyTouchSetting(): void {
+    const mode = settings().touchControls;
+    const want = mode === 'on' || (mode === 'auto' && this.sys.game.device.input.touch);
+    // A sleeping scene counts: waking it is queued until the next step.
+    const running =
+      this.scene.isActive(SceneKey.TouchControls) || this.scene.isSleeping(SceneKey.TouchControls);
+    if (want && !running) this.scene.launch(SceneKey.TouchControls, { visible: mode === 'on' });
+    else if (!want && running) this.scene.stop(SceneKey.TouchControls);
+  }
+
+  /** Something outside the game (the rotate-device prompt) wants it paused. */
+  private onPauseRequest(): void {
+    if (this.scene.isActive() && !this.scene.isPaused()) this.openOverlay(SceneKey.Pause);
   }
 
   override update(_time: number, delta: number): void {

@@ -1,4 +1,4 @@
-import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import {
   collectErrors,
   enterWorld,
@@ -6,6 +6,7 @@ import {
   getPawn,
   getShots,
   grantAbility,
+  fingers,
   isSceneActive,
 } from './helpers';
 
@@ -59,38 +60,6 @@ test.describe('gamepad', () => {
     expect(errors).toEqual([]);
   });
 });
-
-/**
- * Multi-finger touch over CDP. The canvas is 2x (960×540 for 480×270), so page px = 2 × game px.
- * Every event carries all fingers still down; lifting sends the remaining ones.
- */
-async function fingers(page: Page, context: BrowserContext) {
-  const cdp = await context.newCDPSession(page);
-  const down = new Map<number, { x: number; y: number }>();
-  const points = () => [...down].map(([id, p]) => ({ id, ...p }));
-  const send = (type: string, touchPoints = points()) =>
-    cdp.send('Input.dispatchTouchEvent', { type, touchPoints } as never);
-  return {
-    async down(id: number, x: number, y: number) {
-      down.set(id, { x, y });
-      await send('touchStart');
-    },
-    async move(id: number, x: number, y: number) {
-      down.set(id, { x, y });
-      await send('touchMove');
-    },
-    async up(id: number) {
-      down.delete(id);
-      await send('touchEnd', []);
-      // CDP ends every touch on touchEnd; put the fingers still held back down.
-      if (down.size) await send('touchStart');
-    },
-    async tap(id: number, x: number, y: number) {
-      await this.down(id, x, y);
-      await this.up(id);
-    },
-  };
-}
 
 // Right stick base where the thumb lands; the stick radius is 28 game px = 56 page px.
 const RIGHT = { x: 800, y: 440 };

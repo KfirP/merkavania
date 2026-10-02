@@ -16,6 +16,9 @@ export interface LobTouch {
   y: number;
 }
 
+/** Touch buttons that work as one-shot presses. */
+export type TouchTap = 'hatch' | 'swap' | 'repair' | 'map' | 'pause';
+
 export const touchState = {
   left: { x: 0, y: 0, active: false } as StickState,
   right: { x: 0, y: 0, active: false } as StickState,
@@ -26,8 +29,11 @@ export const touchState = {
    * whether it's back over the button. `x`/`y` keep the last spot after the lift.
    */
   lob: { active: false, overButton: false, x: 0, y: 0 } as LobTouch,
-  /** The hatch button was tapped; TouchAdapter takes it as one `cmd.hatch` press. */
-  hatchTapped: false,
+  /** Buttons tapped since TouchAdapter's last poll; each becomes one press of its command. */
+  taps: { hatch: false, swap: false, repair: false, map: false, pause: false } as Record<
+    TouchTap,
+    boolean
+  >,
   /** performance.now() of the last touch, used to ignore browser-emulated mouse events. */
   lastTouchAt: -Infinity,
 };
