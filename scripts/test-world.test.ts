@@ -6,10 +6,14 @@ import { CHUNK_H, CHUNK_W, TILE } from '../src/logic/world/chunks';
 import { parseChunkGrid, type Cell, type Dir, type GridMap } from '../src/logic/world/grid';
 import { parseChunkObjects, type RawObject } from '../src/logic/world/objects';
 import { embedTilesets, resolveRelativePath, type TiledMap } from '../src/logic/world/tiled';
+import { checkReachability } from '../src/logic/world/reachability';
 import { canEnter, type MoveContext } from '../src/logic/world/traversal';
 import { parseWorld, type TiledWorld } from '../src/logic/world/world';
 
-/** Content checks on the M2 test world: the M1 room split into chunks plus the elevation area. */
+/**
+ * Content checks on the test world: the M1 room split into chunks, the M2 elevation area, the M3
+ * combat rows and the M4 progression gallery (row y02).
+ */
 const PUBLIC = fileURLToPath(new URL('../public/', import.meta.url));
 const WORLD_PATH = 'maps/test/test.world';
 
@@ -87,10 +91,12 @@ describe('test world', () => {
     expect(assetManifest.some((a) => a.path === WORLD_PATH)).toBe(true);
   });
 
-  it('is 4×2 chunks', () => {
+  it('is 4×3 chunks', () => {
     expect(world.biome).toBe('test');
     expect(world.chunks.map((c) => c.id).sort()).toEqual(
-      ['x00', 'x01', 'x02', 'x03'].flatMap((x) => [`test_${x}_y00`, `test_${x}_y01`]).sort(),
+      ['x00', 'x01', 'x02', 'x03']
+        .flatMap((x) => [`test_${x}_y00`, `test_${x}_y01`, `test_${x}_y02`])
+        .sort(),
     );
   });
 
@@ -134,7 +140,7 @@ describe('test world', () => {
 
   it('is enclosed by solid tiles', () => {
     const w = 4 * CHUNK_W;
-    const h = 2 * CHUNK_H;
+    const h = 3 * CHUNK_H;
     for (let x = 0; x < w; x++) {
       expect(cellAt(x, 0)!.solid).toBe(true);
       expect(cellAt(x, h - 1)!.solid).toBe(true);
@@ -188,5 +194,78 @@ describe('test world', () => {
       // Rows 27+ keep them away from the plateau and road the world specs drive on.
       expect(e.y).toBeGreaterThanOrEqual(27 * TILE);
     }
+  });
+
+  describe('M4 gallery (row y02)', () => {
+    const objectsOf = (id: string) =>
+      ((maps.get(id)!.raw.layers as Layer[]).find((l) => l.name === 'objects')!.objects ??
+        []) as unknown as RawObject[];
+    const parsed = (id: string) => parseChunkObjects(maps.get(id)!.chunk, objectsOf(id));
+    const cellUnder = (p: { x: number; y: number }) =>
+      cellAt(Math.floor(p.x / TILE), Math.floor(p.y / TILE))!;
+    const reach = (drop: (o: RawObject) => boolean = () => false) =>
+      checkReachability(
+        [...maps.values()].map(({ chunk, map }) => ({
+          chunk,
+          grid: parseChunkGrid(map as unknown as GridMap),
+          objects: objectsOf(chunk.id).filter((o) => !drop(o)),
+        })),
+      );
+
+    it('is entered from x00_y01 through a gap in its bottom wall', () => {
+      const tank: MoveContext = { pawn: 'tank', abilities: [] };
+      for (const tx of [3, 4, 5, 6]) {
+        const from = cellAt(tx, 2 * CHUNK_H - 1);
+        expect(canEnter(from, cellAt(tx, 2 * CHUNK_H), 's', tank)).toBe(true);
+      }
+    });
+
+    it('has a depot and the slice pickups on open level-0 ground in x00_y02', () => {
+      const { depots, pickups, boulders } = parsed('test_x00_y02');
+      expect(depots).toHaveLength(1);
+      expect(pickups.map((p) => p.ability ?? p.minor).sort()).toEqual(
+        ['ammo_rack', 'armor_plate', 'dozer_blade', 'mortar'].sort(),
+      );
+      expect(boulders).toHaveLength(1);
+      for (const o of [...depots, ...pickups, ...boulders]) {
+        expect(cellUnder(o).solid).toBe(false);
+        expect(cellUnder(o).level).toBe(0);
+      }
+    });
+
+    it('guards the way east with rubble', () => {
+      const without: MoveContext = { pawn: 'tank', abilities: [] };
+      const withDozer: MoveContext = { pawn: 'tank', abilities: ['dozer_blade'] };
+      const rubble = [...cells.entries()].filter(([, c]) => c.terrain === 'rubble');
+      const inGallery = rubble.filter(([k]) => Number(k.split(',')[1]) >= 2 * CHUNK_H);
+      expect(inGallery.length).toBeGreaterThan(0);
+      const [x, y] = inGallery[0]![0].split(',').map(Number) as [number, number];
+      expect(canEnter(cellAt(x - 1, y), cellAt(x, y), 'e', without)).toBe(false);
+      expect(canEnter(cellAt(x - 1, y), cellAt(x, y), 'e', withDozer)).toBe(true);
+    });
+
+    it('puts a mortar switch on a level-1 shelf behind a door it opens', () => {
+      const { switches, doors } = parsed('test_x01_y02');
+      expect(switches).toEqual([expect.objectContaining({ activatedBy: 'mortar' })]);
+      expect(cellUnder(switches[0]!).level).toBe(1);
+      expect(doors).toEqual([expect.objectContaining({ opensWith: switches[0]!.key })]);
+    });
+
+    it('puts a cannon switch on level 0 and the door it opens in x02_y02', () => {
+      const { switches, doors } = parsed('test_x02_y02');
+      expect(switches).toEqual([expect.objectContaining({ activatedBy: 'cannon' })]);
+      expect(cellUnder(switches[0]!).level).toBe(0);
+      expect(doors).toEqual([expect.objectContaining({ opensWith: switches[0]!.key })]);
+    });
+
+    it('is fully reachable, and the repair kit at the end needs the mortar', () => {
+      expect(reach()).toEqual([]);
+      const noMortar = reach((o) =>
+        (o.properties ?? []).some((p) => p.name === 'ability' && p.value === 'mortar'),
+      );
+      expect(noMortar.map((i) => i.message)).toEqual([
+        expect.stringMatching(/pickup "repair_kit_1" is unreachable/),
+      ]);
+    });
   });
 });

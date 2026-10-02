@@ -55,6 +55,34 @@
             "width": 480,
             "x": 1440,
             "y": 272
+        },
+        {
+            "fileName": "test_x00_y02.tmj",
+            "height": 272,
+            "width": 480,
+            "x": 0,
+            "y": 544
+        },
+        {
+            "fileName": "test_x01_y02.tmj",
+            "height": 272,
+            "width": 480,
+            "x": 480,
+            "y": 544
+        },
+        {
+            "fileName": "test_x02_y02.tmj",
+            "height": 272,
+            "width": 480,
+            "x": 960,
+            "y": 544
+        },
+        {
+            "fileName": "test_x03_y02.tmj",
+            "height": 272,
+            "width": 480,
+            "x": 1440,
+            "y": 544
         }
     ],
     "onlyShowAdjacentMaps": false,
