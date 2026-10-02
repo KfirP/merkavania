@@ -27,6 +27,7 @@ export class KeyboardMouseAdapter implements InputAdapter {
     cycleNext: new RisingEdge(),
     cyclePrev: new RisingEdge(),
     hatch: new RisingEdge(),
+    repair: new RisingEdge(),
     interact: new RisingEdge(),
     map: new RisingEdge(),
     pause: new RisingEdge(),
@@ -74,6 +75,7 @@ export class KeyboardMouseAdapter implements InputAdapter {
     cmd.cycleNext = this.edges.cycleNext.update(down('cycle_next')) || wheel > 0;
     cmd.cyclePrev = this.edges.cyclePrev.update(down('cycle_prev')) || wheel < 0;
     cmd.hatch = this.edges.hatch.update(down('hatch'));
+    cmd.repair = this.edges.repair.update(down('repair'));
     cmd.interact = this.edges.interact.update(down('interact'));
     cmd.map = this.edges.map.update(down('map'));
     cmd.pause = this.edges.pause.update(k[PAUSE_KEY]?.isDown ?? false);

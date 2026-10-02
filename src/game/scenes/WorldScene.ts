@@ -171,6 +171,7 @@ export class WorldScene extends Phaser.Scene {
 
     this.progression.emitLoadout();
     this.progression.emitAbilities();
+    this.progression.emitRepair();
     this.scene.launch(SceneKey.Hud);
     events.emit('hp:changed', { target: 'player', hp: this.tank.hp, max: this.tank.maxHp });
     if (this.sys.game.device.input.touch) this.scene.launch(SceneKey.TouchControls);
@@ -240,6 +241,7 @@ export class WorldScene extends Phaser.Scene {
     else if (cmd.pause) return this.openOverlay(SceneKey.Pause);
     // A dead tank ignores input until it respawns; input is still polled so edges stay current.
     this.pawns.update(cmd, dt);
+    if (cmd.repair) this.fieldRepair();
     this.applyHazards(dt);
     if (this.tank.alive) this.checkDepot();
     this.updateEnemies(dt);
@@ -306,6 +308,13 @@ export class WorldScene extends Phaser.Scene {
       this.progression.depot(key);
     }
     this.onDepot = key;
+  }
+
+  /** Spends a repair kit charge, if the tank is the active pawn and hurt. */
+  private fieldRepair(): void {
+    if (this.pawns.active !== this.tank || !this.tank.alive) return;
+    const gained = this.progression.repair(this.tank.hp, this.tank.maxHp);
+    if (gained !== null) this.tank.heal(gained);
   }
 
   private collect(p: Pickup): void {

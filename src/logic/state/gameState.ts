@@ -3,6 +3,7 @@ import { mkTiers, type MkTierId } from '../../data/mkTiers';
 import {
   AMMO_RACK_BONUS,
   ARMOR_PLATE_HP,
+  REPAIR_KIT_HEAL,
   secondaries,
   secondaryIds,
   type SecondaryId,
@@ -27,6 +28,8 @@ export interface GameState {
   /** Biome id → chunk ids visited, in visit order. */
   visitedChunks: Record<string, string[]>;
   playtimeMs: number;
+  /** Field repairs left (at most one per `repair_kit`); depots refill them. */
+  repairCharges: number;
 }
 
 export interface PickupGrant {
@@ -47,6 +50,7 @@ export function newGame(): GameState {
     flags: new WorldFlags(),
     visitedChunks: {},
     playtimeMs: 0,
+    repairCharges: 0,
   };
 }
 
@@ -56,6 +60,21 @@ export function hasAbility(s: GameState, ability: AbilityId): boolean {
 
 export function maxHp(s: GameState): number {
   return mkTiers[s.mk].hp + s.minor.armor_plate * ARMOR_PLATE_HP;
+}
+
+/** Field repair charges when full: one per repair kit. */
+export function repairCapacity(s: GameState): number {
+  return s.minor.repair_kit;
+}
+
+/**
+ * Spends a repair charge on a tank at `hp` of `max`; returns the HP it gains, or null (and spends
+ * nothing) without a charge, at full HP or when dead.
+ */
+export function useRepairKit(s: GameState, hp: number, max: number): number | null {
+  if (s.repairCharges <= 0 || hp <= 0 || hp >= max) return null;
+  s.repairCharges -= 1;
+  return Math.min(max - hp, Math.ceil(max * REPAIR_KIT_HEAL));
 }
 
 /** Rounds a limited secondary holds when full; null for unlimited ones. */
@@ -86,6 +105,7 @@ export function collectPickup(s: GameState, pickup: PickupGrant): boolean {
   if (pickup.ability) grantAbility(s, pickup.ability);
   if (pickup.minor) {
     s.minor[pickup.minor] += 1;
+    if (pickup.minor === 'repair_kit') s.repairCharges += 1;
     if (pickup.minor === 'ammo_rack')
       for (const id of unlockedSecondaries(s))
         if (s.secondaryAmmo[id] !== undefined) s.secondaryAmmo[id] += AMMO_RACK_BONUS;
@@ -113,6 +133,7 @@ export function spendAmmo(s: GameState, id: SecondaryId): boolean {
 /** A repair depot: it becomes the respawn point and refills every limited secondary. */
 export function useDepot(s: GameState, key: string): void {
   s.depot = key;
+  s.repairCharges = repairCapacity(s);
   for (const id of unlockedSecondaries(s)) {
     const cap = ammoCapacity(s, id);
     if (cap !== null) s.secondaryAmmo[id] = cap;

@@ -118,6 +118,10 @@ export interface GameEvents {
   'abilities:changed': { abilities: AbilityId[] };
   /** A pickup was taken (and the game saved). */
   'pickup:collected': { key: string; ability?: AbilityId; minor?: MinorPickupId };
+  /** Repair kit charges left and how many the kits hold (on start, and whenever either changes). */
+  'repair:changed': { charges: number; capacity: number };
+  /** A repair kit charge was spent; the tank gained `hp`. */
+  'repair:used': { hp: number };
   /** The tank rolled onto a depot: healed, rearmed and (if `saved`) written to its slot. */
   'depot:used': { key: string; saved: boolean };
   'switch:activated': { key: string };

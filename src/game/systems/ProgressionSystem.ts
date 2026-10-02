@@ -15,9 +15,11 @@ import {
   hasAbility,
   maxHp,
   newGame,
+  repairCapacity,
   spendAmmo,
   unlockedSecondaries,
   useDepot,
+  useRepairKit,
   visitChunk,
   type GameState,
 } from '../../logic/state/gameState';
@@ -67,6 +69,7 @@ export class ProgressionSystem {
     events.emit('pickup:collected', grant);
     this.emitLoadout();
     if (grant.ability) this.emitAbilities();
+    if (grant.minor === 'repair_kit') this.emitRepair();
     return { hpBonus: spec.minor === 'armor_plate' ? ARMOR_PLATE_HP : 0 };
   }
 
@@ -76,6 +79,7 @@ export class ProgressionSystem {
     const saved = this.save();
     events.emit('depot:used', { key, saved });
     this.emitLoadout();
+    this.emitRepair();
   }
 
   selected(): SecondaryId {
@@ -93,6 +97,23 @@ export class ProgressionSystem {
     const ok = spendAmmo(this.state, id);
     if (ok && ammoCapacity(this.state, id) !== null) this.emitLoadout();
     return ok;
+  }
+
+  /** Spends a repair kit charge on a tank at `hp` of `max`; the HP it gains, or null. */
+  repair(hp: number, max: number): number | null {
+    const gained = useRepairKit(this.state, hp, max);
+    if (gained !== null) {
+      this.emitRepair();
+      events.emit('repair:used', { hp: gained });
+    }
+    return gained;
+  }
+
+  emitRepair(): void {
+    events.emit('repair:changed', {
+      charges: this.state.repairCharges,
+      capacity: repairCapacity(this.state),
+    });
   }
 
   tick(ms: number): void {

@@ -5,6 +5,8 @@ import type { WeaponId } from './weapons';
 export const ARMOR_PLATE_HP = 20;
 /** Extra rounds each `ammo_rack` adds to every limited secondary. */
 export const AMMO_RACK_BONUS = 2;
+/** Share of max HP one `repair_kit` charge restores (rounded up). Charges refill at depots. */
+export const REPAIR_KIT_HEAL = 0.5;
 
 /** Secondary weapons on alt fire, in cycle order (GAME_DESIGN.md, Controls). */
 export const secondaryIds = ['coax_mg', 'mortar'] as const;

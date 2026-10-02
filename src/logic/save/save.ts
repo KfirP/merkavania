@@ -2,14 +2,14 @@ import { abilityIds, minorPickupIds, type AbilityId } from '../../data/abilities
 import { mkTiers, type MkTierId } from '../../data/mkTiers';
 import { isSecondaryId, secondaryIds, type SecondaryId } from '../../data/progression';
 import { WorldFlags } from '../state/flags';
-import { newGame, type GameState } from '../state/gameState';
+import { newGame, repairCapacity, type GameState } from '../state/gameState';
 import { migrate, migrations } from './migrations';
 
 /**
  * Versioned saves in localStorage (docs/ARCHITECTURE.md, Save system). Bump SAVE_VERSION and add a
  * migration whenever `SaveData` changes.
  */
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 export const SLOTS = [1, 2, 3] as const;
 
 export interface SaveData {
@@ -24,6 +24,8 @@ export interface SaveData {
   depotId: string | null;
   flags: Record<string, boolean | number>;
   visitedChunks: Record<string, string[]>;
+  /** Since v2. */
+  repairCharges: number;
 }
 
 export function serialize(s: GameState, now: number): SaveData {
@@ -41,6 +43,7 @@ export function serialize(s: GameState, now: number): SaveData {
     visitedChunks: Object.fromEntries(
       Object.entries(s.visitedChunks).map(([biome, ids]) => [biome, [...ids]]),
     ),
+    repairCharges: s.repairCharges,
   };
 }
 
@@ -74,6 +77,7 @@ export function deserialize(raw: unknown): GameState | null {
     for (const [biome, ids] of Object.entries(data.visitedChunks))
       if (Array.isArray(ids)) s.visitedChunks[biome] = ids.filter((i) => typeof i === 'string');
   s.playtimeMs = count(data.playtimeMs);
+  s.repairCharges = Math.min(count(data.repairCharges), repairCapacity(s));
   return s;
 }
 

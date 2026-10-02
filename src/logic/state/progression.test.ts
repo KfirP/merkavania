@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { mkTiers } from '../../data/mkTiers';
-import { AMMO_RACK_BONUS, ARMOR_PLATE_HP, secondaries } from '../../data/progression';
+import {
+  AMMO_RACK_BONUS,
+  ARMOR_PLATE_HP,
+  REPAIR_KIT_HEAL,
+  secondaries,
+} from '../../data/progression';
 import {
   ammoCapacity,
   collectPickup,
@@ -9,9 +14,11 @@ import {
   hasAbility,
   maxHp,
   newGame,
+  repairCapacity,
   spendAmmo,
   unlockedSecondaries,
   useDepot,
+  useRepairKit,
   visitChunk,
 } from './gameState';
 
@@ -28,6 +35,7 @@ describe('newGame', () => {
     expect(s.flags.toJSON()).toEqual([]);
     expect(s.visitedChunks).toEqual({});
     expect(s.playtimeMs).toBe(0);
+    expect(s.repairCharges).toBe(0);
     expect(maxHp(s)).toBe(mkTiers.mk2.hp);
   });
 });
@@ -64,10 +72,12 @@ describe('collectPickup', () => {
     expect(s.secondaryAmmo.mortar).toBe(MORTAR_AMMO + AMMO_RACK_BONUS);
   });
 
-  it('counts repair kits', () => {
+  it('counts repair kits, and a new kit comes charged', () => {
     const s = newGame();
     collectPickup(s, { key: 'c:k', minor: 'repair_kit' });
     expect(s.minor.repair_kit).toBe(1);
+    expect(repairCapacity(s)).toBe(1);
+    expect(s.repairCharges).toBe(1);
   });
 });
 
@@ -101,7 +111,51 @@ describe('secondaries', () => {
   });
 });
 
+describe('useRepairKit', () => {
+  const withKits = (n: number) => {
+    const s = newGame();
+    for (let i = 0; i < n; i++) collectPickup(s, { key: `c:k${i}`, minor: 'repair_kit' });
+    return s;
+  };
+
+  it('spends a charge to heal a share of max HP', () => {
+    const s = withKits(2);
+    const max = maxHp(s);
+    expect(useRepairKit(s, 10, max)).toBe(Math.ceil(max * REPAIR_KIT_HEAL));
+    expect(s.repairCharges).toBe(1);
+  });
+
+  it('never heals past max HP', () => {
+    const s = withKits(1);
+    const max = maxHp(s);
+    expect(useRepairKit(s, max - 3, max)).toBe(3);
+  });
+
+  it('does nothing without a charge, at full HP or when dead', () => {
+    const max = maxHp(newGame());
+    expect(useRepairKit(newGame(), 10, max)).toBeNull();
+    const s = withKits(1);
+    expect(useRepairKit(s, max, max)).toBeNull();
+    expect(useRepairKit(s, 0, max)).toBeNull();
+    expect(s.repairCharges).toBe(1);
+  });
+
+  it('heal share is sane', () => {
+    expect(REPAIR_KIT_HEAL).toBeGreaterThan(0);
+    expect(REPAIR_KIT_HEAL).toBeLessThanOrEqual(1);
+  });
+});
+
 describe('useDepot', () => {
+  it('refills repair kit charges', () => {
+    const s = newGame();
+    collectPickup(s, { key: 'c:k', minor: 'repair_kit' });
+    useRepairKit(s, 1, maxHp(s));
+    expect(s.repairCharges).toBe(0);
+    useDepot(s, 'a:depot');
+    expect(s.repairCharges).toBe(1);
+  });
+
   it('records the depot and refills secondary ammo', () => {
     const s = newGame();
     collectPickup(s, { key: 'c:m', ability: 'mortar' });

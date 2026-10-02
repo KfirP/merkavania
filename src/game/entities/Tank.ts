@@ -139,6 +139,12 @@ export class Tank extends Pawn implements Damageable {
     events.emit('hp:changed', { target: this.combatId, hp: this.hp, max: this.maxHp });
   }
 
+  /** A field repair: up to `amount` HP back. */
+  heal(amount: number): void {
+    this.hp = Math.min(this.maxHp, this.hp + amount);
+    events.emit('hp:changed', { target: this.combatId, hp: this.hp, max: this.maxHp });
+  }
+
   /** A depot: back to full HP. */
   repair(): void {
     this.hp = this.maxHp;

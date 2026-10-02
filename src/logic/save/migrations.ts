@@ -7,8 +7,19 @@
 export type Migration = (old: Record<string, unknown>) => Record<string, unknown>;
 export type Migrations = Readonly<Record<number, Migration>>;
 
-/** Version 1 is the first shape; nothing to migrate yet. */
-export const migrations: Migrations = {};
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v);
+
+export const migrations: Migrations = {
+  /** v2 added repair kit charges: every kit owned starts charged. */
+  1: (old) => {
+    const kits = isRecord(old.minor) ? old.minor.repair_kit : undefined;
+    return {
+      ...old,
+      repairCharges: Number.isInteger(kits) && (kits as number) > 0 ? (kits as number) : 0,
+    };
+  },
+};
 
 /** Brings a stored save up to `target`; null if it's newer or a step is missing. */
 export function migrate(
