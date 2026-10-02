@@ -7,6 +7,7 @@ import { BootScene } from './game/scenes/BootScene';
 import { DebugScene } from './game/scenes/DebugScene';
 import { HudScene } from './game/scenes/HudScene';
 import { PreloadScene } from './game/scenes/PreloadScene';
+import { PauseScene } from './game/scenes/PauseScene';
 import { SettingsScene } from './game/scenes/SettingsScene';
 import { TitleScene } from './game/scenes/TitleScene';
 import { TouchControlsScene } from './game/scenes/TouchControlsScene';
@@ -36,6 +37,7 @@ const game = new Phaser.Game({
     WorldScene,
     HudScene,
     TouchControlsScene,
+    PauseScene,
     SettingsScene,
     DebugScene,
   ],

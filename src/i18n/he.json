@@ -65,5 +65,8 @@
   "controls.hatch": "דלת אחורית",
   "controls.interact": "פעולה",
   "controls.repair": "ערכת תיקון",
-  "controls.map": "מפה"
+  "controls.map": "מפה",
+  "pause.title": "הפסקה",
+  "pause.resume": "המשך",
+  "pause.quit": "יציאה למסך הפתיחה"
 }

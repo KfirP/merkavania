@@ -21,7 +21,8 @@ const K = Phaser.Input.Keyboard.KeyCodes;
  * GAME_DESIGN.md controls.
  */
 export class KeyboardMouseAdapter implements InputAdapter {
-  private readonly keys;
+  private keys: Record<string, Phaser.Input.Keyboard.Key> = {};
+  private binds!: Keybinds;
   private readonly edges = {
     cycleNext: new RisingEdge(),
     cyclePrev: new RisingEdge(),
@@ -40,16 +41,25 @@ export class KeyboardMouseAdapter implements InputAdapter {
 
   constructor(
     private readonly scene: Phaser.Scene,
-    private readonly binds: Keybinds = settings().keybinds,
+    binds: Keybinds = settings().keybinds,
   ) {
-    const kb = scene.input.keyboard;
-    if (!kb) throw new Error('Keyboard input is disabled');
-    const keyNames = new Set([PAUSE_KEY, ...bindableActions.flatMap((a) => binds[a])]);
-    this.keys = kb.addKeys(
-      Object.fromEntries([...keyNames].map((n) => [n, K[n as keyof typeof K]])),
-    ) as Record<string, Phaser.Input.Keyboard.Key>;
+    this.useBindings(binds);
     scene.input.mouse?.disableContextMenu();
     scene.input.on('wheel', this.onWheel);
+  }
+
+  /** Switches to new bindings (after the settings screen), registering any new keys. */
+  useBindings(binds: Keybinds): void {
+    const kb = this.scene.input.keyboard;
+    if (!kb) throw new Error('Keyboard input is disabled');
+    this.binds = binds;
+    const names = [PAUSE_KEY, ...bindableActions.flatMap((a) => binds[a])].filter(
+      (n) => !(n in this.keys),
+    );
+    Object.assign(
+      this.keys,
+      kb.addKeys(Object.fromEntries(names.map((n) => [n, K[n as keyof typeof K]]))),
+    );
   }
 
   poll(cmd: TankCommand, origin: InputContext): boolean {

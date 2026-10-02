@@ -1,5 +1,6 @@
 import type Phaser from 'phaser';
 import { INPUT_DEVICES, selectDevice, type InputDevice } from '../../logic/input/device';
+import type { Keybinds } from '../../logic/input/keybinds';
 import { emptyCommand, type TankCommand } from '../../logic/input/TankCommand';
 import { GamepadAdapter } from '../input/GamepadAdapter';
 import type { InputAdapter, InputContext } from '../input/InputAdapter';
@@ -11,6 +12,7 @@ import { TouchAdapter } from '../input/TouchAdapter';
  * from the most recently used device, so an idle mouse can't override the gamepad's aim.
  */
 export class InputSystem {
+  private readonly keyboard: KeyboardMouseAdapter;
   private readonly adapters: Record<InputDevice, InputAdapter>;
   private readonly scratch: Record<InputDevice, TankCommand> = {
     keyboardMouse: emptyCommand(),
@@ -20,8 +22,9 @@ export class InputSystem {
   active: InputDevice = 'keyboardMouse';
 
   constructor(scene: Phaser.Scene) {
+    this.keyboard = new KeyboardMouseAdapter(scene);
     this.adapters = {
-      keyboardMouse: new KeyboardMouseAdapter(scene),
+      keyboardMouse: this.keyboard,
       gamepad: new GamepadAdapter(scene),
       touch: new TouchAdapter(scene),
     };
@@ -37,6 +40,10 @@ export class InputSystem {
     }
     this.active = selectDevice(this.active, used);
     return this.scratch[this.active];
+  }
+
+  useBindings(binds: Keybinds): void {
+    this.keyboard.useBindings(binds);
   }
 
   destroy(): void {

@@ -35,6 +35,7 @@ import { PawnSystem } from '../systems/PawnSystem';
 import { ProgressionSystem, slotFromUrl } from '../systems/ProgressionSystem';
 import { ProjectileSystem } from '../systems/ProjectileSystem';
 import { SpawnSystem } from '../systems/SpawnSystem';
+import { settings } from '../settings';
 import { SceneKey } from './keys';
 
 /** Longest step fed to pawns, so a tab-switch hitch doesn't launch the tank through a wall. */
@@ -69,6 +70,11 @@ export class WorldScene extends Phaser.Scene {
   /** Depot pad the tank is on, so a depot fires once per visit. */
   private onDepot: string | null = null;
   private elevationOverlay: Phaser.GameObjects.Graphics | null = null;
+  /**
+   * Frames left in which the pause and map commands are ignored: the press that closed an overlay
+   * mustn't open it again.
+   */
+  private overlayGuard = 0;
 
   constructor() {
     super(SceneKey.World);
@@ -181,7 +187,9 @@ export class WorldScene extends Phaser.Scene {
       events.on('world:chunks', this.redrawElevation, this);
     }
 
+    this.events.on(Phaser.Scenes.Events.RESUME, this.onResume, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.events.off(Phaser.Scenes.Events.RESUME, this.onResume, this);
       this.inputSystem.destroy();
       this.streamer.destroy();
       this.spawner.destroy();
@@ -205,6 +213,19 @@ export class WorldScene extends Phaser.Scene {
     });
   }
 
+  /** Pauses the world under an overlay (pause menu, map); the touch controls sleep meanwhile. */
+  private openOverlay(key: string): void {
+    if (this.scene.isActive(SceneKey.TouchControls)) this.scene.sleep(SceneKey.TouchControls);
+    this.scene.launch(key);
+    this.scene.pause();
+  }
+
+  private onResume(): void {
+    this.overlayGuard = 2;
+    this.inputSystem.useBindings(settings().keybinds);
+    if (this.scene.isSleeping(SceneKey.TouchControls)) this.scene.wake(SceneKey.TouchControls);
+  }
+
   override update(_time: number, delta: number): void {
     const dt = Math.min(delta / 1000, MAX_DT);
     this.progression.tick(delta);
@@ -215,6 +236,8 @@ export class WorldScene extends Phaser.Scene {
     this.streamer.update(x, y);
     this.elevation.prepare(this.tank);
     const cmd = this.inputSystem.update({ x, y, turretAngle: pawn.aim, dt });
+    if (this.overlayGuard > 0) this.overlayGuard--;
+    else if (cmd.pause) return this.openOverlay(SceneKey.Pause);
     // A dead tank ignores input until it respawns; input is still polled so edges stay current.
     this.pawns.update(cmd, dt);
     this.applyHazards(dt);

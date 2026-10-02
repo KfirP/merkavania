@@ -65,5 +65,8 @@
   "controls.hatch": "Rear hatch",
   "controls.interact": "Interact",
   "controls.repair": "Repair kit",
-  "controls.map": "Map"
+  "controls.map": "Map",
+  "pause.title": "Paused",
+  "pause.resume": "Resume",
+  "pause.quit": "Quit to title"
 }
