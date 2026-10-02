@@ -34,7 +34,7 @@ Current target: **Vertical slice** (desert biome, M0–M8). Tick milestones off 
 - [x] Depots (drive onto the pad), 3 save slots (slot 1 or `?slot=N` until M6's slot select), versioned save + migrations, respawn at the last depot
 - [x] `validate:maps` rule 6, progression reachability
 - [x] Test world row y02, the progression gallery; e2e specs for every gate and the save loop
-- Carried over: using a `repair_kit` charge needs the M6 HUD; rubble doesn't change look once the dozer can cross it (M7 art)
+- Carried over: rubble doesn't change look once the dozer can cross it (M7 art)
 
 ## M5: Rear hatch ✅
 - [x] Pawn switching (`PawnSystem`), scout pawn with a light rifle, `crawlspace`, walk-on scout switches, recall (auto-walk on a BFS route) and walk-back boarding, leash
@@ -42,10 +42,11 @@ Current target: **Vertical slice** (desert biome, M0–M8). Tick milestones off 
 - [x] `validate:maps` rule 6 counts pickups the scout can reach
 - [x] Test world M5 corner (x03_y02); `hatch.spec.ts` plus touch and gamepad hatch specs
 
-## M6: UI & i18n
-- [ ] HUD (HP, ammo, selected secondary, minimap hint), map screen, pause/settings, title/slot select
-- [ ] i18n with `en`/`he`, RTL text, Hebrew-capable pixel font chosen and verified
-- [ ] Touch UI polish, rotate-device prompt
+## M6: UI & i18n ✅
+- [x] HUD (Mk tier, gun rounds, HP, selected secondary and ammo, repair kits, 3×3 minimap), map screen, pause menu, settings (language, touch controls, volumes, keybinds), title/slot select
+- [x] i18n with `en`/`he`, RTL text and a mirrored HUD; Public Pixel (CC0) as the UI font, its Hebrew coverage checked by a test
+- [x] Touch UI polish (pause, map, swap and repair buttons; touch-controls setting), rotate-device prompt
+- [x] Repair kit charges (carried over from M4): R / X / touch button, refilled at depots; save v2
 
 ## M7: Vertical slice content
 - [ ] Desert biome, 15–20 chunks, per the `GAME_DESIGN.md` slice spec
