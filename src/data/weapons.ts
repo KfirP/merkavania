@@ -5,6 +5,7 @@ export type WeaponId =
   | 'gun_105'
   | 'coax_mg'
   | 'rifle'
+  | 'rifle_scout'
   | 'mg_technical'
   | 'mg_bunker'
   | 'atgm'
@@ -82,6 +83,19 @@ export const weapons: Record<WeaponId, WeaponDef> = {
     ammo: 'standard',
     spread: 0.08,
     interval: 0.7,
+    recoil: 0,
+  },
+  /** The player's scout: quicker and harder-hitting than the enemy rifle, still small arms. */
+  rifle_scout: {
+    id: 'rifle_scout',
+    projectile: 'bullet_mg',
+    speed: 300,
+    range: 160,
+    damage: 4,
+    class: 'small_arms',
+    ammo: 'standard',
+    spread: 0.04,
+    interval: 0.3,
     recoil: 0,
   },
   mg_technical: {

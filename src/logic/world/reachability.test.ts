@@ -182,6 +182,32 @@ describe('checkReachability', () => {
     expect(checkReachability(world(g, objs))).toEqual([]);
   });
 
+  it('the scout picks up what only it can crawl to', () => {
+    // Same pocket, no door: the mortar inside is only reachable through the crawlspace, and the
+    // depot behind the cliff needs that mortar's switch.
+    const g = grid({
+      ...rect(18, 23, 4, 4, { solid: true }),
+      ...rect(18, 18, 1, 3, { solid: true }),
+      ...rect(23, 23, 1, 3, { solid: true }),
+      '21,4': { solid: false, terrain: 'crawlspace' },
+      ...rect(8, 12, 10, 14, { level: 1 }),
+    });
+    const pocketMortar = pickup('m', 20, 2, { ability: 'mortar' });
+    const base = [
+      start(2, 8),
+      pocketMortar,
+      switchAt('s', 'mortar', 10, 12),
+      door('gate', 's', 25),
+      depot('behind', 27, 8),
+    ];
+    expect(messages(world(g, base))).toEqual([
+      expect.stringMatching(/pickup "m".*unreachable/),
+      expect.stringMatching(/depot "behind".*unreachable/),
+    ]);
+    const withHatch = [...base, pickup('hatch', 5, 8, { ability: 'hatch_scout' })];
+    expect(checkReachability(world(g, withHatch))).toEqual([]);
+  });
+
   it('an mk_upgrade grants its signature ability', () => {
     // Level 1 from column 16 on, reached only by a steep ramp at column 15.
     const g = grid({

@@ -11,8 +11,9 @@ import type { MapIssue } from './validate';
 /**
  * Progression reachability (docs/LEVEL_DESIGN.md, validate:maps rule 6). Starting at `start` as a
  * Mk2 with no abilities, it floods the cells the tank can drive to, takes every pickup and
- * `mk_upgrade` it reaches, flips every switch it can activate from there (which opens their doors),
- * and repeats until nothing changes. Every pickup, depot, boss and `mk_upgrade` still unreached is
+ * `mk_upgrade` it reaches (plus, once it has `hatch_scout`, every pickup the scout can walk to from
+ * there), flips every switch it can activate (which opens their doors), and repeats until nothing
+ * changes. Every pickup, depot, boss and `mk_upgrade` still unreached is
  * reported. It works on single cells, so it's coarse: it doesn't know the tank is 2 tiles wide.
  */
 
@@ -125,6 +126,12 @@ export function checkReachability(chunks: readonly ReachChunk[]): MapIssue[] {
   const abilities = new Set<AbilityId>();
   const taken = new Set<Placed>();
   let reached = new Set<string>();
+  /** Cells the scout can walk to from the tank's reach (empty without `hatch_scout`). */
+  let scoutReached = new Set<string>();
+
+  /** The tank drives there, or it's a pickup the scout can walk to. */
+  const reachable = (o: Placed) =>
+    reached.has(o.tile) || (o.raw.type === 'pickup' && scoutReached.has(o.tile));
 
   const canActivate = (sw: Placed): boolean => {
     const level = cells.get(sw.tile)?.level ?? 0;
@@ -148,10 +155,7 @@ export function checkReachability(chunks: readonly ReachChunk[]): MapIssue[] {
         });
       }
       case 'scout':
-        return (
-          abilities.has('hatch_scout') &&
-          flood(reached, { pawn: 'scout', abilities: [...abilities] }).has(sw.tile)
-        );
+        return scoutReached.has(sw.tile);
       default:
         return false; // drone, lahat and remote switches can't be checked yet
     }
@@ -161,8 +165,11 @@ export function checkReachability(chunks: readonly ReachChunk[]): MapIssue[] {
     changed = false;
     blocked = closedDoorTiles();
     reached = flood([start.tile], { pawn: 'tank', abilities: [...abilities] });
+    scoutReached = abilities.has('hatch_scout')
+      ? flood(reached, { pawn: 'scout', abilities: [...abilities] })
+      : new Set();
     for (const o of placed) {
-      if (taken.has(o) || !reached.has(o.tile)) continue;
+      if (taken.has(o) || !reachable(o)) continue;
       const grant =
         o.raw.type === 'pickup'
           ? o.props.ability
@@ -186,7 +193,7 @@ export function checkReachability(chunks: readonly ReachChunk[]): MapIssue[] {
 
   const have = abilities.size ? [...abilities].sort().join(', ') : 'none';
   return placed
-    .filter((o) => MUST_REACH.includes(o.raw.type ?? '') && !reached.has(o.tile))
+    .filter((o) => MUST_REACH.includes(o.raw.type ?? '') && !reachable(o))
     .map((o) => {
       const name = o.props.id ?? o.props.bossType ?? o.props.tier ?? o.raw.id;
       return {

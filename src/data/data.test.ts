@@ -5,6 +5,8 @@ import { assetManifest, getAsset, type AssetKey } from './assetManifest';
 import { ammoTypes, armorIds, armorMultipliers, REAR_ARC, weaponClasses } from './combat';
 import { enemies, enemyBehaviours, enemyIds } from './enemies';
 import { materialIds, materials } from './materials';
+import { scout } from './pawns';
+import { CHUNK_PX_W } from '../logic/world/chunks';
 import { allMkTierIds, mkTiers } from './mkTiers';
 import { terrains } from './terrain';
 import { AMMO_RACK_BONUS, ARMOR_PLATE_HP, secondaries, secondaryIds } from './progression';
@@ -298,5 +300,35 @@ describe('progression', () => {
       expect(keys).toContain(k);
     expect(keys).toContain(weapons.mortar_60.projectile);
     expect(keys).toContain('shadow');
+  });
+});
+
+describe('scout', () => {
+  it('references an existing sprite, weapon and armor', () => {
+    expect(keys).toContain(scout.sprite);
+    expect(Object.keys(weapons)).toContain(scout.weapon);
+    expect(armorIds).toContain(scout.armor);
+    expect(weapons[scout.weapon].class).toBe('small_arms');
+  });
+
+  it('is a small, fragile, quick infantryman', () => {
+    expect(scout.hp).toBeGreaterThan(0);
+    expect(scout.hp).toBeLessThan(mkTiers.mk2.hp);
+    expect(scout.bodyRadius).toBeGreaterThan(0);
+    // Fits a 1-tile crawlspace.
+    expect(scout.bodyRadius * 2).toBeLessThan(16);
+    expect(scout.speed).toBeGreaterThan(0);
+    expect(scout.recallSpeed).toBeGreaterThanOrEqual(scout.speed);
+  });
+
+  it('keeps its leash inside one chunk, so the tank never streams out', () => {
+    expect(scout.leash).toBeGreaterThan(scout.boardRadius);
+    expect(scout.leash).toBeLessThan(CHUNK_PX_W);
+  });
+
+  it('boards from outside the tank body, and has a sane hatch timing', () => {
+    expect(scout.boardRadius).toBeGreaterThan(mkTiers.mk2.bodyRadius + scout.bodyRadius);
+    expect(scout.deploySpeedMax).toBeGreaterThan(0);
+    expect(scout.deathCooldown).toBeGreaterThan(0);
   });
 });
