@@ -16,14 +16,14 @@ const textStyle = (size: number): Phaser.Types.GameObjects.Text.TextStyle => ({
   fontFamily: 'monospace',
   fontSize: `${size}px`,
   color: '#f0e6c8',
-  stroke: '#1f1f10',
-  strokeThickness: 2,
+  backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  padding: { x: 3, y: 2 },
   rtl: isRtl(),
 });
 
 /**
  * Runs on top of WorldScene: the tank's HP bar and selected secondary (bottom left), and a short
- * message for pickups and depots (top). M6 grows it into the full HUD. Driven only by events,
+ * message for pickups and depots (bottom centre). M6 grows it into the full HUD. Driven only by events,
  * never by reaching into WorldScene.
  */
 export class HudScene extends Phaser.Scene {
@@ -43,10 +43,11 @@ export class HudScene extends Phaser.Scene {
       .setOrigin(0)
       .setStrokeStyle(1, 0x1f1f10);
     this.fill = this.add.rectangle(BAR.x, y, BAR.width, BAR.height, HP_COLOR).setOrigin(0);
-    this.secondary = this.add.text(BAR.x, y - 3, '', textStyle(8)).setOrigin(0, 1);
+    this.secondary = this.add.text(BAR.x - 1, y - 3, '', textStyle(8)).setOrigin(0, 1);
+    // Bottom centre: clear of the debug overlay and of the HP bar.
     this.toast = this.add
-      .text(GAME_WIDTH / 2, 8, '', textStyle(8))
-      .setOrigin(0.5, 0)
+      .text(GAME_WIDTH / 2, GAME_HEIGHT - 24, '', textStyle(8))
+      .setOrigin(0.5, 1)
       .setVisible(false);
 
     const hp = events.latest('hp:changed');
