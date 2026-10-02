@@ -93,6 +93,57 @@ const drawers: Partial<Record<AssetKey, Draw>> = {
     g.fillStyle(0xffb030).fillRect(0, 1, 1, 2);
     return { width: 8, height: 4 };
   },
+  shell_mortar: (g) => {
+    g.fillStyle(OUTLINE).fillCircle(2, 2, 2);
+    g.fillStyle(0x9a9a7a).fillRect(1, 1, 2, 2);
+    return { width: 4, height: 4 };
+  },
+  shadow: (g) => {
+    g.fillStyle(0x000000, 0.35).fillEllipse(4, 2, 8, 4);
+    return { width: 8, height: 4 };
+  },
+  pickup: (g) => {
+    // Supply crate with a yellow star.
+    g.fillStyle(OUTLINE).fillRect(0, 0, 14, 14);
+    g.fillStyle(0x8a6a3a).fillRect(1, 1, 12, 12);
+    g.fillStyle(0xffd84a).fillTriangle(7, 2, 11, 11, 3, 11).fillTriangle(3, 5, 11, 5, 7, 12);
+    return { width: 14, height: 14 };
+  },
+  depot_pad: (g) => {
+    // Concrete pad with a green repair cross.
+    g.fillStyle(OUTLINE).fillRect(0, 0, 32, 32);
+    g.fillStyle(0x8a8a80).fillRect(1, 1, 30, 30);
+    g.fillStyle(0x5a5a52);
+    for (let i = 3; i < 30; i += 6) g.fillRect(i, 1, 1, 30);
+    g.fillStyle(0x3fae4a).fillRect(13, 7, 6, 18).fillRect(7, 13, 18, 6);
+    return { width: 32, height: 32 };
+  },
+  switch_off: (g) => {
+    g.fillStyle(OUTLINE).fillRect(0, 0, 12, 12);
+    g.fillStyle(0x5a5a52).fillRect(1, 1, 10, 10);
+    g.fillStyle(0xd6453e).fillCircle(6, 6, 3);
+    return { width: 12, height: 12 };
+  },
+  switch_on: (g) => {
+    g.fillStyle(OUTLINE).fillRect(0, 0, 12, 12);
+    g.fillStyle(0x5a5a52).fillRect(1, 1, 10, 10);
+    g.fillStyle(0x4ae05a).fillCircle(6, 6, 3);
+    return { width: 12, height: 12 };
+  },
+  door: (g) => {
+    // One 16px tile of a steel blast door; tiled over the door's rect.
+    g.fillStyle(OUTLINE).fillRect(0, 0, 16, 16);
+    g.fillStyle(0x5e6670).fillRect(1, 1, 14, 14);
+    g.fillStyle(0xe0b030).fillRect(1, 6, 14, 2);
+    g.fillStyle(OUTLINE).fillRect(1, 7, 14, 1);
+    return { width: 16, height: 16 };
+  },
+  boulder: (g) => {
+    g.fillStyle(OUTLINE).fillCircle(8, 8, 8);
+    g.fillStyle(0x8a7a64).fillCircle(8, 8, 7);
+    g.fillStyle(0xa8977c).fillCircle(6, 6, 3);
+    return { width: 16, height: 16 };
+  },
   enemy_rifle_soldier: (g) => {
     // Helmet from above, shoulders and a rifle pointing east.
     g.fillStyle(OUTLINE).fillCircle(4, 4, 4);
