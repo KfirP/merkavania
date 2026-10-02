@@ -5,14 +5,16 @@ import { allMkTierIds } from '../../data/mkTiers';
 import { isTerrainId } from '../../data/terrain';
 import { CHUNK_H, CHUNK_W, chunkId } from './chunks';
 import { parseChunkGrid, type ChunkGrid, type Dir, type GridMap } from './grid';
+import type { RawObject as ReachObject } from './objects';
+import { checkReachability } from './reachability';
 import { embedTilesets, resolveRelativePath, type TiledMap, type TiledTileset } from './tiled';
 import { levelsConnect } from './traversal';
 import { parseWorld, type TiledWorld, type WorldChunk } from './world';
 
 /**
- * Map validation rules v1 (docs/LEVEL_DESIGN.md, "What validate:maps checks", rules 1–5).
- * Pure: files come in through `load(path)` with public/-relative paths. Boss ids are only checked
- * for presence until their table exists (M7); reachability arrives in M4.
+ * Map validation rules (docs/LEVEL_DESIGN.md, "What validate:maps checks", rules 1–6; rule 6,
+ * reachability, lives in reachability.ts). Pure: files come in through `load(path)` with
+ * public/-relative paths. Boss ids are only checked for presence until their table exists (M7).
  */
 
 export interface MapIssue {
@@ -106,6 +108,10 @@ interface RawObject {
   id: number;
   name?: string;
   type?: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
   polyline?: unknown[];
   properties?: Property[];
 }
@@ -208,6 +214,8 @@ function validateObjects(file: string, objects: RawObject[], known: KnownIds): M
     }
     const props = propsOf(o);
     if (o.type === 'spawn' && !o.name) at(o, 'spawn needs a name');
+    if (o.type === 'door' && !(o.width && o.height))
+      at(o, 'door must be a rectangle (it blocks the cells it covers)');
     if (o.type === 'pickup' && props.ability === undefined && props.minor === undefined)
       at(o, 'pickup needs an ability or minor property');
     for (const [name, check] of Object.entries(rule.checks ?? {}))
@@ -409,6 +417,22 @@ export function validateWorlds(worldPaths: string[], load: Load, known: KnownIds
       chunks.set(chunk.id, { chunk, map, grid: gridOf(chunk.path, map, load) });
     }
     issues.push(...validateEdges(chunks));
+    issues.push(
+      ...checkReachability(
+        [...chunks.values()].flatMap(({ chunk, map, grid }) =>
+          grid
+            ? [
+                {
+                  chunk,
+                  grid,
+                  objects: (map.layers.find((l) => l.name === 'objects')?.objects ??
+                    []) as ReachObject[],
+                },
+              ]
+            : [],
+        ),
+      ),
+    );
   }
   issues.push(...validateExits(biomes));
   return issues;

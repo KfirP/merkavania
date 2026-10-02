@@ -21,8 +21,8 @@ The same actions are available on every input device, and all of them feed into 
 | Rotate hull | A / D | Left stick X | Left virtual stick X |
 | Aim turret | Mouse position | Right stick | Right virtual stick |
 | Fire main gun | Right click | RT | Right stick: drag to aim, lift to fire (drag back to the centre first to cancel) |
-| Alt fire (coax MG / mortar / missile) | Left click | LT | Alt button toggles MG mode, which switches the right stick from the cannon to the coax: it fires while dragged past its outer ring, and lifting never fires the cannon. The mortar and missile will need their own touch gesture (decide in M4) |
-| Cycle ammo / secondary | Q / E, wheel | LB / RB | Swap button |
+| Alt fire: the selected secondary (coax MG / mortar / missile) | Left click (the mortar lands at the cursor) | LT (right-stick tilt sets the mortar range) | Alt button toggles MG mode, which switches the right stick from the cannon to the coax: it fires while dragged past its outer ring, and lifting never fires the cannon. The mortar has its own button (shown once you have it): drag from it to a spot and lift to fire there; drag back onto it to cancel. The missile will need its own gesture too |
+| Cycle ammo / secondary | Q / E, wheel | LB / RB | Swap button (M6) |
 | Rear hatch (deploy/recall pawn) | F | Y | Hatch button |
 | Interact | Space | A | Context button (appears when relevant) |
 | Map | M / Tab | Select | Map button |
@@ -76,11 +76,12 @@ Sequence breaks: the design tolerates skilled players reaching areas early (for 
 - Hazards: a `minefield` or `missile_zone` without its ability deals damage every second.
 - The tank flattens soldiers it drives into. It is a tank.
 - Secondary weapons use limited ammo that refills at depots. The main gun and coax MG have unlimited ammo, with a reload time for the main gun.
-- **Death:** respawn at the last depot you used (the `start` spawn until depots arrive in M4). Pickups you collected are kept (they're saved when collected); enemies respawn.
+- **Death:** respawn at the last depot you used (the `start` spawn before the first one). Pickups you collected are kept (they're saved when collected); enemies respawn.
 
 ## Save & depots
-- **Repair depots** (`depot` objects) heal fully, refill secondary ammo and save the game.
+- **Repair depots** (`depot` objects) heal fully, refill secondary ammo and save the game when you drive onto the pad (once per visit).
 - There are 3 save slots.
+- The 60mm mortar holds 6 rounds (+2 per `ammo_rack`); each `armor_plate` adds 20 max HP (`data/progression.ts`).
 - The map screen shows the chunks you've explored, depots, and any collected or seen pickup markers.
 
 ## Enemies (mostly military)

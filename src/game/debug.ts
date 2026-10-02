@@ -1,8 +1,12 @@
 import type Phaser from 'phaser';
+import type { AbilityId } from '../data/abilities';
+import { slotKey, type SaveData } from '../logic/save/save';
 import {
   events,
   type CombatHit,
   type EntitiesTelemetry,
+  type GameEvents,
+  type ObjectsTelemetry,
   type PawnTelemetry,
   type WorldState,
 } from './events';
@@ -41,6 +45,18 @@ export interface DebugHooks {
   getEnemies(): EntitiesTelemetry['enemies'];
   /** Spawns an enemy (a whole squad for `rifle_squad`) at world (x, y), facing `facing` rad. */
   spawnEnemy(type: string, x: number, y: number, facing?: number): void;
+  /** The GameState as of the last frame, in save shape; null before WorldScene runs. */
+  getState(): SaveData | null;
+  /** Gives the tank an ability without its pickup. */
+  grantAbility(ability: AbilityId): void;
+  /** What's stored in save slot `slot` (parsed), or null. */
+  getSave(slot: number): unknown;
+  /** Empties save slot `slot`. */
+  clearSave(slot: number): void;
+  /** Pickups, switches, doors, depots and boulders in the loaded chunks, as of the last frame. */
+  getObjects(): ObjectsTelemetry;
+  /** Where mortar shells came down since boot, oldest first. */
+  getMortarLandings(): GameEvents['mortar:landed'][];
 }
 
 declare global {
@@ -57,6 +73,18 @@ export function installDebugHooks(game: Phaser.Game): void {
   const shots: Record<string, number> = {};
   const hits: CombatHit[] = [];
   let entities: EntitiesTelemetry = { destructibles: [], enemies: [] };
+  let objects: ObjectsTelemetry = {
+    pickups: [],
+    switches: [],
+    doors: [],
+    depots: [],
+    boulders: [],
+  };
+  let state: SaveData | null = null;
+  const landings: GameEvents['mortar:landed'][] = [];
+  events.on('debug:objects', (o) => (objects = o));
+  events.on('debug:state', (s) => (state = s));
+  events.on('mortar:landed', (l) => landings.push(l));
   events.on('debug:entities', (e) => (entities = e));
   events.on('debug:pawn', (p) => (pawn = p));
   events.on('world:chunks', (w) => (world = w));
@@ -81,5 +109,14 @@ export function installDebugHooks(game: Phaser.Game): void {
     getDestructibles: () => entities.destructibles.map((d) => ({ ...d })),
     getEnemies: () => entities.enemies.map((e) => ({ ...e })),
     spawnEnemy: (type, x, y, facing = 0) => events.emit('debug:spawnEnemy', { type, x, y, facing }),
+    getState: () => state && (JSON.parse(JSON.stringify(state)) as SaveData),
+    grantAbility: (ability) => events.emit('debug:grantAbility', { ability }),
+    getSave: (slot) => {
+      const raw = window.localStorage.getItem(slotKey(slot));
+      return raw === null ? null : (JSON.parse(raw) as unknown);
+    },
+    clearSave: (slot) => window.localStorage.removeItem(slotKey(slot)),
+    getObjects: () => JSON.parse(JSON.stringify(objects)) as ObjectsTelemetry,
+    getMortarLandings: () => landings.map((l) => ({ ...l })),
   };
 }

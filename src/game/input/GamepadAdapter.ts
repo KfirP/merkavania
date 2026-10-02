@@ -1,6 +1,8 @@
 import type Phaser from 'phaser';
 import { RisingEdge } from '../../logic/input/edge';
-import { padAnalog } from '../../logic/input/mapping';
+import { weapons } from '../../data/weapons';
+import { padAnalog, padLobDistance } from '../../logic/input/mapping';
+import { stickMagnitude } from '../../logic/input/stick';
 import type { TankCommand } from '../../logic/input/TankCommand';
 import type { InputAdapter } from './InputAdapter';
 
@@ -9,7 +11,10 @@ const TRIGGER_THRESHOLD = 0.4;
 /** Standard-mapping button indices (W3C Gamepad "standard" layout). */
 const B = { a: 0, y: 3, lb: 4, rb: 5, lt: 6, rt: 7, select: 8, start: 9 } as const;
 
-/** Left stick drives, right stick aims, RT/LT fire. See GAME_DESIGN.md controls. */
+/**
+ * Left stick drives, right stick aims (its tilt sets the mortar range), RT fires the main gun, LT
+ * the selected secondary. See GAME_DESIGN.md controls.
+ */
 export class GamepadAdapter implements InputAdapter {
   private readonly edges = {
     cycleNext: new RisingEdge(),
@@ -32,6 +37,13 @@ export class GamepadAdapter implements InputAdapter {
 
     const analog = padAnalog(axis(0), axis(1), axis(2), axis(3));
     Object.assign(cmd, analog);
+    // Right-stick tilt picks the mortar range.
+    const mortar = weapons.mortar_60;
+    cmd.aimDistance = padLobDistance(
+      stickMagnitude(axis(2), axis(3)),
+      mortar.lob!.minRange,
+      mortar.range,
+    );
 
     cmd.fire = pressed(B.rt);
     cmd.altFire = pressed(B.lt);

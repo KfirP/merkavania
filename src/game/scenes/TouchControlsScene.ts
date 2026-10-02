@@ -3,12 +3,16 @@ import { stickMagnitude } from '../../logic/input/stick';
 import { TOUCH_MG_THRESHOLD, touchAimZone, type TouchAimZone } from '../../logic/input/touchAim';
 import { dragToStick } from '../../logic/input/virtualStick';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../logic/scale';
+import { events, type GameEvents } from '../events';
 import { touchState, type StickState } from '../input/touchState';
 import { SceneKey } from './keys';
 
 const STICK_RADIUS = 28;
 const KNOB_RADIUS = 11;
 const ALT_BUTTON = { x: GAME_WIDTH - 30, y: GAME_HEIGHT - 110, r: 16 };
+/** Mortar button, left of ALT; shown once the tank has the mortar. */
+const MORTAR_BUTTON = { x: GAME_WIDTH - 70, y: GAME_HEIGHT - 110, r: 14 };
+const MORTAR_COLOR = 0xc2b280;
 const IDLE_ALPHA = 0.25;
 const ALT_COLOR = 0xffb030;
 /** Right knob colour per zone: grey = release cancels, orange = release fires, yellow = MG. */
@@ -30,8 +34,10 @@ interface VirtualStick {
  * Dual floating virtual sticks: each appears where the thumb lands in its half of the screen.
  * Left drives the hull. Right aims; lifting it fires the cannon, and dragging back to the centre
  * first cancels. The ALT button toggles MG mode, which switches the right stick to the coax: its
- * outer ring (shown only in MG mode) fires the MG, and lifting never fires the cannon. Writes
- * `touchState` for TouchAdapter; rules in touchAim.ts.
+ * outer ring (shown only in MG mode) fires the MG, and lifting never fires the cannon. Once the
+ * tank has the mortar, its button appears: drag from it to a spot and lift to lob a shell there
+ * (back onto the button cancels). Writes `touchState` for TouchAdapter; rules in touchAim.ts and
+ * touchLob.ts.
  * Always running but hidden until the first real touch: many desktop browsers report touch
  * support, and a touchscreen laptop may never be touched.
  */
@@ -39,6 +45,9 @@ export class TouchControlsScene extends Phaser.Scene {
   private sticks!: { left: VirtualStick; right: VirtualStick };
   private altButton!: Phaser.GameObjects.Arc;
   private mgRing!: Phaser.GameObjects.Arc;
+  private mortarButton!: Phaser.GameObjects.Arc;
+  private lobLine!: Phaser.GameObjects.Graphics;
+  private lobPointer: number | null = null;
 
   constructor() {
     super(SceneKey.TouchControls);
@@ -59,6 +68,12 @@ export class TouchControlsScene extends Phaser.Scene {
       .setStrokeStyle(1, ZONE_COLOR.mg, 0.5)
       .setVisible(false);
     this.refreshMgMode();
+    this.mortarButton = this.add
+      .circle(MORTAR_BUTTON.x, MORTAR_BUTTON.y, MORTAR_BUTTON.r, MORTAR_COLOR, IDLE_ALPHA)
+      .setStrokeStyle(1, 0xffffff, 0.6);
+    this.lobLine = this.add.graphics();
+    this.onLoadout(events.latest('loadout:changed'));
+    events.on('loadout:changed', this.onLoadout, this);
     this.cameras.main.setVisible(false);
 
     this.input.on('pointerdown', this.onDown, this);
@@ -68,6 +83,8 @@ export class TouchControlsScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       for (const s of Object.values(this.sticks)) this.release(s);
       touchState.mgOn = false;
+      this.releaseLob();
+      events.off('loadout:changed', this.onLoadout, this);
     });
   }
 
@@ -88,6 +105,12 @@ export class TouchControlsScene extends Phaser.Scene {
       this.refreshMgMode();
       return;
     }
+    if (this.overMortar(p) && this.mortarButton.visible && this.lobPointer === null) {
+      this.lobPointer = p.id;
+      Object.assign(touchState.lob, { active: true, overButton: true, x: p.x, y: p.y });
+      this.mortarButton.setAlpha(0.7);
+      return;
+    }
     const stick = p.x < GAME_WIDTH / 2 ? this.sticks.left : this.sticks.right;
     if (stick.pointerId !== null) return;
     stick.pointerId = p.id;
@@ -100,6 +123,7 @@ export class TouchControlsScene extends Phaser.Scene {
   private onMove(p: Phaser.Input.Pointer): void {
     if (!p.wasTouch) return;
     touchState.lastTouchAt = performance.now();
+    if (p.id === this.lobPointer) this.dragLob(p);
     for (const stick of Object.values(this.sticks)) {
       if (stick.pointerId !== p.id) continue;
       const s = dragToStick(p.x - stick.base.x, p.y - stick.base.y, STICK_RADIUS);
@@ -116,8 +140,41 @@ export class TouchControlsScene extends Phaser.Scene {
   private onUp(p: Phaser.Input.Pointer): void {
     if (!p.wasTouch) return;
     touchState.lastTouchAt = performance.now();
+    if (p.id === this.lobPointer) {
+      this.dragLob(p);
+      this.releaseLob();
+    }
     for (const stick of Object.values(this.sticks))
       if (stick.pointerId === p.id) this.release(stick);
+  }
+
+  private overMortar(p: { x: number; y: number }): boolean {
+    const d = Phaser.Math.Distance.Between(p.x, p.y, MORTAR_BUTTON.x, MORTAR_BUTTON.y);
+    return d <= MORTAR_BUTTON.r + 4;
+  }
+
+  /** Follows the finger with a line and a target ring; grey while it's back on the button. */
+  private dragLob(p: Phaser.Input.Pointer): void {
+    const over = this.overMortar(p);
+    Object.assign(touchState.lob, { overButton: over, x: p.x, y: p.y });
+    const color = over ? ZONE_COLOR.cancel : ZONE_COLOR.armed;
+    this.lobLine
+      .clear()
+      .lineStyle(1, color, 0.6)
+      .lineBetween(MORTAR_BUTTON.x, MORTAR_BUTTON.y, p.x, p.y)
+      .strokeCircle(p.x, p.y, 6);
+  }
+
+  /** The finger lifted: TouchAdapter fires (or not) from the last spot in `touchState.lob`. */
+  private releaseLob(): void {
+    this.lobPointer = null;
+    touchState.lob.active = false;
+    this.lobLine.clear();
+    this.mortarButton.setAlpha(IDLE_ALPHA);
+  }
+
+  private onLoadout(loadout: GameEvents['loadout:changed'] | undefined): void {
+    this.mortarButton.setVisible(loadout?.unlocked.includes('mortar') ?? false);
   }
 
   private release(stick: VirtualStick): void {

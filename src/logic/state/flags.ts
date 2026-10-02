@@ -1,6 +1,6 @@
 /**
- * Persistent world state keyed `<chunkId>:<objectId>`: broken destructibles now, and pickups,
- * switches and doors from M4, when this becomes part of the saved GameState.
+ * Persistent world state keyed `<chunkId>:<objectId>`: pickups taken, destructibles broken and
+ * switches flipped. Part of the saved GameState.
  */
 export class WorldFlags {
   private readonly keys: Set<string>;

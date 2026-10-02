@@ -10,7 +10,8 @@ const K = Phaser.Input.Keyboard.KeyCodes;
 
 /**
  * WASD/arrows drive the hull and the mouse aims (world position). Right click fires the main gun,
- * left click is alt fire. See GAME_DESIGN.md controls.
+ * left click is alt fire (the selected secondary; the mortar lands at the cursor). See
+ * GAME_DESIGN.md controls.
  */
 export class KeyboardMouseAdapter implements InputAdapter {
   private readonly keys;
@@ -82,6 +83,7 @@ export class KeyboardMouseAdapter implements InputAdapter {
     const cam = this.scene.cameras.main;
     const world = mouse.positionToCamera(cam) as Phaser.Math.Vector2;
     cmd.aimAngle = angleTo(origin.x, origin.y, world.x, world.y);
+    cmd.aimDistance = Math.hypot(world.x - origin.x, world.y - origin.y);
     const buttons = mouseButtons(
       mouse.leftButtonDown(),
       mouse.rightButtonDown(),

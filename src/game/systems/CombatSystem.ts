@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { WeaponDef } from '../../data/weapons';
 import { damageMaterial, resolveHit } from '../../logic/combat/damage';
-import { canHit } from '../../logic/combat/faction';
+import { canHit, type Owner } from '../../logic/combat/faction';
 import { applyDamage } from '../../logic/combat/health';
 import { splashFalloff } from '../../logic/combat/splash';
 import type { Damageable } from '../entities/Damageable';
@@ -11,6 +11,26 @@ import type { EffectsSystem } from './EffectsSystem';
 import type { ProjectileSystem } from './ProjectileSystem';
 
 type Target = Damageable & Phaser.GameObjects.GameObject;
+
+/** Something hits only toggle, never hurt (switches): told about every hit on its level. */
+export interface Trigger extends Phaser.GameObjects.GameObject {
+  readonly level: number;
+  readonly pos: { x: number; y: number };
+  hitBy(weapon: WeaponDef, owner: Owner): void;
+}
+
+/** A blast: a splash projectile's impact or a landing mortar shell. */
+export interface Blast {
+  x: number;
+  y: number;
+  level: number;
+  owner: Owner;
+  weapon: WeaponDef;
+  depth: number;
+}
+
+/** Extra reach of a blast onto a trigger, px (the switch's own size). */
+const TRIGGER_REACH = 6;
 
 interface HitInfo {
   weapon: WeaponDef;
@@ -27,6 +47,7 @@ interface HitInfo {
 export class CombatSystem {
   /** Everything that can be hit (for splash); entities are added as they spawn. */
   private readonly targets = new Set<Target>();
+  private readonly triggers = new Set<Trigger>();
   /** Debug: the player takes no damage. */
   god = false;
   /** Target of the direct hit being resolved, so its splash doesn't hit it twice. */
@@ -68,6 +89,32 @@ export class CombatSystem {
     target.once(Phaser.GameObjects.Events.DESTROY, () => this.targets.delete(target));
   }
 
+  /** Lets projectiles and blasts on its level reach a trigger; it leaves again when destroyed. */
+  addTrigger(trigger: Trigger): void {
+    this.triggers.add(trigger);
+    trigger.once(Phaser.GameObjects.Events.DESTROY, () => this.triggers.delete(trigger));
+  }
+
+  /** Projectiles stop on the triggers in a physics group (same level) and tell them who hit. */
+  watchTriggers(group: Phaser.Physics.Arcade.StaticGroup): Phaser.Physics.Arcade.Collider {
+    const pair = (a: unknown, b: unknown) =>
+      (a instanceof Projectile ? [a, b] : [b, a]) as [Projectile, Trigger];
+    return this.scene.physics.add.overlap(
+      this.projectiles.group,
+      group,
+      (a, b) => {
+        const [shot, trigger] = pair(a, b);
+        if (!shot.active) return;
+        trigger.hitBy(shot.weapon, shot.owner);
+        this.projectiles.impact(shot);
+      },
+      (a, b) => {
+        const [shot, trigger] = pair(a, b);
+        return shot.active && shot.level === trigger.level;
+      },
+    );
+  }
+
   /** Damage from outside a weapon (hazard terrain, debug); ignores armor. */
   damage(target: Damageable, amount: number): void {
     this.apply(target, amount);
@@ -86,22 +133,35 @@ export class CombatSystem {
 
   /** Every impact (target, wall, cliff): the blast and its splash damage. */
   private impact(p: Projectile): void {
-    const radius = p.weapon.splash ?? 0;
-    if (radius <= 0) {
+    if ((p.weapon.splash ?? 0) <= 0) {
       if (!this.direct) this.effects.puff(p.x, p.y, p.depth);
       return;
     }
-    this.effects.explosion(p.x, p.y, radius, p.depth);
+    const { x, y, level, owner, weapon, depth } = p;
+    this.explode({ x, y, level, owner, weapon, depth });
+  }
+
+  /**
+   * An explosion: effects, splash damage with falloff to every other-side target on its level,
+   * and a hit on every trigger in reach there.
+   */
+  explode(b: Blast): void {
+    const radius = b.weapon.splash ?? 0;
+    this.effects.explosion(b.x, b.y, radius, b.depth);
     for (const t of [...this.targets]) {
-      if (t === this.direct || !t.alive || !canHit(p, t)) continue;
+      if (t === this.direct || !t.alive || !canHit(b, t)) continue;
       const falloff = splashFalloff(
-        Phaser.Math.Distance.Between(p.x, p.y, t.pos.x, t.pos.y),
+        Phaser.Math.Distance.Between(b.x, b.y, t.pos.x, t.pos.y),
         radius,
       );
       if (falloff <= 0) continue;
-      const angle = Phaser.Math.Angle.Between(p.x, p.y, t.pos.x, t.pos.y);
-      const hit = this.resolve(p.weapon, t, angle);
-      this.apply(t, hit.damage * falloff, { ...hit, weapon: p.weapon, splash: true });
+      const angle = Phaser.Math.Angle.Between(b.x, b.y, t.pos.x, t.pos.y);
+      const hit = this.resolve(b.weapon, t, angle);
+      this.apply(t, hit.damage * falloff, { ...hit, weapon: b.weapon, splash: true });
+    }
+    for (const t of [...this.triggers]) {
+      const d = Phaser.Math.Distance.Between(b.x, b.y, t.pos.x, t.pos.y);
+      if (t.level === b.level && d <= radius + TRIGGER_REACH) t.hitBy(b.weapon, b.owner);
     }
   }
 

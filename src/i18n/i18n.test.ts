@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import en from './en.json';
 import he from './he.json';
+import { abilityIds, minorPickupIds } from '../data/abilities';
+import { secondaryIds } from '../data/progression';
 import { setLanguage, t } from './i18n';
 
 describe('i18n', () => {
@@ -20,5 +22,16 @@ describe('i18n', () => {
     expect(t('title.name')).toBe(en['title.name']);
     setLanguage('he');
     expect(t('title.name')).toBe(he['title.name']);
+  });
+});
+
+describe('progression text', () => {
+  it('names every ability and minor pickup', () => {
+    for (const id of [...abilityIds, ...minorPickupIds])
+      expect(en).toHaveProperty([`pickup.${id}`]);
+  });
+
+  it('labels every secondary in the HUD', () => {
+    for (const id of secondaryIds) expect(en).toHaveProperty([`hud.secondary.${id}`]);
   });
 });

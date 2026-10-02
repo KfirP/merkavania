@@ -2,7 +2,14 @@ import type { AssetKey } from './assetManifest';
 import type { AmmoType, WeaponClass } from './combat';
 
 export type WeaponId =
-  'gun_105' | 'coax_mg' | 'rifle' | 'mg_technical' | 'mg_bunker' | 'atgm' | 'gun_light_tank';
+  | 'gun_105'
+  | 'coax_mg'
+  | 'rifle'
+  | 'mg_technical'
+  | 'mg_bunker'
+  | 'atgm'
+  | 'gun_light_tank'
+  | 'mortar_60';
 
 export interface WeaponDef {
   id: WeaponId;
@@ -29,6 +36,11 @@ export interface WeaponDef {
   interval: number;
   /** Turret recoil kick in px. */
   recoil: number;
+  /**
+   * Lobbed (the mortar): flies in an arc over walls and levels to a chosen spot between
+   * `minRange` and `range`, at `speed` px/s along the ground; `apex` is the arc's height, px.
+   */
+  lob?: { minRange: number; apex: number };
 }
 
 /** Quick-round refill time per round (docs/GAME_DESIGN.md: 3 × quick rounds seconds). */
@@ -122,5 +134,19 @@ export const weapons: Record<WeaponId, WeaponDef> = {
     spread: 0.02,
     interval: 2.5,
     recoil: 2,
+  },
+  mortar_60: {
+    id: 'mortar_60',
+    projectile: 'shell_mortar',
+    speed: 150,
+    range: 220,
+    damage: 35,
+    class: 'cannon',
+    ammo: 'standard',
+    splash: 18,
+    spread: 0,
+    interval: 0.9,
+    recoil: 0,
+    lob: { minRange: 48, apex: 48 },
   },
 };

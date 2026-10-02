@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { getAsset } from '../../data/assetManifest';
 import { mkTiers, type MkTier, type MkTierId } from '../../data/mkTiers';
+import { secondaries, type SecondaryId } from '../../data/progression';
 import { QUICK_ROUND_REFILL_SECONDS, weapons } from '../../data/weapons';
 import type { TankCommand } from '../../logic/input/TankCommand';
 import { tickCooldown, tryTrigger } from '../../logic/tank/cooldown';
@@ -16,6 +17,7 @@ import {
 import { stepTurret } from '../../logic/tank/turret';
 import { depthFor } from '../../logic/world/depth';
 import { events } from '../events';
+import type { MortarSystem } from '../systems/MortarSystem';
 import type { ProjectileSystem } from '../systems/ProjectileSystem';
 import type { Damageable, Defense } from './Damageable';
 import { Pawn } from './Pawn';
@@ -25,6 +27,14 @@ const RECOIL_RECOVERY = 20;
 /** Coax MG sits to the left of the main gun: distance along the barrel and to its left, px. */
 const COAX_FORWARD = 12;
 const COAX_SIDE = 4;
+
+/** Which secondaries the tank carries and their ammo (ProgressionSystem, over the GameState). */
+export interface Arsenal {
+  selected(): SecondaryId;
+  cycle(dir: 1 | -1): void;
+  /** Uses a round; false when the secondary is locked or empty. */
+  spend(id: SecondaryId): boolean;
+}
 
 /** The player's Merkava: hull with momentum, an independently traversing turret, main gun + coax MG. */
 export class Tank extends Pawn implements Damageable {
@@ -38,6 +48,9 @@ export class Tank extends Pawn implements Damageable {
   private turretAngle: number;
   private gun: MainGunState;
   private mgCooldown = 0;
+  private mortarCooldown = 0;
+  /** Last mortar range asked for (mouse distance, stick tilt); null = full range. */
+  private lobDistance: number | null = null;
   private recoil = 0;
   private lastGunEvent = '';
 
@@ -48,9 +61,13 @@ export class Tank extends Pawn implements Damageable {
     tierId: MkTierId,
     heading: number,
     private readonly projectiles: ProjectileSystem,
+    private readonly arsenal: Arsenal,
+    private readonly mortar: MortarSystem,
+    /** Tier HP plus armor plates (GameState). */
+    maxHp: number,
   ) {
     const tier = mkTiers[tierId];
-    super(scene, x, y, tier.sprites.hull, tier.hp, tier.bodyRadius);
+    super(scene, x, y, tier.sprites.hull, maxHp, tier.bodyRadius);
     this.tier = tier;
     this.hull = { heading, speed: 0 };
     this.turretAngle = heading;
@@ -114,6 +131,20 @@ export class Tank extends Pawn implements Damageable {
     events.emit('player:respawned', undefined);
   }
 
+  /** An armor plate: max HP grows and the tank gains the same HP. */
+  raiseMaxHp(max: number): void {
+    const gained = max - this.maxHp;
+    this.maxHp = max;
+    if (this.alive) this.hp = Math.min(max, this.hp + Math.max(0, gained));
+    events.emit('hp:changed', { target: this.combatId, hp: this.hp, max: this.maxHp });
+  }
+
+  /** A depot: back to full HP. */
+  repair(): void {
+    this.hp = this.maxHp;
+    events.emit('hp:changed', { target: this.combatId, hp: this.hp, max: this.maxHp });
+  }
+
   private get gunStats(): MainGunStats {
     return {
       quickRounds: this.tier.quickRounds,
@@ -159,6 +190,10 @@ export class Tank extends Pawn implements Damageable {
     const stats = this.gunStats;
     this.gun = tickGun(this.gun, stats, dt);
     this.mgCooldown = tickCooldown(this.mgCooldown, dt);
+    this.mortarCooldown = tickCooldown(this.mortarCooldown, dt);
+    if (cmd.cycleNext) this.arsenal.cycle(1);
+    if (cmd.cyclePrev) this.arsenal.cycle(-1);
+    if (cmd.aimDistance !== null) this.lobDistance = cmd.aimDistance;
     this.recoil = Math.max(0, this.recoil - RECOIL_RECOVERY * dt);
 
     if (cmd.fire) {
@@ -166,7 +201,12 @@ export class Tank extends Pawn implements Damageable {
       this.gun = shot.state;
       if (shot.fired) this.fireMainGun();
     }
-    if (cmd.altFire) {
+    const secondary = cmd.altCoax ? 'coax_mg' : this.arsenal.selected();
+    // The mortar sits on its own mount, so it lobs toward the aim, not where the turret points.
+    if (cmd.altFire && secondary === 'mortar')
+      this.fireMortar(cmd.aimAngle ?? this.turretAngle, this.lobDistance);
+    if (cmd.lob) this.fireMortar(cmd.lob.angle, cmd.lob.distance);
+    if (cmd.altFire && secondary === 'coax_mg') {
       const mg = weapons.coax_mg;
       const shot = tryTrigger(this.mgCooldown, mg.interval);
       this.mgCooldown = shot.remaining;
@@ -178,6 +218,13 @@ export class Tank extends Pawn implements Damageable {
       }
     }
     this.emitGunState();
+  }
+
+  private fireMortar(angle: number, distance: number | null): void {
+    const weapon = weapons[secondaries.mortar.weapon];
+    if (this.mortarCooldown > 0 || !this.arsenal.spend('mortar')) return;
+    this.mortarCooldown = tryTrigger(this.mortarCooldown, weapon.interval).remaining;
+    this.mortar.launch(weapon, this.pos, angle, distance, 'player');
   }
 
   private fireMainGun(): void {

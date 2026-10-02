@@ -7,6 +7,7 @@ import { enemies, enemyBehaviours, enemyIds } from './enemies';
 import { materialIds, materials } from './materials';
 import { allMkTierIds, mkTiers } from './mkTiers';
 import { terrains } from './terrain';
+import { AMMO_RACK_BONUS, ARMOR_PLATE_HP, secondaries, secondaryIds } from './progression';
 import { QUICK_ROUND_REFILL_SECONDS, weapons } from './weapons';
 
 const keys: string[] = assetManifest.map((a) => a.key);
@@ -252,5 +253,50 @@ describe('enemies', () => {
 
   it('keeps the mk2 able to outrun a guided missile on the road', () => {
     expect(weapons.atgm.speed).toBeLessThan(mkTiers.mk2.hull.maxSpeed * terrains.road.speedMul);
+  });
+});
+
+describe('mortar', () => {
+  it('lobs between a minimum and its full range, with an arc', () => {
+    const lob = weapons.mortar_60.lob!;
+    expect(lob).toBeDefined();
+    expect(lob.minRange).toBeGreaterThan(0);
+    expect(lob.minRange).toBeLessThan(weapons.mortar_60.range);
+    expect(lob.apex).toBeGreaterThan(0);
+    expect(weapons.mortar_60.splash).toBeGreaterThan(0);
+  });
+
+  it('is the only lobbed weapon', () => {
+    for (const w of Object.values(weapons)) if (w.id !== 'mortar_60') expect(w.lob).toBeUndefined();
+  });
+});
+
+describe('progression', () => {
+  it('lists the coax first, always unlocked, then ability-gated secondaries', () => {
+    expect(secondaryIds[0]).toBe('coax_mg');
+    expect(secondaries.coax_mg.ability).toBeUndefined();
+    expect(secondaries.mortar.ability).toBe('mortar');
+  });
+
+  it('references known weapons and abilities, with limited ammo for gated ones', () => {
+    for (const id of secondaryIds) {
+      const s = secondaries[id];
+      expect(weapons[s.weapon]).toBeDefined();
+      if (s.ability) expect(abilityIds).toContain(s.ability);
+      if (s.ammo !== undefined) expect(s.ammo).toBeGreaterThan(0);
+    }
+    expect(secondaries.coax_mg.ammo).toBeUndefined();
+  });
+
+  it('gives minor pickups positive bonuses', () => {
+    expect(ARMOR_PLATE_HP).toBeGreaterThan(0);
+    expect(AMMO_RACK_BONUS).toBeGreaterThan(0);
+  });
+
+  it('has a placeholder-or-file sprite for every progression object', () => {
+    for (const k of ['pickup', 'depot_pad', 'switch_off', 'switch_on', 'door', 'boulder'])
+      expect(keys).toContain(k);
+    expect(keys).toContain(weapons.mortar_60.projectile);
+    expect(keys).toContain('shadow');
   });
 });

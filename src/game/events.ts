@@ -1,5 +1,8 @@
 import Phaser from 'phaser';
+import type { AbilityId, MinorPickupId } from '../data/abilities';
+import type { SecondaryId } from '../data/progression';
 import type { WeaponId } from '../data/weapons';
+import type { SaveData } from '../logic/save/save';
 
 export interface PawnTelemetry {
   x: number;
@@ -61,6 +64,26 @@ export interface CombatHit {
   splash: boolean;
 }
 
+/** Debug builds only: progression objects in loaded chunks. */
+export interface ObjectsTelemetry {
+  pickups: { key: string; ability?: AbilityId; minor?: MinorPickupId; x: number; y: number }[];
+  switches: { key: string; activatedBy: string; activated: boolean; x: number; y: number }[];
+  doors: { key: string; opensWith: string; x: number; y: number }[];
+  depots: { key: string; x: number; y: number }[];
+  boulders: { key: string; x: number; y: number }[];
+}
+
+/** The selected secondary weapon and what the tank carries. */
+export interface Loadout {
+  selected: SecondaryId;
+  unlocked: SecondaryId[];
+  /** Rounds left in the selected secondary; null when unlimited. */
+  ammo: number | null;
+  capacity: number | null;
+  /** Rounds left per limited secondary. */
+  rounds: Partial<Record<SecondaryId, number>>;
+}
+
 export interface WorldState {
   /** Chunk the pawn is in. */
   chunk: string;
@@ -80,12 +103,27 @@ export interface GameEvents {
   'entity:destroyed': { id: string; kind: 'enemy' | 'destructible' };
   'player:died': undefined;
   'player:respawned': undefined;
+  /** A pickup was taken (and the game saved). */
+  'pickup:collected': { key: string; ability?: AbilityId; minor?: MinorPickupId };
+  /** The tank rolled onto a depot: healed, rearmed and (if `saved`) written to its slot. */
+  'depot:used': { key: string; saved: boolean };
+  'switch:activated': { key: string };
+  'door:opened': { key: string };
+  /** The selected secondary, unlocked secondaries or their ammo changed. */
+  'loadout:changed': Loadout;
+  /** A mortar shell came down at world (x, y) on `level`. */
+  'mortar:landed': { x: number; y: number; level: number };
   /** The pawn entered another chunk, or chunks were streamed in or out. */
   'world:chunks': WorldState;
   /** Debug builds only: emitted every frame by WorldScene. */
   'debug:pawn': PawnTelemetry;
   /** Debug builds only: emitted every frame by WorldScene. */
   'debug:entities': EntitiesTelemetry;
+  /** Debug builds only: emitted every frame by WorldScene. */
+  'debug:objects': ObjectsTelemetry;
+  /** Debug builds only: the GameState as it would be saved, emitted every frame. */
+  'debug:state': SaveData;
+  'debug:grantAbility': { ability: AbilityId };
   'debug:toggleBodies': undefined;
   'debug:toggleElevation': undefined;
   /** Moves the active pawn and stops it; `heading` in radians, kept if omitted. */
@@ -101,6 +139,15 @@ type EventName = keyof GameEvents & string;
 
 class TypedEventBus {
   private readonly emitter = new Phaser.Events.EventEmitter();
+  private readonly last = new Map<EventName, unknown>();
+
+  /**
+   * The last payload emitted for `event`. Overlay scenes start after WorldScene's first emits,
+   * so they read the current value here and then follow the event.
+   */
+  latest<K extends EventName>(event: K): GameEvents[K] | undefined {
+    return this.last.get(event) as GameEvents[K] | undefined;
+  }
 
   on<K extends EventName>(event: K, fn: (payload: GameEvents[K]) => void, context?: unknown): this {
     this.emitter.on(event, fn, context);
@@ -117,6 +164,7 @@ class TypedEventBus {
   }
 
   emit<K extends EventName>(event: K, payload: GameEvents[K]): boolean {
+    this.last.set(event, payload);
     return this.emitter.emit(event, payload);
   }
 }

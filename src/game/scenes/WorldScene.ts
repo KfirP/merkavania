@@ -3,13 +3,24 @@ import { getAsset } from '../../data/assetManifest';
 import { RESPAWN_DELAY } from '../../data/combat';
 import { crushes } from '../../logic/combat/crush';
 import { hazardDamage } from '../../logic/combat/hazard';
-import { WorldFlags } from '../../logic/state/flags';
 import { CHUNK_H, CHUNK_PX_H, CHUNK_PX_W, CHUNK_W, TILE } from '../../logic/world/chunks';
 import { ABOVE_DEPTH } from '../../logic/world/depth';
 import { WorldGrid } from '../../logic/world/grid';
-import { findSpawn, parseWorld, worldBounds, type TiledWorld } from '../../logic/world/world';
+import { findDepot, type RawObject } from '../../logic/world/objects';
+import { wallBlocksProjectile } from '../../logic/world/traversal';
+import {
+  findSpawn,
+  parseWorld,
+  worldBounds,
+  type TiledWorld,
+  type ParsedWorld,
+} from '../../logic/world/world';
 import { isDebug } from '../debug';
+import { Boulder } from '../entities/Boulder';
+import type { Door } from '../entities/Door';
 import type { Enemy, EnemyContext } from '../entities/Enemy';
+import type { Pickup } from '../entities/Pickup';
+import { Projectile } from '../entities/Projectile';
 import { Tank } from '../entities/Tank';
 import { events, type GameEvents } from '../events';
 import { ChunkStreamer } from '../systems/ChunkStreamer';
@@ -17,6 +28,8 @@ import { CombatSystem } from '../systems/CombatSystem';
 import { EffectsSystem } from '../systems/EffectsSystem';
 import { ElevationSystem } from '../systems/ElevationSystem';
 import { InputSystem } from '../systems/InputSystem';
+import { MortarSystem } from '../systems/MortarSystem';
+import { ProgressionSystem, slotFromUrl } from '../systems/ProgressionSystem';
 import { ProjectileSystem } from '../systems/ProjectileSystem';
 import { SpawnSystem } from '../systems/SpawnSystem';
 import { SceneKey } from './keys';
@@ -26,6 +39,8 @@ const MAX_DT = 1 / 20;
 const WORLD_KEY = 'world_test';
 /** Camera fade around a respawn, ms. */
 const FADE_MS = 400;
+/** The tank faces north at the start spawn and at depots. */
+const SPAWN_HEADING = -Math.PI / 2;
 
 /** Debug elevation tint per level (0 is left clear), plus ramps and chunk borders. */
 const LEVEL_TINTS = [0x000000, 0xe8d24a, 0xe8883a, 0xd6453e];
@@ -44,8 +59,11 @@ export class WorldScene extends Phaser.Scene {
   private spawner!: SpawnSystem;
   private enemyContext!: EnemyContext;
   private grid!: WorldGrid;
-  /** Where the tank respawns; M4 replaces it with the last depot. */
-  private respawnPoint!: { x: number; y: number; heading: number };
+  private world!: ParsedWorld;
+  private progression!: ProgressionSystem;
+  private mortar!: MortarSystem;
+  /** Depot pad the tank is on, so a depot fires once per visit. */
+  private onDepot: string | null = null;
   private elevationOverlay: Phaser.GameObjects.Graphics | null = null;
 
   constructor() {
@@ -57,32 +75,43 @@ export class WorldScene extends Phaser.Scene {
       this.cache.json.get(WORLD_KEY) as TiledWorld,
       getAsset(WORLD_KEY).path,
     );
+    this.world = world;
+    this.progression = new ProgressionSystem(slotFromUrl());
+    const state = this.progression.state;
     this.grid = new WorldGrid();
-    this.elevation = new ElevationSystem(this.grid);
+    this.elevation = new ElevationSystem(this.grid, () => state.abilities);
     this.projectiles = new ProjectileSystem(this, this.elevation.cellAt);
     this.effects = new EffectsSystem(this);
     this.combat = new CombatSystem(this, this.projectiles, this.effects);
+    this.mortar = new MortarSystem(this, this.combat, this.elevation.cellAt);
 
-    const spawn = findSpawn(world.chunks, (id) => this.cache.tilemap.get(id).data, 'start');
-    if (!spawn) throw new Error(`${WORLD_KEY} has no start spawn`);
-    this.respawnPoint = { ...spawn, heading: -Math.PI / 2 };
+    const spawn = this.respawnPoint();
+    this.onDepot = state.depot;
     this.tank = new Tank(
       this,
       spawn.x,
       spawn.y,
-      'mk2',
-      this.respawnPoint.heading,
+      state.mk,
+      spawn.heading,
       this.projectiles,
+      this.progression,
+      this.mortar,
+      this.progression.maxHp,
     );
     this.combat.add(this.tank);
     this.combat.watch(this.tank);
     events.on('player:died', this.onPlayerDied, this);
 
-    // Session-only until M4 puts it in the saved GameState.
-    const flags = new WorldFlags();
-    this.spawner = new SpawnSystem(this, this.combat, this.effects, flags, this.elevation.cellAt);
+    this.spawner = new SpawnSystem(
+      this,
+      this.combat,
+      this.effects,
+      state.flags,
+      this.elevation.cellAt,
+    );
     this.combat.watch(this.spawner.solids);
     this.combat.watch(this.spawner.enemies);
+    this.combat.watchTriggers(this.spawner.switches);
     this.addEntityColliders();
     this.projectiles.onTrail = (p) => this.effects.trail(p.x, p.y, p.depth);
     this.projectiles.homingTarget = (owner) =>
@@ -93,6 +122,7 @@ export class WorldScene extends Phaser.Scene {
       projectiles: this.projectiles,
     };
     events.on('player:respawned', this.onPlayerRespawned, this);
+    events.on('world:chunks', this.onChunks, this);
 
     this.streamer = new ChunkStreamer(
       this,
@@ -101,6 +131,7 @@ export class WorldScene extends Phaser.Scene {
       (walls) => [
         this.physics.add.collider(this.tank, walls),
         this.physics.add.collider(this.spawner.enemies, walls),
+        this.physics.add.collider(this.spawner.boulders, walls),
         this.projectiles.addWalls(walls),
       ],
       this.spawner,
@@ -115,6 +146,7 @@ export class WorldScene extends Phaser.Scene {
 
     this.inputSystem = new InputSystem(this);
 
+    this.progression.emitLoadout();
     this.scene.launch(SceneKey.Hud);
     events.emit('hp:changed', { target: 'player', hp: this.tank.hp, max: this.tank.maxHp });
     if (this.sys.game.device.input.touch) this.scene.launch(SceneKey.TouchControls);
@@ -126,6 +158,7 @@ export class WorldScene extends Phaser.Scene {
       events.on('debug:damagePlayer', this.debugDamage, this);
       events.on('debug:god', this.debugGod, this);
       events.on('debug:spawnEnemy', this.debugSpawnEnemy, this);
+      events.on('debug:grantAbility', this.debugGrant, this);
       events.on('world:chunks', this.redrawElevation, this);
     }
 
@@ -133,6 +166,9 @@ export class WorldScene extends Phaser.Scene {
       this.inputSystem.destroy();
       this.streamer.destroy();
       this.spawner.destroy();
+      this.mortar.destroy();
+      events.off('debug:grantAbility', this.debugGrant, this);
+      events.off('world:chunks', this.onChunks, this);
       events.off('debug:toggleBodies', this.toggleBodies, this);
       events.off('debug:toggleElevation', this.toggleElevation, this);
       events.off('debug:teleport', this.teleport, this);
@@ -150,6 +186,7 @@ export class WorldScene extends Phaser.Scene {
 
   override update(_time: number, delta: number): void {
     const dt = Math.min(delta / 1000, MAX_DT);
+    this.progression.tick(delta);
     // Positions come from `pos` (the body), not the sprite: Arcade has already stepped it.
     // Stream first, so the cells around the pawn exist before movement is checked against them.
     const { x, y } = this.tank.pos;
@@ -161,9 +198,12 @@ export class WorldScene extends Phaser.Scene {
       this.tank.applyCommand(cmd, dt);
       this.elevation.constrain(this.tank, dt);
       this.applyHazards(dt);
+      this.checkDepot();
     }
     this.updateEnemies(dt);
+    this.updateBoulders(dt);
     this.projectiles.update(dt);
+    this.mortar.update(dt);
 
     if (isDebug())
       events.emit('debug:pawn', {
@@ -179,11 +219,60 @@ export class WorldScene extends Phaser.Scene {
         maxHp: this.tank.maxHp,
         alive: this.tank.alive,
       });
-    if (isDebug())
+    if (isDebug()) {
       events.emit('debug:entities', {
         destructibles: this.spawner.destructibles(),
         enemies: this.spawner.enemyTelemetry(),
       });
+      events.emit('debug:objects', this.spawner.objectTelemetry());
+      events.emit('debug:state', this.progression.snapshot());
+    }
+  }
+
+  /** The last depot used, or the `start` spawn. */
+  private respawnPoint(): { x: number; y: number; heading: number } {
+    const mapOf = (id: string) =>
+      this.cache.tilemap.get(id).data as { layers: { name: string; objects?: RawObject[] }[] };
+    const objectsOf = (id: string) =>
+      mapOf(id).layers.find((l) => l.name === 'objects')?.objects ?? [];
+    const depot = this.progression.state.depot;
+    const at =
+      (depot && findDepot(this.world.chunks, objectsOf, depot)) ||
+      findSpawn(this.world.chunks, mapOf, 'start');
+    if (!at) throw new Error(`${WORLD_KEY} has no start spawn`);
+    return { x: at.x, y: at.y, heading: SPAWN_HEADING };
+  }
+
+  private onChunks({ chunk }: GameEvents['world:chunks']): void {
+    this.progression.visit(this.world.biome, chunk);
+  }
+
+  /** Rolling onto a depot pad heals, rearms and saves, once per visit. */
+  private checkDepot(): void {
+    const { x, y } = this.tank.pos;
+    const key = this.spawner.depotAt(x, y, this.tank.level)?.spec.key ?? null;
+    if (key && key !== this.onDepot) {
+      this.tank.repair();
+      this.progression.depot(key);
+    }
+    this.onDepot = key;
+  }
+
+  private collect(p: Pickup): void {
+    const taken = this.progression.collect(p.spec);
+    this.spawner.removePickup(p);
+    if (!taken) return;
+    if (taken.hpBonus > 0) this.tank.raiseMaxHp(this.progression.maxHp);
+  }
+
+  /** Shoved boulders slide under the same elevation rules as a vehicle. */
+  private updateBoulders(dt: number): void {
+    for (const b of this.spawner.boulders.getChildren() as Boulder[]) {
+      b.stuck = !b.body.blocked.none;
+      this.elevation.prepare(b);
+      this.elevation.constrain(b, dt, []);
+      b.syncDepth();
+    }
   }
 
   private updateEnemies(dt: number): void {
@@ -212,6 +301,59 @@ export class WorldScene extends Phaser.Scene {
     });
     this.physics.add.collider(this.spawner.enemies, this.spawner.enemies, undefined, sameLevel);
     this.physics.add.collider(this.spawner.enemies, this.spawner.solids, undefined, sameLevel);
+
+    const { doors, boulders, pickups } = this.spawner;
+    for (const movers of [this.tank, this.spawner.enemies])
+      this.physics.add.collider(movers, doors, undefined, sameLevel);
+    this.physics.add.collider(this.spawner.enemies, boulders, undefined, sameLevel);
+    // Boulders are immovable bodies, which Arcade never separates from static ones: a shoved
+    // boulder that meets a door, a destructible or another boulder jams instead.
+    const jam = (a: unknown, b: unknown) => {
+      if (!sameLevel(a, b)) return false;
+      for (const o of [a, b]) if (o instanceof Boulder && o.body.speed > 0) o.jam();
+      return false;
+    };
+    for (const solid of [doors, this.spawner.solids, boulders])
+      this.physics.add.overlap(boulders, solid, undefined, jam);
+    // The dozer blade shoves boulders ahead instead of colliding; a jammed one blocks it.
+    this.physics.add.collider(this.tank, boulders, undefined, (_t, o) => {
+      const b = o as Boulder;
+      if (!this.tank.alive || b.level !== this.tank.level) return false;
+      if (!this.progression.has('dozer_blade')) return true;
+      return !b.shove(this.tank.pos, this.tank.body.velocity);
+    });
+    this.physics.add.overlap(
+      this.tank,
+      pickups,
+      (_t, p) => this.collect(p as Pickup),
+      (_t, p) => this.tank.alive && (p as Pickup).level === this.tank.level,
+    );
+
+    // Doors stop fire like walls (their level and below); boulders stop it on their level.
+    const shot = (a: unknown, b: unknown) =>
+      (a instanceof Projectile ? [a, b] : [b, a]) as [Projectile, { level: number }];
+    this.physics.add.overlap(
+      this.projectiles.group,
+      doors,
+      (a, b) => this.projectiles.impact(shot(a, b)[0]),
+      (a, b) => {
+        const [p, door] = shot(a, b);
+        return p.active && wallBlocksProjectile((door as Door).level, p.level);
+      },
+    );
+    this.physics.add.overlap(
+      this.projectiles.group,
+      boulders,
+      (a, b) => this.projectiles.impact(shot(a, b)[0]),
+      (a, b) => {
+        const [p, boulder] = shot(a, b);
+        return p.active && boulder.level === p.level;
+      },
+    );
+  }
+
+  private debugGrant({ ability }: GameEvents['debug:grantAbility']): void {
+    this.progression.grant(ability);
   }
 
   private onPlayerRespawned(): void {
@@ -236,7 +378,8 @@ export class WorldScene extends Phaser.Scene {
     const cam = this.cameras.main;
     this.time.delayedCall(RESPAWN_DELAY * 1000 - FADE_MS, () => cam.fadeOut(FADE_MS));
     this.time.delayedCall(RESPAWN_DELAY * 1000, () => {
-      const { x, y, heading } = this.respawnPoint;
+      const { x, y, heading } = this.respawnPoint();
+      this.onDepot = this.progression.state.depot;
       this.tank.respawn(x, y, heading);
       this.streamer.update(x, y);
       this.elevation.prepare(this.tank);

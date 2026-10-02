@@ -4,7 +4,7 @@ export type Owner = Exclude<Faction, 'neutral'>;
 
 /**
  * Whether a shot may hit a target: never its own side, and only on the same elevation level
- * (docs/ARCHITECTURE.md, Elevation). Mortar shells will bypass the level check in M4.
+ * (docs/ARCHITECTURE.md, Elevation). Mortar shells resolve at the level of the cell they land on.
  */
 export function canHit(
   shot: { owner: Owner; level: number },

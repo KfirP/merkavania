@@ -5,6 +5,7 @@ import { collectErrors, enterWorld, getWorld, holdKey, teleport } from './helper
  * The M2 test world (public/maps/test): the M1 room is chunks x00–x01, and x02–x03 hold a level-1
  * plateau (rows 2–10, cols 70–109) with a ramp north (cols 86–90, rows 11–12), a level-2 shelf
  * behind a steep ramp east (cols 92–95, rows 3–6), the road east (rows 16–17) and terrain patches.
+ * Row y02 is the M4 progression gallery (progression.spec.ts).
  */
 const TILE = 16;
 const NORTH = -Math.PI / 2;
@@ -19,14 +20,17 @@ test.describe('world streaming', () => {
     await enterWorld(page);
     let world = await getWorld(page);
     expect(world.chunk).toBe('test_x01_y01');
-    expect([...world.loaded].sort()).toEqual(chunks(['00', '01', '02'], ['00', '01']));
+    expect([...world.loaded].sort()).toEqual(chunks(['00', '01', '02'], ['00', '01', '02']));
 
     const pawn = await teleport(page, 104 * TILE, 14 * TILE, NORTH);
     expect(pawn.chunk).toBe('test_x03_y00');
     await expect.poll(async () => (await getWorld(page)).chunk).toBe('test_x03_y00');
     world = await getWorld(page);
-    // x00 is 3 chunks away, outside the 5×5 window; x01 stays loaded (hysteresis).
-    expect([...world.loaded].sort()).toEqual(chunks(['01', '02', '03'], ['00', '01']));
+    // x00 is 3 chunks away, outside the 5×5 window; x01 and x02 keep their y02 chunks
+    // (hysteresis), while x03_y02 was never in a 3×3.
+    expect([...world.loaded].sort()).toEqual(
+      [...chunks(['01', '02'], ['00', '01', '02']), ...chunks(['03'], ['00', '01'])].sort(),
+    );
     expect(errors).toEqual([]);
   });
 });

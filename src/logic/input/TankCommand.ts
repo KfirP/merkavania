@@ -6,8 +6,14 @@ export interface TankCommand {
   turn: number;
   /** World-space radians; null keeps the current aim. */
   aimAngle: number | null;
+  /** Px from the pawn to the aimed spot (mouse, gamepad tilt) for the mortar; null keeps it. */
+  aimDistance: number | null;
+  /** One-shot mortar fire at a spot (touch mortar button), regardless of the selected secondary. */
+  lob: { angle: number; distance: number } | null;
   fire: boolean;
   altFire: boolean;
+  /** Alt fire means the coax whatever secondary is selected (touch MG mode). */
+  altCoax: boolean;
   cycleNext: boolean;
   cyclePrev: boolean;
   hatch: boolean;
@@ -21,8 +27,11 @@ export function emptyCommand(): TankCommand {
     throttle: 0,
     turn: 0,
     aimAngle: null,
+    aimDistance: null,
+    lob: null,
     fire: false,
     altFire: false,
+    altCoax: false,
     cycleNext: false,
     cyclePrev: false,
     hatch: false,
