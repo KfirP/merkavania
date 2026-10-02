@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { keyAxis, mouseButtons, padAnalog, touchMove } from './mapping';
+import {
+  keyAxis,
+  mouseButtons,
+  PAD_AIM_DEADZONE,
+  padAnalog,
+  padLobDistance,
+  touchMove,
+} from './mapping';
 
 describe('keyAxis', () => {
   it('maps a key pair to -1, 0 or 1', () => {
@@ -55,5 +62,16 @@ describe('touchMove', () => {
 
   it('stops when the stick is released', () => {
     expect(touchMove({ x: 0, y: 0, active: false })).toEqual({ throttle: 0, turn: 0 });
+  });
+});
+
+describe('padLobDistance', () => {
+  it('maps right-stick tilt past the aim deadzone onto min..max range', () => {
+    expect(padLobDistance(0.1, 48, 220)).toBeNull();
+    expect(padLobDistance(PAD_AIM_DEADZONE + 0.0001, 48, 220)).toBeCloseTo(48, 0);
+    expect(padLobDistance(1, 48, 220)).toBe(220);
+    expect(padLobDistance(1.4, 48, 220)).toBe(220);
+    const mid = (1 + PAD_AIM_DEADZONE) / 2;
+    expect(padLobDistance(mid, 48, 220)).toBeCloseTo(134);
   });
 });

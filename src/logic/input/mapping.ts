@@ -53,3 +53,13 @@ export function touchMove(left: StickInput): { throttle: number; turn: number } 
   const move = applyRadialDeadzone(left.x, left.y, TOUCH_STICK_DEADZONE);
   return { throttle: move.y === 0 ? 0 : -move.y, turn: move.x };
 }
+
+/**
+ * Gamepad mortar range: right-stick tilt past the aim deadzone maps linearly onto min..max; a
+ * centred stick gives null (keep the last range).
+ */
+export function padLobDistance(magnitude: number, min: number, max: number): number | null {
+  if (magnitude <= PAD_AIM_DEADZONE) return null;
+  const t = Math.min(1, (magnitude - PAD_AIM_DEADZONE) / (1 - PAD_AIM_DEADZONE));
+  return min + (max - min) * t;
+}
