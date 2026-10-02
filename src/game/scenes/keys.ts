@@ -5,5 +5,6 @@ export const SceneKey = {
   World: 'World',
   Hud: 'Hud',
   TouchControls: 'TouchControls',
+  Settings: 'Settings',
   Debug: 'Debug',
 } as const;

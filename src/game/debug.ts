@@ -10,6 +10,7 @@ import {
   type PawnTelemetry,
   type WorldState,
 } from './events';
+import { menuSnapshot, type MenuSnapshot } from './ui/Menu';
 
 export function isDebug(): boolean {
   return import.meta.env.DEV || new URLSearchParams(window.location.search).get('debug') === '1';
@@ -63,6 +64,8 @@ export interface DebugHooks {
   getObjects(): ObjectsTelemetry;
   /** Where mortar shells came down since boot, oldest first. */
   getMortarLandings(): GameEvents['mortar:landed'][];
+  /** The menu open in scene `scene` (Title, Pause, Settings), or null. */
+  getMenu(scene: string): MenuSnapshot | null;
 }
 
 declare global {
@@ -129,5 +132,6 @@ export function installDebugHooks(game: Phaser.Game): void {
     clearSave: (slot) => window.localStorage.removeItem(slotKey(slot)),
     getObjects: () => JSON.parse(JSON.stringify(objects)) as ObjectsTelemetry,
     getMortarLandings: () => landings.map((l) => ({ ...l })),
+    getMenu: (scene) => menuSnapshot(scene),
   };
 }

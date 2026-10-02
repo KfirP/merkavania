@@ -23,6 +23,21 @@ export interface MenuOptions {
   onEvent(event: MenuEvent, menu: Menu): void;
 }
 
+/** What the `getMenu` debug hook reports. */
+export interface MenuSnapshot {
+  focused: string | null;
+  items: { id: string; label: string; disabled: boolean }[];
+  /** Each row's bounds as fractions (0..1) of the canvas, for tapping it in specs. */
+  rects: { x: number; y: number; width: number; height: number }[];
+}
+
+/** Live menus by scene key, for the debug hooks. */
+const live = new Map<string, Menu>();
+
+export function menuSnapshot(sceneKey: string): MenuSnapshot | null {
+  return live.get(sceneKey)?.snapshot() ?? null;
+}
+
 const FOCUS_BG = 'rgba(194, 178, 128, 0.25)';
 const DISABLED = '#7a7464';
 
@@ -48,6 +63,32 @@ export class Menu {
     this.entries = build();
     this.focus = firstFocus(this.items);
     this.render();
+    const key = scene.sys.settings.key;
+    live.set(key, this);
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      if (live.get(key) === this) live.delete(key);
+    });
+  }
+
+  snapshot(): MenuSnapshot {
+    const { width, height } = this.scene.scale;
+    return {
+      focused: this.focusedId,
+      items: this.entries.map((e) => ({
+        id: e.item.id,
+        label: e.label,
+        disabled: !!e.item.disabled,
+      })),
+      rects: this.rows.map((r) => {
+        const b = r.getBounds();
+        return {
+          x: b.x / width,
+          y: b.y / height,
+          width: b.width / width,
+          height: b.height / height,
+        };
+      }),
+    };
   }
 
   get items(): MenuItem[] {
@@ -91,12 +132,18 @@ export class Menu {
   }
 
   destroy(): void {
+    this.clear();
+    const key = this.scene.sys.settings.key;
+    if (live.get(key) === this) live.delete(key);
+  }
+
+  private clear(): void {
     for (const r of this.rows) r.destroy();
     this.rows = [];
   }
 
   private render(): void {
-    this.destroy();
+    this.clear();
     this.rows = this.entries.map((entry, i) => {
       const row = this.scene.add
         .text(this.opts.x, this.opts.y + i * this.lineHeight, entry.label, {

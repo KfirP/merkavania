@@ -74,13 +74,13 @@ export class WorldScene extends Phaser.Scene {
     super(SceneKey.World);
   }
 
-  create(): void {
+  create(data: { slot?: number } = {}): void {
     const world = parseWorld(
       this.cache.json.get(WORLD_KEY) as TiledWorld,
       getAsset(WORLD_KEY).path,
     );
     this.world = world;
-    this.progression = new ProgressionSystem(slotFromUrl());
+    this.progression = new ProgressionSystem(data.slot ?? slotFromUrl());
     const state = this.progression.state;
     this.grid = new WorldGrid();
     this.elevation = new ElevationSystem(this.grid, () => state.abilities);

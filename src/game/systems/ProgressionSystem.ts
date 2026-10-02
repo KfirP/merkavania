@@ -25,7 +25,7 @@ import type { PickupSpec } from '../../logic/world/objects';
 import { events, type Loadout } from '../events';
 import { browserStorage } from '../storage';
 
-/** Save slot from `?slot=N` (1–3); slot select arrives with the title screen in M6. */
+/** Save slot from `?slot=N` (1–3), else 1: the slot the title focuses first. */
 export function slotFromUrl(): number {
   const n = Number(new URLSearchParams(window.location.search).get('slot') ?? 1);
   return SLOTS.includes(n as never) ? n : 1;

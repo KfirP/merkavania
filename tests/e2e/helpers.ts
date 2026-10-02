@@ -188,3 +188,14 @@ export async function walkUntil(
     await page.keyboard.up(key);
   }
 }
+
+/** The open menu in scene `scene` (rows, focus, where each row is), or null. */
+export function getMenu(page: Page, scene: string) {
+  return page.evaluate((s) => window.__merkavania?.getMenu(s) ?? null, scene);
+}
+
+/** Presses a key (by DOM key name, e.g. `ArrowDown`) and gives the game a couple of frames. */
+export async function pressKey(page: Page, key: string) {
+  await page.keyboard.press(key);
+  await page.waitForTimeout(80);
+}
