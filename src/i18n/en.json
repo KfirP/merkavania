@@ -28,5 +28,8 @@
   "pickup.ammo_rack": "Ammo rack! More rounds for the secondaries",
   "pickup.repair_kit": "Repair kit! One more field repair",
   "depot.saved": "Repaired, rearmed, saved",
-  "depot.save_failed": "Repaired and rearmed (could not save)"
+  "depot.save_failed": "Repaired and rearmed (could not save)",
+  "hatch.blocked": "No room behind the tank to climb out",
+  "hatch.moving": "Stop the tank first, nobody jumps out of a moving Merkava",
+  "hatch.scout_down": "Scout down! Back in the tank, slightly dented"
 }

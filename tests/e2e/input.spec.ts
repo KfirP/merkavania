@@ -99,6 +99,8 @@ const LEFT = { x: 120, y: 440 };
 const ALT_BUTTON = { x: 900, y: 320 };
 // Left of ALT, shown once the tank has the mortar.
 const MORTAR_BUTTON = { x: 820, y: 320 };
+// Above ALT, shown once the tank has the scout.
+const HATCH_BUTTON = { x: 900, y: 240 };
 
 async function enterTouchWorld(page: Page) {
   await page.goto('/?debug=1');
@@ -270,7 +272,46 @@ test.describe('touch', () => {
   });
 });
 
-test.describe('gamepad mortar', () => {
+test.describe('touch hatch', () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 960, height: 540 } });
+
+  test('the hatch button appears with the scout; a tap deploys it and another recalls it', async ({
+    page,
+    context,
+  }) => {
+    const errors = collectErrors(page);
+    await enterTouchWorld(page);
+    const buttonVisible = () =>
+      page.evaluate(() => {
+        const scene = window.__merkavania!.game.scene.getScene('TouchControls') as unknown as {
+          hatchButton: { visible: boolean };
+        };
+        return scene.hatchButton.visible;
+      });
+    expect(await buttonVisible()).toBe(false);
+    await grantAbility(page, 'hatch_scout');
+    await expect.poll(buttonVisible).toBe(true);
+
+    const f = await fingers(page, context);
+    await f.tap(3, HATCH_BUTTON.x, HATCH_BUTTON.y);
+    await expect.poll(async () => (await getPawn(page)).kind).toBe('scout');
+    // The left stick walks the scout 8-way: straight right.
+    const start = await getPawn(page);
+    await f.down(1, LEFT.x, LEFT.y);
+    await f.move(1, LEFT.x + STICK_PX, LEFT.y);
+    await page.waitForTimeout(600);
+    await f.up(1);
+    const moved = await getPawn(page);
+    expect(moved.x).toBeGreaterThan(start.x + 20);
+    expect(Math.abs(moved.y - start.y)).toBeLessThan(2);
+
+    await f.tap(3, HATCH_BUTTON.x, HATCH_BUTTON.y);
+    await expect.poll(async () => (await getPawn(page)).kind, { timeout: 8_000 }).toBe('tank');
+    expect(errors).toEqual([]);
+  });
+});
+
+test.describe('gamepad mortar and hatch', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       const buttons = Array.from({ length: 17 }, () => ({
@@ -332,5 +373,15 @@ test.describe('gamepad mortar', () => {
     const [landing] = await getMortarLandings(page);
     expect(landing!.x - pawn.x).toBeCloseTo(220, 0);
     expect(landing!.y - pawn.y).toBeCloseTo(0, 0);
+  });
+
+  test('Y opens the rear hatch', async ({ page }) => {
+    await enterWorld(page);
+    await grantAbility(page, 'hatch_scout');
+    const Y = 3;
+    await setPad(page, [0, 0, 0, 0], [Y]);
+    await page.waitForTimeout(150);
+    await setPad(page, [0, 0, 0, 0], []);
+    await expect.poll(async () => (await getPawn(page)).kind).toBe('scout');
   });
 });

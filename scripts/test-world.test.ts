@@ -196,22 +196,25 @@ describe('test world', () => {
     }
   });
 
-  describe('M4 gallery (row y02)', () => {
-    const objectsOf = (id: string) =>
-      ((maps.get(id)!.raw.layers as Layer[]).find((l) => l.name === 'objects')!.objects ??
-        []) as unknown as RawObject[];
-    const parsed = (id: string) => parseChunkObjects(maps.get(id)!.chunk, objectsOf(id));
-    const cellUnder = (p: { x: number; y: number }) =>
-      cellAt(Math.floor(p.x / TILE), Math.floor(p.y / TILE))!;
-    const reach = (drop: (o: RawObject) => boolean = () => false) =>
-      checkReachability(
-        [...maps.values()].map(({ chunk, map }) => ({
-          chunk,
-          grid: parseChunkGrid(map as unknown as GridMap),
-          objects: objectsOf(chunk.id).filter((o) => !drop(o)),
-        })),
-      );
+  const objectsOf = (id: string) =>
+    ((maps.get(id)!.raw.layers as Layer[]).find((l) => l.name === 'objects')!.objects ??
+      []) as unknown as RawObject[];
+  const parsed = (id: string) => parseChunkObjects(maps.get(id)!.chunk, objectsOf(id));
+  const cellUnder = (p: { x: number; y: number }) =>
+    cellAt(Math.floor(p.x / TILE), Math.floor(p.y / TILE))!;
+  /** Reachability over the whole world, without the objects `drop` picks. */
+  const reach = (drop: (o: RawObject) => boolean = () => false) =>
+    checkReachability(
+      [...maps.values()].map(({ chunk, map }) => ({
+        chunk,
+        grid: parseChunkGrid(map as unknown as GridMap),
+        objects: objectsOf(chunk.id).filter((o) => !drop(o)),
+      })),
+    );
+  const grants = (ability: string) => (o: RawObject) =>
+    (o.properties ?? []).some((p) => p.name === 'ability' && p.value === ability);
 
+  describe('M4 gallery (row y02)', () => {
     it('is entered from x00_y01 through a gap in its bottom wall', () => {
       const tank: MoveContext = { pawn: 'tank', abilities: [] };
       for (const tx of [3, 4, 5, 6]) {
@@ -258,13 +261,59 @@ describe('test world', () => {
       expect(doors).toEqual([expect.objectContaining({ opensWith: switches[0]!.key })]);
     });
 
-    it('is fully reachable, and the repair kit at the end needs the mortar', () => {
+    it('is fully reachable, and the far end (with the M5 corner) needs the mortar', () => {
       expect(reach()).toEqual([]);
-      const noMortar = reach((o) =>
-        (o.properties ?? []).some((p) => p.name === 'ability' && p.value === 'mortar'),
+      const noMortar = reach(grants('mortar'));
+      expect(noMortar.map((i) => i.message).sort()).toEqual(
+        ['ammo_rack_2', 'armor_plate_2', 'hatch_scout', 'repair_kit_1'].map((id) =>
+          expect.stringMatching(new RegExp(`pickup "${id}" is unreachable`)),
+        ),
       );
-      expect(noMortar.map((i) => i.message)).toEqual([
-        expect.stringMatching(/pickup "repair_kit_1" is unreachable/),
+    });
+  });
+
+  describe('M5 corner (x03_y02)', () => {
+    const found = parsed('test_x03_y02');
+    const scout: MoveContext = { pawn: 'scout', abilities: [] };
+    const tank: MoveContext = { pawn: 'tank', abilities: [] };
+    const crawl = [...cells.entries()]
+      .filter(([, c]) => c.terrain === 'crawlspace')
+      .map(([k]) => k.split(',').map(Number) as [number, number]);
+
+    it('has the hatch scout pickup on open level-0 ground', () => {
+      const hatch = found.pickups.find((p) => p.ability === 'hatch_scout')!;
+      expect(hatch).toBeDefined();
+      expect(cellUnder(hatch).solid).toBe(false);
+      expect(cellUnder(hatch).level).toBe(0);
+    });
+
+    it('has crawlspace the scout can walk into and the tank cannot', () => {
+      expect(crawl.length).toBeGreaterThan(0);
+      for (const [x, y] of crawl) {
+        const cell = cellAt(x, y)!;
+        expect(cell.solid).toBe(false);
+        const from = [cellAt(x - 1, y), cellAt(x + 1, y)].find((c) => c && !c.solid)!;
+        expect(canEnter(from, cell, 'e', scout)).toBe(true);
+        expect(canEnter(from, cell, 'e', tank)).toBe(false);
+      }
+    });
+
+    it('puts a scout switch behind the crawlspace, with the door it opens', () => {
+      expect(found.switches).toEqual([expect.objectContaining({ activatedBy: 'scout' })]);
+      expect(found.doors).toEqual([expect.objectContaining({ opensWith: found.switches[0]!.key })]);
+      // The door is wide enough for the tank (corridors are at least 3 tiles).
+      expect(found.doors[0]!.width).toBeGreaterThanOrEqual(3 * TILE);
+    });
+
+    it('keeps the pocket and closet pickups behind the hatch', () => {
+      expect(reach()).toEqual([]);
+      expect(
+        reach(grants('hatch_scout'))
+          .map((i) => i.message)
+          .sort(),
+      ).toEqual([
+        expect.stringMatching(/pickup "ammo_rack_2" is unreachable/),
+        expect.stringMatching(/pickup "armor_plate_2" is unreachable/),
       ]);
     });
   });

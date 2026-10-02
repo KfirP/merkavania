@@ -1,0 +1,9 @@
+tool: create_image_pixflux (img2img)
+job: 6c3cc60e-4c92-4ae3-ba2d-547230165e51
+init_image: init.png (hand-drawn 32x32 top-down soldier, see make-init.ts)
+init_image_strength: 100
+size: 32x32, no_background: true, outline: single color black outline, shading: basic shading
+view: high top-down, direction: east
+seed: 5101
+description: pixel art IDF infantry soldier viewed from directly above (bird's eye), round olive helmet in the centre, olive drab shoulders, small backpack behind, rifle pointing straight right, military
+result: unusable, drawn front-facing (chibi soldier facing the camera, no rifle)

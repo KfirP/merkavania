@@ -152,3 +152,39 @@ export async function pointMouseAt(page: Page, x: number, y: number) {
   const p = await canvasPoint(page, f.fx, f.fy);
   await page.mouse.move(p.x, p.y);
 }
+
+/** The tank's telemetry, whichever pawn is active. */
+export async function getTank(page: Page) {
+  const tank = await page.evaluate(() => window.__merkavania?.getTank() ?? null);
+  if (!tank) throw new Error('No tank telemetry yet');
+  return tank;
+}
+
+export function damageScout(page: Page, amount: number) {
+  return page.evaluate((n) => window.__merkavania?.damageScout(n), amount);
+}
+
+/** Presses a key for a few frames: input is polled once per frame, so a same-frame tap is lost. */
+export async function tapKey(page: Page, key: string) {
+  await page.keyboard.down(key);
+  await page.waitForTimeout(100);
+  await page.keyboard.up(key);
+}
+
+/** Holds `key` until `done` holds for the active pawn (or the timeout), then releases it. */
+export async function walkUntil(
+  page: Page,
+  key: string,
+  done: (pawn: Awaited<ReturnType<typeof getPawn>>) => boolean,
+  timeout = 5_000,
+) {
+  await page.keyboard.down(key);
+  try {
+    // Poll every frame or so: the default backoff would let the pawn overshoot.
+    await expect
+      .poll(async () => done(await getPawn(page)), { timeout, intervals: [16] })
+      .toBe(true);
+  } finally {
+    await page.keyboard.up(key);
+  }
+}

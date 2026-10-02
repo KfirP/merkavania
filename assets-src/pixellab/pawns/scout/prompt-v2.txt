@@ -1,0 +1,9 @@
+tool: create_image_pixflux (img2img)
+job: ee4ea3b9-5fa7-41fa-9d54-dc9db66fa874
+init_image: init.png (hand-drawn 32x32 top-down soldier, see make-init.ts)
+init_image_strength: 250 (100 came back front-facing; see prompt.txt)
+size: 32x32, no_background: true, outline: single color black outline, shading: basic shading
+view: high top-down, direction: east
+seed: 5102
+description: top-down overhead pixel art of a soldier seen from directly above, only the top of a round olive helmet and the shoulders are visible, rifle lying straight to the right, olive drab, game sprite, military
+result: good top-down silhouette, but the rifle came out as a reddish stub; fix-rifle.ts redraws it (fixed.png), which process-sprites.ts shrinks to public/assets/sprites/pawns/scout.png

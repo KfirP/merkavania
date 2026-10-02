@@ -1,15 +1,20 @@
 import Phaser from 'phaser';
 import type { AbilityId, MinorPickupId } from '../data/abilities';
 import type { SecondaryId } from '../data/progression';
+import type { PawnKind } from '../data/terrain';
+import type { DeployRefusal } from '../logic/pawn/hatch';
 import type { WeaponId } from '../data/weapons';
 import type { SaveData } from '../logic/save/save';
 
 export interface PawnTelemetry {
+  /** Which pawn this is: the tank, or the scout while it's out. */
+  kind: PawnKind;
   x: number;
   y: number;
-  /** Radians */
+  /** Radians (the scout's facing). */
   heading: number;
   speed: number;
+  /** The turret's angle, or where the scout aims. */
   turretAngle: number;
   device: string;
   /** Elevation level of the cell under the pawn. */
@@ -18,7 +23,7 @@ export interface PawnTelemetry {
   chunk: string;
   hp: number;
   maxHp: number;
-  /** False between the tank's death and its respawn. */
+  /** False between the pawn's death and its respawn (or, for the scout, its removal). */
   alive: boolean;
 }
 
@@ -103,6 +108,14 @@ export interface GameEvents {
   'entity:destroyed': { id: string; kind: 'enemy' | 'destructible' };
   'player:died': undefined;
   'player:respawned': undefined;
+  /** Control moved to another pawn (the scout climbed out, or is back in the tank). */
+  'pawn:switched': { kind: PawnKind };
+  /** The hatch was pressed but stayed shut. */
+  'hatch:refused': { reason: DeployRefusal };
+  /** The scout went down; control is back with the tank. */
+  'scout:died': undefined;
+  /** The abilities the tank has (on start, and whenever one is gained). */
+  'abilities:changed': { abilities: AbilityId[] };
   /** A pickup was taken (and the game saved). */
   'pickup:collected': { key: string; ability?: AbilityId; minor?: MinorPickupId };
   /** The tank rolled onto a depot: healed, rearmed and (if `saved`) written to its slot. */
@@ -117,6 +130,8 @@ export interface GameEvents {
   'world:chunks': WorldState;
   /** Debug builds only: emitted every frame by WorldScene. */
   'debug:pawn': PawnTelemetry;
+  /** Debug builds only: the tank, emitted every frame (also while the scout is the active pawn). */
+  'debug:tank': PawnTelemetry;
   /** Debug builds only: emitted every frame by WorldScene. */
   'debug:entities': EntitiesTelemetry;
   /** Debug builds only: emitted every frame by WorldScene. */
@@ -130,6 +145,10 @@ export interface GameEvents {
   'debug:teleport': { x: number; y: number; heading?: number };
   /** Deals `amount` damage to the player, ignoring armor. */
   'debug:damagePlayer': { amount: number };
+  /** Deals `amount` damage to the scout (if it's out), ignoring armor. */
+  'debug:damageScout': { amount: number };
+  /** Presses the rear hatch, as `cmd.hatch` would. */
+  'debug:hatch': undefined;
   'debug:god': { on: boolean };
   /** Spawns an enemy at world (x, y); `facing` in radians. */
   'debug:spawnEnemy': { type: string; x: number; y: number; facing: number };

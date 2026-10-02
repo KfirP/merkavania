@@ -36,8 +36,11 @@ Current target: **Vertical slice** (desert biome, M0–M8). Tick milestones off 
 - [x] Test world row y02, the progression gallery; e2e specs for every gate and the save loop
 - Carried over: using a `repair_kit` charge needs the M6 HUD; rubble doesn't change look once the dozer can cross it (M7 art)
 
-## M5: Rear hatch
-- [ ] Pawn switching, scout pawn, `crawlspace`, scout switches, recall
+## M5: Rear hatch ✅
+- [x] Pawn switching (`PawnSystem`), scout pawn with a light rifle, `crawlspace`, walk-on scout switches, recall (auto-walk on a BFS route) and walk-back boarding, leash
+- [x] Enemies target the closest visible pawn; the HUD follows the active pawn; touch hatch button
+- [x] `validate:maps` rule 6 counts pickups the scout can reach
+- [x] Test world M5 corner (x03_y02); `hatch.spec.ts` plus touch and gamepad hatch specs
 
 ## M6: UI & i18n
 - [ ] HUD (HP, ammo, selected secondary, minimap hint), map screen, pause/settings, title/slot select
