@@ -172,6 +172,8 @@ export class WorldScene extends Phaser.Scene {
     this.progression.emitLoadout();
     this.progression.emitAbilities();
     this.progression.emitRepair();
+    events.emit('tank:tier', { mk: state.mk });
+    this.emitMap();
     this.scene.launch(SceneKey.Hud);
     events.emit('hp:changed', { target: 'player', hp: this.tank.hp, max: this.tank.maxHp });
     if (this.sys.game.device.input.touch) this.scene.launch(SceneKey.TouchControls);
@@ -296,7 +298,16 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private onChunks({ chunk }: GameEvents['world:chunks']): void {
-    this.progression.visit(this.world.biome, chunk);
+    if (this.progression.visit(this.world.biome, chunk)) this.emitMap();
+  }
+
+  private emitMap(): void {
+    const { biome, chunks } = this.world;
+    events.emit('map:changed', {
+      biome,
+      chunks: chunks.map(({ id, cx, cy }) => ({ id, cx, cy })),
+      visited: [...(this.progression.state.visitedChunks[biome] ?? [])],
+    });
   }
 
   /** Rolling onto a depot pad heals, rearms and saves, once per visit. */

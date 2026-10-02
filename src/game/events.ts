@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import type { AbilityId, MinorPickupId } from '../data/abilities';
+import type { MkTierId } from '../data/mkTiers';
 import type { SecondaryId } from '../data/progression';
 import type { PawnKind } from '../data/terrain';
 import type { DeployRefusal } from '../logic/pawn/hatch';
@@ -89,6 +90,13 @@ export interface Loadout {
   rounds: Partial<Record<SecondaryId, number>>;
 }
 
+export interface MapState {
+  biome: string;
+  chunks: { id: string; cx: number; cy: number }[];
+  /** Ids of the chunks visited in this biome. */
+  visited: string[];
+}
+
 export interface WorldState {
   /** Chunk the pawn is in. */
   chunk: string;
@@ -130,6 +138,10 @@ export interface GameEvents {
   'loadout:changed': Loadout;
   /** A mortar shell came down at world (x, y) on `level`. */
   'mortar:landed': { x: number; y: number; level: number };
+  /** The tank's Mk tier (on start, and when it's upgraded). */
+  'tank:tier': { mk: MkTierId };
+  /** The world's chunk grid and the chunks visited (on start, and when a new one is visited). */
+  'map:changed': MapState;
   /** The pawn entered another chunk, or chunks were streamed in or out. */
   'world:chunks': WorldState;
   /** Debug builds only: emitted every frame by WorldScene. */

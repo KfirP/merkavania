@@ -68,5 +68,7 @@
   "controls.map": "מפה",
   "pause.title": "הפסקה",
   "pause.resume": "המשך",
-  "pause.quit": "יציאה למסך הפתיחה"
+  "pause.quit": "יציאה למסך הפתיחה",
+  "hud.repair": "ערכה {n}/{max}",
+  "repair.used": "תיקון שטח: +{hp} חיים"
 }

@@ -68,5 +68,7 @@
   "controls.map": "Map",
   "pause.title": "Paused",
   "pause.resume": "Resume",
-  "pause.quit": "Quit to title"
+  "pause.quit": "Quit to title",
+  "hud.repair": "KIT {n}/{max}",
+  "repair.used": "Field repair: +{hp} HP"
 }

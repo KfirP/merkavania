@@ -120,8 +120,11 @@ export class ProgressionSystem {
     this.state.playtimeMs += ms;
   }
 
-  visit(biome: string, chunkId: string): void {
+  /** Records a chunk visit; true if it's the first. */
+  visit(biome: string, chunkId: string): boolean {
+    const known = this.state.visitedChunks[biome]?.includes(chunkId) ?? false;
     visitChunk(this.state, biome, chunkId);
+    return !known;
   }
 
   /** Debug: grants an ability without a pickup (saved with the next save). */
