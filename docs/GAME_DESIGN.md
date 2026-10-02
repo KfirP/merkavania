@@ -48,7 +48,7 @@ Each ability except the Mk signatures is a pickup found in the world. There is n
 | Ability id | What it is | Gate / use | First biome |
 |---|---|---|---|
 | `mortar` | 60mm mortar (alt fire, arcing shot) | Hits targets on other elevation levels or behind walls: `mortar` switches, entrenched enemies | Desert |
-| `hatch_scout` | Rear hatch: deploy infantry scout | The scout fits through `crawlspace` tiles and flips switches the tank can't reach; you recall the scout or walk it back to the tank | Desert |
+| `hatch_scout` | Rear hatch: deploy infantry scout | The scout fits through `crawlspace` tiles, flips `scout` switches by walking onto them and grabs pickups the tank can't reach; you recall the scout or walk it back to the tank | Desert |
 | `dozer_blade` | Front dozer blade | Clears `rubble` terrain and pushes `boulder` objects | Desert |
 | `ammo_heat` | HEAT rounds | Destroys `concrete` destructibles | Hills |
 | `snorkel` | Deep-fording kit | Drive through `water_deep` | Hills |
@@ -77,6 +77,13 @@ Sequence breaks: the design tolerates skilled players reaching areas early (for 
 - The tank flattens soldiers it drives into. It is a tank.
 - Secondary weapons use limited ammo that refills at depots. The main gun and coax MG have unlimited ammo, with a reload time for the main gun.
 - **Death:** respawn at the last depot you used (the `start` spawn before the first one). Pickups you collected are kept (they're saved when collected); enemies respawn.
+
+## The rear hatch scout
+- With `hatch_scout`, stop the tank and press hatch: a scout climbs out of the rear door (very Merkava). The tank waits where it is, still in the fight, and the camera follows the scout.
+- The scout walks in 8 directions, fits through `crawlspace`, and carries a light rifle that drops infantry and breaks sandbags and wood but bounces off armor. It's fragile (30 HP).
+- It flips `scout` switches by walking onto them and can pick up anything it reaches.
+- It stays within radio range of the tank (a leash of about 400px). Walk it back into the tank to board, or press hatch to recall it, and it jogs home on its own.
+- If it goes down, you're back in the tank (no game over) and the hatch stays shut for a moment.
 
 ## Save & depots
 - **Repair depots** (`depot` objects) heal fully, refill secondary ammo and save the game when you drive onto the pad (once per visit).
