@@ -55,6 +55,8 @@ type Obj = {
   type: string;
   x?: number;
   y?: number;
+  width?: number;
+  height?: number;
   polyline?: { x: number; y: number }[];
   properties?: unknown[];
 };
@@ -239,7 +241,13 @@ describe('validateWorlds: objects', () => {
         { id: 2, type: 'pickup', properties: [prop('ability', 'mortar'), prop('id', 'p1')] },
         { id: 3, type: 'pickup', properties: [prop('minor', 'armor_plate'), prop('id', 'p2')] },
         { id: 4, type: 'switch', properties: [prop('id', 's1'), prop('activatedBy', 'mortar')] },
-        { id: 5, type: 'door', properties: [prop('id', 'd1'), prop('opensWith', 's1')] },
+        {
+          id: 5,
+          type: 'door',
+          width: 16,
+          height: 48,
+          properties: [prop('id', 'd1'), prop('opensWith', 's1')],
+        },
         { id: 6, type: 'radio', properties: [prop('messageKey', 'radio.test.hello')] },
         { id: 7, type: 'depot', properties: [prop('id', 'depot_1')] },
         { id: 8, type: 'mk_upgrade', properties: [prop('tier', 'mk3')] },
@@ -309,9 +317,25 @@ describe('validateWorlds: objects', () => {
     const issues = withObjects([
       { id: 1, type: 'depot', properties: [prop('id', 'a')] },
       { id: 2, type: 'boulder', properties: [prop('id', 'a')] },
-      { id: 3, type: 'door', properties: [prop('id', 'd1'), prop('opensWith', 's9')] },
+      {
+        id: 3,
+        type: 'door',
+        width: 16,
+        height: 16,
+        properties: [prop('id', 'd1'), prop('opensWith', 's9')],
+      },
     ]);
     expect(messages(issues)).toEqual(['duplicate id "a"', 'opensWith "s9" is not a switch here']);
+  });
+
+  it('wants doors drawn as rectangles', () => {
+    const issues = withObjects([
+      { id: 1, type: 'switch', properties: [prop('id', 's1'), prop('activatedBy', 'cannon')] },
+      { id: 2, type: 'door', properties: [prop('id', 'd1'), prop('opensWith', 's1')] },
+    ]);
+    expect(issues.map((i) => `${i.object} ${i.message}`)).toEqual([
+      '#2 door must be a rectangle (it blocks the cells it covers)',
+    ]);
   });
 
   it('checks exits against the worlds and their spawns', () => {
@@ -378,5 +402,32 @@ describe('formatIssue', () => {
       formatIssue({ file: 'maps/a.tmj', layer: 'objects', object: '#3', message: 'bad' }),
     ).toBe('maps/a.tmj:objects:#3 bad');
     expect(formatIssue({ file: 'maps/a.world', message: 'bad' })).toBe('maps/a.world bad');
+  });
+});
+
+describe('validateWorlds: progression reachability (rule 6)', () => {
+  it('reports a pickup walled off from the start', () => {
+    // A solid column at x = 10 splits the chunk; the pickup is east of it.
+    const c = chunk({
+      walls: fill(2, (x) => x === 10),
+      objects: [
+        { id: 1, type: 'spawn', name: 'start', x: 40, y: 40 },
+        {
+          id: 2,
+          type: 'pickup',
+          x: 300,
+          y: 40,
+          properties: [prop('ability', 'mortar'), prop('id', 'm')],
+        },
+      ],
+    });
+    expect(run({ t_x00_y00: c })).toEqual([
+      expect.objectContaining({
+        file: 'maps/t/t_x00_y00.tmj',
+        layer: 'objects',
+        object: '#2',
+        message: expect.stringMatching(/pickup "m" is unreachable/) as unknown,
+      }),
+    ]);
   });
 });
