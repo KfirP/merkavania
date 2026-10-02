@@ -61,8 +61,6 @@ export class SpawnSystem {
     private readonly effects: EffectsSystem,
     private readonly flags: WorldFlags,
     private readonly cellAt: CellLookup,
-    /** Whether the tank can shove boulders (it has the dozer blade). */
-    private readonly canShove: () => boolean = () => false,
   ) {
     this.solids = scene.physics.add.staticGroup();
     this.enemies = scene.physics.add.group({ allowGravity: false });
@@ -106,7 +104,7 @@ export class SpawnSystem {
     for (const spec of boulders) {
       const b = new Boulder(this.scene, spec, levelOf(spec));
       this.boulders.add(b);
-      b.configureBody(this.canShove());
+      b.configureBody();
       spawned.push(b);
     }
     for (const spec of destructibles) {
@@ -164,12 +162,6 @@ export class SpawnSystem {
   depotAt(x: number, y: number, level: number): Depot | null {
     for (const d of this.depots) if (d.level === level && d.contains(x, y)) return d;
     return null;
-  }
-
-  /** Boulders follow the dozer blade: shovable once the tank has it. */
-  refreshBoulders(): void {
-    const shove = this.canShove();
-    for (const b of this.boulders.getChildren() as Boulder[]) b.setShovable(shove);
   }
 
   /** Debug: progression objects in the loaded chunks. */

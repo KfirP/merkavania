@@ -16,7 +16,7 @@ import {
   type ParsedWorld,
 } from '../../logic/world/world';
 import { isDebug } from '../debug';
-import type { Boulder } from '../entities/Boulder';
+import { Boulder } from '../entities/Boulder';
 import type { Door } from '../entities/Door';
 import type { Enemy, EnemyContext } from '../entities/Enemy';
 import type { Pickup } from '../entities/Pickup';
@@ -108,7 +108,6 @@ export class WorldScene extends Phaser.Scene {
       this.effects,
       state.flags,
       this.elevation.cellAt,
-      () => this.progression.has('dozer_blade'),
     );
     this.combat.watch(this.spawner.solids);
     this.combat.watch(this.spawner.enemies);
@@ -264,12 +263,12 @@ export class WorldScene extends Phaser.Scene {
     this.spawner.removePickup(p);
     if (!taken) return;
     if (taken.hpBonus > 0) this.tank.raiseMaxHp(this.progression.maxHp);
-    this.spawner.refreshBoulders();
   }
 
   /** Shoved boulders slide under the same elevation rules as a vehicle. */
   private updateBoulders(dt: number): void {
     for (const b of this.spawner.boulders.getChildren() as Boulder[]) {
+      b.stuck = !b.body.blocked.none;
       this.elevation.prepare(b);
       this.elevation.constrain(b, dt, []);
       b.syncDepth();
@@ -304,11 +303,25 @@ export class WorldScene extends Phaser.Scene {
     this.physics.add.collider(this.spawner.enemies, this.spawner.solids, undefined, sameLevel);
 
     const { doors, boulders, pickups } = this.spawner;
-    for (const movers of [this.tank, this.spawner.enemies, boulders]) {
+    for (const movers of [this.tank, this.spawner.enemies])
       this.physics.add.collider(movers, doors, undefined, sameLevel);
-      this.physics.add.collider(movers, boulders, undefined, sameLevel);
-    }
-    this.physics.add.collider(boulders, this.spawner.solids, undefined, sameLevel);
+    this.physics.add.collider(this.spawner.enemies, boulders, undefined, sameLevel);
+    // Boulders are immovable bodies, which Arcade never separates from static ones: a shoved
+    // boulder that meets a door, a destructible or another boulder jams instead.
+    const jam = (a: unknown, b: unknown) => {
+      if (!sameLevel(a, b)) return false;
+      for (const o of [a, b]) if (o instanceof Boulder && o.body.speed > 0) o.jam();
+      return false;
+    };
+    for (const solid of [doors, this.spawner.solids, boulders])
+      this.physics.add.overlap(boulders, solid, undefined, jam);
+    // The dozer blade shoves boulders ahead instead of colliding; a jammed one blocks it.
+    this.physics.add.collider(this.tank, boulders, undefined, (_t, o) => {
+      const b = o as Boulder;
+      if (!this.tank.alive || b.level !== this.tank.level) return false;
+      if (!this.progression.has('dozer_blade')) return true;
+      return !b.shove(this.tank.pos, this.tank.body.velocity);
+    });
     this.physics.add.overlap(
       this.tank,
       pickups,
@@ -341,7 +354,6 @@ export class WorldScene extends Phaser.Scene {
 
   private debugGrant({ ability }: GameEvents['debug:grantAbility']): void {
     this.progression.grant(ability);
-    this.spawner.refreshBoulders();
   }
 
   private onPlayerRespawned(): void {

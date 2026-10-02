@@ -1,4 +1,5 @@
 import type Phaser from 'phaser';
+import { weapons } from '../../data/weapons';
 import { touchMove } from '../../logic/input/mapping';
 import { angleTo } from '../../logic/input/stick';
 import type { TankCommand } from '../../logic/input/TankCommand';
@@ -19,7 +20,8 @@ export class TouchAdapter implements InputAdapter {
   private gunFired = false;
   private lastMgOn = touchState.mgOn;
   private readonly onFired = ({ weapon }: GameEvents['weapon:fired']) => {
-    if (weapon !== 'coax_mg') this.gunFired = true;
+    // Only the main gun clears a queued shot; the coax and mortar have their own triggers.
+    if (weapon !== 'coax_mg' && !weapons[weapon].lob) this.gunFired = true;
   };
 
   constructor(private readonly scene: Phaser.Scene) {

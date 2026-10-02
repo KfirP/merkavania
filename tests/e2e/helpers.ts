@@ -121,3 +121,34 @@ export async function holdKey(page: Page, key: string, ms: number) {
   await page.keyboard.up(key);
   return pawn;
 }
+
+/** The GameState as of the last frame, in save shape. */
+export async function getState(page: Page) {
+  const state = await page.evaluate(() => window.__merkavania?.getState() ?? null);
+  if (!state) throw new Error('No game state yet');
+  return state;
+}
+
+export function getObjects(page: Page) {
+  return page.evaluate(() => window.__merkavania!.getObjects());
+}
+
+export function grantAbility(page: Page, ability: string) {
+  return page.evaluate((a) => window.__merkavania?.grantAbility(a as never), ability);
+}
+
+export function getSave(page: Page, slot = 1) {
+  return page.evaluate((s) => window.__merkavania?.getSave(s) ?? null, slot);
+}
+
+export function getMortarLandings(page: Page) {
+  return page.evaluate(() => window.__merkavania?.getMortarLandings() ?? []);
+}
+
+/** Moves the mouse onto world point (x, y) once the camera has settled (via `aimAt`). */
+export async function pointMouseAt(page: Page, x: number, y: number) {
+  await aimAt(page, x, y);
+  const f = await page.evaluate(([x, y]) => window.__merkavania!.worldToCanvas(x!, y!), [x, y]);
+  const p = await canvasPoint(page, f.fx, f.fy);
+  await page.mouse.move(p.x, p.y);
+}
