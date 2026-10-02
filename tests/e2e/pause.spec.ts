@@ -24,8 +24,11 @@ async function focus(page: Page, scene: string, id: string) {
   expect((await getMenu(page, scene))?.focused).toBe(id);
 }
 
+/** Gameplay polls keys once per frame, so the press that pauses is held for a few frames. */
 async function pause(page: Page) {
-  await pressKey(page, 'Escape');
+  await page.keyboard.down('Escape');
+  await page.waitForTimeout(100);
+  await page.keyboard.up('Escape');
   await expect.poll(() => isSceneActive(page, 'Pause')).toBe(true);
   await expect.poll(() => isPaused(page, 'World')).toBe(true);
 }

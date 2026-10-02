@@ -18,16 +18,22 @@ export class MenuInputReader {
   private codes: string[] = [];
   private readonly edges = new Map<string, RisingEdge>();
   private readonly onKey = (e: KeyboardEvent) => {
+    // A menu paused under another (Title or Pause under Settings) mustn't replay its presses.
+    if (!this.scene.sys.isActive()) return;
     const input = menuInputFromCode(e.code);
     if (e.repeat && (input === null || !REPEATS.has(input))) return;
     this.codes.push(e.code);
   };
 
+  private readonly onResume = () => this.pad(true);
+
   constructor(private readonly scene: Phaser.Scene) {
     window.addEventListener('keydown', this.onKey);
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
-    // Ignore presses that were already held when the menu opened (the Esc or Start that opened it).
+    // Ignore buttons already held when the menu opens or comes back (the Start that opened it,
+    // the B that closed the menu on top).
     this.pad(true);
+    scene.events.on(Phaser.Scenes.Events.RESUME, this.onResume);
   }
 
   /**
@@ -35,6 +41,10 @@ export class MenuInputReader {
    * (rebinding).
    */
   poll(): { inputs: MenuInput[]; codes: string[] } {
+    if (!this.scene.sys.isActive()) {
+      this.codes = [];
+      return { inputs: [], codes: [] };
+    }
     const codes = this.codes.splice(0);
     const inputs = codes.map(menuInputFromCode).filter((i): i is MenuInput => i !== null);
     return { inputs: [...inputs, ...this.pad(false)], codes };
@@ -42,6 +52,7 @@ export class MenuInputReader {
 
   destroy(): void {
     window.removeEventListener('keydown', this.onKey);
+    this.scene.events.off(Phaser.Scenes.Events.RESUME, this.onResume);
   }
 
   private pad(prime: boolean): MenuInput[] {
