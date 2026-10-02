@@ -1,3 +1,4 @@
+import type { AbilityId } from './abilities';
 import type { HullStats } from '../logic/tank/hull';
 import type { AssetKey } from './assetManifest';
 import type { ArmorId } from './combat';
@@ -52,3 +53,10 @@ export const mkTiers = {
 } satisfies Record<string, MkTier>;
 
 export type MkTierId = keyof typeof mkTiers;
+
+/** Each tier's signature ability (GAME_DESIGN.md, Tank tiers); granted with the upgrade. */
+export const mkSignatures: Record<(typeof allMkTierIds)[number], AbilityId | null> = {
+  mk2: null,
+  mk3: 'suspension',
+  mk4: 'trophy',
+};
