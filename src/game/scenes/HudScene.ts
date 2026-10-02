@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
-import { isRtl, t, type I18nKey } from '../../i18n/i18n';
+import { t, type I18nKey } from '../../i18n/i18n';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../logic/scale';
 import { events, type GameEvents } from '../events';
+import { textStyle, UI_PANEL } from '../ui/text';
 import { SceneKey } from './keys';
 
 const BAR = { x: 4, width: 60, height: 4 };
@@ -12,14 +13,7 @@ const LOW_HP = 0.3;
 /** How long a pickup or depot message stays up, ms. */
 const TOAST_MS = 2600;
 
-const textStyle = (size: number): Phaser.Types.GameObjects.Text.TextStyle => ({
-  fontFamily: 'monospace',
-  fontSize: `${size}px`,
-  color: '#f0e6c8',
-  backgroundColor: 'rgba(0, 0, 0, 0.6)',
-  padding: { x: 3, y: 2 },
-  rtl: isRtl(),
-});
+const hudText = () => textStyle(1, { backgroundColor: UI_PANEL, padding: { x: 3, y: 2 } });
 
 /**
  * Runs on top of WorldScene: the active pawn's HP bar and the selected secondary (bottom left), and
@@ -45,10 +39,14 @@ export class HudScene extends Phaser.Scene {
       .setOrigin(0)
       .setStrokeStyle(1, 0x1f1f10);
     this.fill = this.add.rectangle(BAR.x, y, BAR.width, BAR.height, HP_COLOR).setOrigin(0);
-    this.secondary = this.add.text(BAR.x - 1, y - 3, '', textStyle(8)).setOrigin(0, 1);
+    this.secondary = this.add.text(BAR.x - 1, y - 3, '', hudText()).setOrigin(0, 1);
     // Bottom centre: clear of the debug overlay and of the HP bar.
     this.toast = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT - 24, '', textStyle(8))
+      .text(GAME_WIDTH / 2, GAME_HEIGHT - 24, '', {
+        ...hudText(),
+        align: 'center',
+        wordWrap: { width: GAME_WIDTH - 80 },
+      })
       .setOrigin(0.5, 1)
       .setVisible(false);
 

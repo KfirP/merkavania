@@ -1,0 +1,6 @@
+Public Pixel Font, version 1.24, by GGBotNet
+https://ggbot.itch.io/public-pixel-font
+https://github.com/ggbotnet/fonts-cc0
+
+Released under Creative Commons Zero v1.0 Universal (CC0 1.0): public domain dedication.
+https://creativecommons.org/publicdomain/zero/1.0/
