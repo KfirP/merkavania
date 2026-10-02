@@ -3,7 +3,7 @@ import en from './en.json';
 import he from './he.json';
 import { abilityIds, minorPickupIds } from '../data/abilities';
 import { secondaryIds } from '../data/progression';
-import { setLanguage, t } from './i18n';
+import { onLanguageChange, setLanguage, t } from './i18n';
 
 describe('i18n', () => {
   afterEach(() => setLanguage('en'));
@@ -22,6 +22,17 @@ describe('i18n', () => {
     expect(t('title.name')).toBe(en['title.name']);
     setLanguage('he');
     expect(t('title.name')).toBe(he['title.name']);
+  });
+
+  it('tells listeners when the language changes, until they unsubscribe', () => {
+    const seen: string[] = [];
+    const off = onLanguageChange((l) => seen.push(l));
+    setLanguage('he');
+    setLanguage('he');
+    setLanguage('en');
+    off();
+    setLanguage('he');
+    expect(seen).toEqual(['he', 'en']);
   });
 });
 

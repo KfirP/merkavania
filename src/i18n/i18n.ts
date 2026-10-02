@@ -1,15 +1,25 @@
 import en from './en.json';
 import he from './he.json';
+import type { Language } from '../logic/settings/settings';
 
-export type Language = 'en' | 'he';
+export type { Language };
 export type I18nKey = keyof typeof en;
 
 export const dictionaries: Record<Language, Record<string, string>> = { en, he };
 
 let current: Language = 'en';
+const listeners = new Set<(language: Language) => void>();
 
 export function setLanguage(language: Language): void {
+  if (language === current) return;
   current = language;
+  for (const fn of [...listeners]) fn(language);
+}
+
+/** Calls `fn` whenever the language changes (so scenes can redraw their text); returns the unsubscribe. */
+export function onLanguageChange(fn: (language: Language) => void): () => void {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
 }
 
 export function getLanguage(): Language {

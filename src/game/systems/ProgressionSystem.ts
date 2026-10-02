@@ -23,23 +23,7 @@ import {
 } from '../../logic/state/gameState';
 import type { PickupSpec } from '../../logic/world/objects';
 import { events, type Loadout } from '../events';
-
-/** localStorage, or a throwaway in-memory store where it's blocked (private mode, sandboxes). */
-function browserStorage(): StorageLike {
-  try {
-    const probe = 'merkavania.probe';
-    window.localStorage.setItem(probe, '1');
-    window.localStorage.removeItem(probe);
-    return window.localStorage;
-  } catch {
-    const mem = new Map<string, string>();
-    return {
-      getItem: (k) => mem.get(k) ?? null,
-      setItem: (k, v) => void mem.set(k, v),
-      removeItem: (k) => void mem.delete(k),
-    };
-  }
-}
+import { browserStorage } from '../storage';
 
 /** Save slot from `?slot=N` (1–3); slot select arrives with the title screen in M6. */
 export function slotFromUrl(): number {
