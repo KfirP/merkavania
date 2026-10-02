@@ -196,22 +196,25 @@ describe('test world', () => {
     }
   });
 
-  describe('M4 gallery (row y02)', () => {
-    const objectsOf = (id: string) =>
-      ((maps.get(id)!.raw.layers as Layer[]).find((l) => l.name === 'objects')!.objects ??
-        []) as unknown as RawObject[];
-    const parsed = (id: string) => parseChunkObjects(maps.get(id)!.chunk, objectsOf(id));
-    const cellUnder = (p: { x: number; y: number }) =>
-      cellAt(Math.floor(p.x / TILE), Math.floor(p.y / TILE))!;
-    const reach = (drop: (o: RawObject) => boolean = () => false) =>
-      checkReachability(
-        [...maps.values()].map(({ chunk, map }) => ({
-          chunk,
-          grid: parseChunkGrid(map as unknown as GridMap),
-          objects: objectsOf(chunk.id).filter((o) => !drop(o)),
-        })),
-      );
+  const objectsOf = (id: string) =>
+    ((maps.get(id)!.raw.layers as Layer[]).find((l) => l.name === 'objects')!.objects ??
+      []) as unknown as RawObject[];
+  const parsed = (id: string) => parseChunkObjects(maps.get(id)!.chunk, objectsOf(id));
+  const cellUnder = (p: { x: number; y: number }) =>
+    cellAt(Math.floor(p.x / TILE), Math.floor(p.y / TILE))!;
+  /** Reachability over the whole world, without the objects `drop` picks. */
+  const reach = (drop: (o: RawObject) => boolean = () => false) =>
+    checkReachability(
+      [...maps.values()].map(({ chunk, map }) => ({
+        chunk,
+        grid: parseChunkGrid(map as unknown as GridMap),
+        objects: objectsOf(chunk.id).filter((o) => !drop(o)),
+      })),
+    );
+  const grants = (ability: string) => (o: RawObject) =>
+    (o.properties ?? []).some((p) => p.name === 'ability' && p.value === ability);
 
+  describe('M4 gallery (row y02)', () => {
     it('is entered from x00_y01 through a gap in its bottom wall', () => {
       const tank: MoveContext = { pawn: 'tank', abilities: [] };
       for (const tx of [3, 4, 5, 6]) {
@@ -260,9 +263,7 @@ describe('test world', () => {
 
     it('is fully reachable, and the far end (with the M5 corner) needs the mortar', () => {
       expect(reach()).toEqual([]);
-      const noMortar = reach((o) =>
-        (o.properties ?? []).some((p) => p.name === 'ability' && p.value === 'mortar'),
-      );
+      const noMortar = reach(grants('mortar'));
       expect(noMortar.map((i) => i.message).sort()).toEqual(
         ['ammo_rack_2', 'armor_plate_2', 'hatch_scout', 'repair_kit_1'].map((id) =>
           expect.stringMatching(new RegExp(`pickup "${id}" is unreachable`)),
@@ -272,12 +273,7 @@ describe('test world', () => {
   });
 
   describe('M5 corner (x03_y02)', () => {
-    const chunk = maps.get('test_x03_y02')!;
-    const objects = (chunk.raw.layers as Layer[]).find((l) => l.name === 'objects')!
-      .objects as unknown as RawObject[];
-    const found = parseChunkObjects(chunk.chunk, objects);
-    const cellUnder = (p: { x: number; y: number }) =>
-      cellAt(Math.floor(p.x / TILE), Math.floor(p.y / TILE))!;
+    const found = parsed('test_x03_y02');
     const scout: MoveContext = { pawn: 'scout', abilities: [] };
     const tank: MoveContext = { pawn: 'tank', abilities: [] };
     const crawl = [...cells.entries()]
@@ -310,27 +306,12 @@ describe('test world', () => {
     });
 
     it('keeps the pocket and closet pickups behind the hatch', () => {
-      const all = () =>
-        checkReachability(
-          [...maps.values()].map(({ chunk: c, map, raw }) => ({
-            chunk: c,
-            grid: parseChunkGrid(map as unknown as GridMap),
-            objects: ((raw.layers as Layer[]).find((l) => l.name === 'objects')!.objects ??
-              []) as unknown as RawObject[],
-          })),
-        );
-      expect(all()).toEqual([]);
-      const noHatch = checkReachability(
-        [...maps.values()].map(({ chunk: c, map, raw }) => ({
-          chunk: c,
-          grid: parseChunkGrid(map as unknown as GridMap),
-          objects: (((raw.layers as Layer[]).find((l) => l.name === 'objects')!.objects ??
-            []) as unknown as RawObject[]).filter(
-            (o) => !(o.properties ?? []).some((p) => p.value === 'hatch_scout'),
-          ),
-        })),
-      );
-      expect(noHatch.map((i) => i.message).sort()).toEqual([
+      expect(reach()).toEqual([]);
+      expect(
+        reach(grants('hatch_scout'))
+          .map((i) => i.message)
+          .sort(),
+      ).toEqual([
         expect.stringMatching(/pickup "ammo_rack_2" is unreachable/),
         expect.stringMatching(/pickup "armor_plate_2" is unreachable/),
       ]);
