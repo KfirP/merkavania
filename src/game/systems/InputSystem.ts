@@ -23,7 +23,7 @@ export class InputSystem {
     this.adapters = {
       keyboardMouse: new KeyboardMouseAdapter(scene),
       gamepad: new GamepadAdapter(scene),
-      touch: new TouchAdapter(),
+      touch: new TouchAdapter(scene),
     };
   }
 

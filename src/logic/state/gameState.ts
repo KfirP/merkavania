@@ -71,15 +71,19 @@ export function unlockedSecondaries(s: GameState): SecondaryId[] {
   });
 }
 
+/** Gives the tank an ability; a secondary it unlocks comes fully loaded. */
+export function grantAbility(s: GameState, ability: AbilityId): void {
+  if (hasAbility(s, ability)) return;
+  s.abilities.push(ability);
+  for (const id of secondaryIds)
+    if (secondaries[id].ability === ability) s.secondaryAmmo[id] = ammoCapacity(s, id)!;
+}
+
 /** Takes a pickup; false if it was already taken. */
 export function collectPickup(s: GameState, pickup: PickupGrant): boolean {
   if (s.flags.has(pickup.key)) return false;
   s.flags.set(pickup.key);
-  if (pickup.ability && !hasAbility(s, pickup.ability)) {
-    s.abilities.push(pickup.ability);
-    for (const id of secondaryIds)
-      if (secondaries[id].ability === pickup.ability) s.secondaryAmmo[id] = ammoCapacity(s, id)!;
-  }
+  if (pickup.ability) grantAbility(s, pickup.ability);
   if (pickup.minor) {
     s.minor[pickup.minor] += 1;
     if (pickup.minor === 'ammo_rack')

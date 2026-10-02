@@ -10,7 +10,7 @@ export abstract class Pawn extends Phaser.Physics.Arcade.Sprite {
   /** Top-speed multiplier of the terrain under the pawn (set by ElevationSystem). */
   speedMul = 1;
   hp: number;
-  readonly maxHp: number;
+  maxHp: number;
   declare body: Phaser.Physics.Arcade.Body;
 
   constructor(

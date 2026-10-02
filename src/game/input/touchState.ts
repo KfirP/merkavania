@@ -9,11 +9,23 @@ export interface StickState {
   active: boolean;
 }
 
+export interface LobTouch {
+  active: boolean;
+  overButton: boolean;
+  x: number;
+  y: number;
+}
+
 export const touchState = {
   left: { x: 0, y: 0, active: false } as StickState,
   right: { x: 0, y: 0, active: false } as StickState,
   /** MG mode (ALT toggle): the right stick's outer ring fires the coax. */
   mgOn: false,
+  /**
+   * Mortar button: a finger that started on it, where it is now (game px, screen space) and
+   * whether it's back over the button. `x`/`y` keep the last spot after the lift.
+   */
+  lob: { active: false, overButton: false, x: 0, y: 0 } as LobTouch,
   /** performance.now() of the last touch, used to ignore browser-emulated mouse events. */
   lastTouchAt: -Infinity,
 };

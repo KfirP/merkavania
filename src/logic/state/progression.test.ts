@@ -5,6 +5,7 @@ import {
   ammoCapacity,
   collectPickup,
   cycleSecondary,
+  grantAbility,
   hasAbility,
   maxHp,
   newGame,
@@ -118,5 +119,16 @@ describe('visitChunk', () => {
     visitChunk(s, 'test', 'test_x00_y00');
     visitChunk(s, 'test', 'test_x01_y00');
     expect(s.visitedChunks).toEqual({ test: ['test_x00_y00', 'test_x01_y00'] });
+  });
+});
+
+describe('grantAbility', () => {
+  it('grants an ability (loaded, if it is a secondary) without any pickup flag', () => {
+    const s = newGame();
+    grantAbility(s, 'mortar');
+    grantAbility(s, 'mortar');
+    expect(s.abilities).toEqual(['mortar']);
+    expect(s.secondaryAmmo.mortar).toBe(MORTAR_AMMO);
+    expect(s.flags.toJSON()).toEqual([]);
   });
 });
