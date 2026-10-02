@@ -22,8 +22,8 @@ const textStyle = (size: number): Phaser.Types.GameObjects.Text.TextStyle => ({
 });
 
 /**
- * Runs on top of WorldScene: the tank's HP bar and selected secondary (bottom left), and a short
- * message for pickups and depots (bottom centre). M6 grows it into the full HUD. Driven only by events,
+ * Runs on top of WorldScene: the active pawn's HP bar and the selected secondary (bottom left), and
+ * a short message for pickups, depots and the hatch (bottom centre). M6 grows it into the full HUD. Driven only by events,
  * never by reaching into WorldScene.
  */
 export class HudScene extends Phaser.Scene {
@@ -31,6 +31,8 @@ export class HudScene extends Phaser.Scene {
   private secondary!: Phaser.GameObjects.Text;
   private toast!: Phaser.GameObjects.Text;
   private toastTimer: Phaser.Time.TimerEvent | null = null;
+  /** Whose HP the bar shows: the tank (`player`) or the scout while it's out. */
+  private hpTarget = 'player';
 
   constructor() {
     super(SceneKey.Hud);
@@ -50,6 +52,8 @@ export class HudScene extends Phaser.Scene {
       .setOrigin(0.5, 1)
       .setVisible(false);
 
+    const pawn = events.latest('pawn:switched');
+    if (pawn) this.onPawn(pawn);
     const hp = events.latest('hp:changed');
     if (hp) this.onHp(hp);
     const loadout = events.latest('loadout:changed');
@@ -59,7 +63,13 @@ export class HudScene extends Phaser.Scene {
     events.on('loadout:changed', this.onLoadout, this);
     events.on('pickup:collected', this.onPickup, this);
     events.on('depot:used', this.onDepot, this);
+    events.on('pawn:switched', this.onPawn, this);
+    events.on('hatch:refused', this.onHatchRefused, this);
+    events.on('scout:died', this.onScoutDied, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      events.off('pawn:switched', this.onPawn, this);
+      events.off('hatch:refused', this.onHatchRefused, this);
+      events.off('scout:died', this.onScoutDied, this);
       events.off('hp:changed', this.onHp, this);
       events.off('loadout:changed', this.onLoadout, this);
       events.off('pickup:collected', this.onPickup, this);
@@ -68,7 +78,7 @@ export class HudScene extends Phaser.Scene {
   }
 
   private onHp({ target, hp, max }: GameEvents['hp:changed']): void {
-    if (target !== 'player') return;
+    if (target !== this.hpTarget) return;
     const share = Phaser.Math.Clamp(hp / max, 0, 1);
     this.fill.width = Math.ceil(BAR.width * share);
     this.fill.fillColor = share < LOW_HP ? HP_LOW_COLOR : HP_COLOR;
@@ -87,6 +97,19 @@ export class HudScene extends Phaser.Scene {
 
   private onDepot({ saved }: GameEvents['depot:used']): void {
     this.showToast(t(saved ? 'depot.saved' : 'depot.save_failed'));
+  }
+
+  private onPawn({ kind }: GameEvents['pawn:switched']): void {
+    this.hpTarget = kind === 'scout' ? 'scout' : 'player';
+  }
+
+  private onHatchRefused({ reason }: GameEvents['hatch:refused']): void {
+    if (reason === 'blocked') this.showToast(t('hatch.blocked'));
+    if (reason === 'moving') this.showToast(t('hatch.moving'));
+  }
+
+  private onScoutDied(): void {
+    this.showToast(t('hatch.scout_down'));
   }
 
   private showToast(text: string): void {

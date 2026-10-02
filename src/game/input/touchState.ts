@@ -26,6 +26,8 @@ export const touchState = {
    * whether it's back over the button. `x`/`y` keep the last spot after the lift.
    */
   lob: { active: false, overButton: false, x: 0, y: 0 } as LobTouch,
+  /** The hatch button was tapped; TouchAdapter takes it as one `cmd.hatch` press. */
+  hatchTapped: false,
   /** performance.now() of the last touch, used to ignore browser-emulated mouse events. */
   lastTouchAt: -Infinity,
 };

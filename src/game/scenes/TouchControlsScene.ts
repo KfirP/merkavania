@@ -13,6 +13,9 @@ const ALT_BUTTON = { x: GAME_WIDTH - 30, y: GAME_HEIGHT - 110, r: 16 };
 /** Mortar button, left of ALT; shown once the tank has the mortar. */
 const MORTAR_BUTTON = { x: GAME_WIDTH - 70, y: GAME_HEIGHT - 110, r: 14 };
 const MORTAR_COLOR = 0xc2b280;
+/** Hatch button, above ALT; shown once the tank has the scout. A tap deploys or recalls it. */
+const HATCH_BUTTON = { x: GAME_WIDTH - 30, y: GAME_HEIGHT - 150, r: 14 };
+const HATCH_COLOR = 0x85854a;
 const IDLE_ALPHA = 0.25;
 const ALT_COLOR = 0xffb030;
 /** Right knob colour per zone: grey = release cancels, orange = release fires, yellow = MG. */
@@ -36,7 +39,8 @@ interface VirtualStick {
  * first cancels. The ALT button toggles MG mode, which switches the right stick to the coax: its
  * outer ring (shown only in MG mode) fires the MG, and lifting never fires the cannon. Once the
  * tank has the mortar, its button appears: drag from it to a spot and lift to lob a shell there
- * (back onto the button cancels). Writes `touchState` for TouchAdapter; rules in touchAim.ts and
+ * (back onto the button cancels). Once it has the scout, a tap on the hatch button deploys or
+ * recalls it. Writes `touchState` for TouchAdapter; rules in touchAim.ts and
  * touchLob.ts.
  * Always running but hidden until the first real touch: many desktop browsers report touch
  * support, and a touchscreen laptop may never be touched.
@@ -46,6 +50,7 @@ export class TouchControlsScene extends Phaser.Scene {
   private altButton!: Phaser.GameObjects.Arc;
   private mgRing!: Phaser.GameObjects.Arc;
   private mortarButton!: Phaser.GameObjects.Arc;
+  private hatchButton!: Phaser.GameObjects.Arc;
   private lobLine!: Phaser.GameObjects.Graphics;
   private lobPointer: number | null = null;
 
@@ -72,8 +77,13 @@ export class TouchControlsScene extends Phaser.Scene {
       .circle(MORTAR_BUTTON.x, MORTAR_BUTTON.y, MORTAR_BUTTON.r, MORTAR_COLOR, IDLE_ALPHA)
       .setStrokeStyle(1, 0xffffff, 0.6);
     this.lobLine = this.add.graphics();
+    this.hatchButton = this.add
+      .circle(HATCH_BUTTON.x, HATCH_BUTTON.y, HATCH_BUTTON.r, HATCH_COLOR, IDLE_ALPHA)
+      .setStrokeStyle(1, 0xffffff, 0.6);
     this.onLoadout(events.latest('loadout:changed'));
+    this.onAbilities(events.latest('abilities:changed'));
     events.on('loadout:changed', this.onLoadout, this);
+    events.on('abilities:changed', this.onAbilities, this);
     this.cameras.main.setVisible(false);
 
     this.input.on('pointerdown', this.onDown, this);
@@ -85,6 +95,8 @@ export class TouchControlsScene extends Phaser.Scene {
       touchState.mgOn = false;
       this.releaseLob();
       events.off('loadout:changed', this.onLoadout, this);
+      events.off('abilities:changed', this.onAbilities, this);
+      touchState.hatchTapped = false;
     });
   }
 
@@ -103,6 +115,13 @@ export class TouchControlsScene extends Phaser.Scene {
     if (Phaser.Math.Distance.Between(p.x, p.y, ALT_BUTTON.x, ALT_BUTTON.y) <= ALT_BUTTON.r + 4) {
       touchState.mgOn = !touchState.mgOn;
       this.refreshMgMode();
+      return;
+    }
+    const hatch = Phaser.Math.Distance.Between(p.x, p.y, HATCH_BUTTON.x, HATCH_BUTTON.y);
+    if (this.hatchButton.visible && hatch <= HATCH_BUTTON.r + 4) {
+      touchState.hatchTapped = true;
+      this.hatchButton.setAlpha(0.7);
+      this.time.delayedCall(120, () => this.hatchButton.setAlpha(IDLE_ALPHA));
       return;
     }
     if (this.overMortar(p) && this.mortarButton.visible && this.lobPointer === null) {
@@ -175,6 +194,10 @@ export class TouchControlsScene extends Phaser.Scene {
 
   private onLoadout(loadout: GameEvents['loadout:changed'] | undefined): void {
     this.mortarButton.setVisible(loadout?.unlocked.includes('mortar') ?? false);
+  }
+
+  private onAbilities(a: GameEvents['abilities:changed'] | undefined): void {
+    this.hatchButton.setVisible(a?.abilities.includes('hatch_scout') ?? false);
   }
 
   private release(stick: VirtualStick): void {

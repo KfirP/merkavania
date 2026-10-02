@@ -20,8 +20,14 @@ const COMBAT_LOG_SIZE = 100;
 
 export interface DebugHooks {
   game: Phaser.Game;
-  /** The active pawn as of the last frame, or null before WorldScene runs. */
+  /** The active pawn (the tank, or the scout while it's out) as of the last frame. */
   getPawn(): PawnTelemetry | null;
+  /** The tank as of the last frame, whichever pawn is active. */
+  getTank(): PawnTelemetry | null;
+  /** Presses the rear hatch: deploys the scout, or recalls it. */
+  pressHatch(): void;
+  /** Deals `amount` damage to the scout (if it's out), ignoring armor. */
+  damageScout(amount: number): void;
   /** Shots fired per weapon id since boot. */
   getShots(): Record<string, number>;
   /** Current and loaded chunks, or null before WorldScene streams any. */
@@ -69,6 +75,7 @@ declare global {
 export function installDebugHooks(game: Phaser.Game): void {
   if (!isDebug()) return;
   let pawn: PawnTelemetry | null = null;
+  let tank: PawnTelemetry | null = null;
   let world: WorldState | null = null;
   const shots: Record<string, number> = {};
   const hits: CombatHit[] = [];
@@ -87,6 +94,7 @@ export function installDebugHooks(game: Phaser.Game): void {
   events.on('mortar:landed', (l) => landings.push(l));
   events.on('debug:entities', (e) => (entities = e));
   events.on('debug:pawn', (p) => (pawn = p));
+  events.on('debug:tank', (t) => (tank = t));
   events.on('world:chunks', (w) => (world = w));
   events.on('weapon:fired', ({ weapon }) => (shots[weapon] = (shots[weapon] ?? 0) + 1));
   events.on('combat:hit', (hit) => {
@@ -96,6 +104,9 @@ export function installDebugHooks(game: Phaser.Game): void {
   window.__merkavania = {
     game,
     getPawn: () => pawn,
+    getTank: () => tank,
+    pressHatch: () => events.emit('debug:hatch', undefined),
+    damageScout: (amount) => events.emit('debug:damageScout', { amount }),
     getShots: () => ({ ...shots }),
     getWorld: () => world && { chunk: world.chunk, loaded: [...world.loaded] },
     teleport: (x, y, heading) => events.emit('debug:teleport', { x, y, heading }),

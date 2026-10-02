@@ -4,6 +4,7 @@ import { WAYPOINT_REACHED, type EnemyDef } from '../../data/enemies';
 import type { PawnKind } from '../../data/terrain';
 import { weapons, type WeaponDef } from '../../data/weapons';
 import { initialBrain, stepBrain, type BrainState, type Intent } from '../../logic/enemy/brain';
+import { pickTarget, type TargetCandidate } from '../../logic/enemy/target';
 import { clampToArc, steerToward } from '../../logic/enemy/steer';
 import { initialUnstick, stepUnstick, type UnstickState } from '../../logic/enemy/unstick';
 import { wrapAngle, type Vec2 } from '../../logic/input/stick';
@@ -25,7 +26,8 @@ import type { Damageable, Defense } from './Damageable';
 
 /** What an enemy needs from the world each frame. */
 export interface EnemyContext {
-  readonly player: { readonly pos: Vec2; readonly level: number; readonly alive: boolean };
+  /** The player's pawns: the tank, and the scout while it's out. */
+  readonly players: readonly TargetCandidate[];
   readonly cellAt: CellLookup;
   readonly projectiles: ProjectileSystem;
 }
@@ -142,13 +144,15 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite implements Damageable {
   think(ctx: EnemyContext, dt: number): void {
     if (!this.alive) return;
     const self = this.pos;
-    const player = ctx.player.alive ? ctx.player.pos : null;
+    const { target, visible } = pickTarget(
+      self,
+      this.level,
+      ctx.players,
+      this.def.sightRange,
+      (from, to) => hasLineOfSight(from, to, this.level, ctx.cellAt),
+    );
+    const player = target ? { x: target.pos.x, y: target.pos.y } : null;
     const aimTo = player ? Math.atan2(player.y - self.y, player.x - self.x) : this.aimAngle;
-    const visible =
-      player !== null &&
-      ctx.player.level === this.level &&
-      Math.hypot(player.x - self.x, player.y - self.y) <= this.def.sightRange &&
-      hasLineOfSight(self, player, this.level, ctx.cellAt);
 
     const { state, intent } = stepBrain(
       this.brain,

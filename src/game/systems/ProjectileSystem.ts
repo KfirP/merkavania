@@ -22,7 +22,7 @@ export class ProjectileSystem {
   readonly group: Phaser.Physics.Arcade.Group;
   onImpact: ImpactHandler | null = null;
   /** What guided missiles fired by `owner` home in on; null flies straight. */
-  homingTarget: (owner: Owner) => Vec2 | null = () => null;
+  homingTarget: (owner: Owner, from: Vec2) => Vec2 | null = () => null;
   /** Leaves smoke behind guided missiles so they're easy to read and dodge. */
   onTrail: ((p: Projectile) => void) | null = null;
 
@@ -76,7 +76,7 @@ export class ProjectileSystem {
   update(dt: number): void {
     for (const p of this.group.getMatching('active', true) as Projectile[]) {
       if (p.weapon.homing) {
-        const target = this.homingTarget(p.owner);
+        const target = this.homingTarget(p.owner, p);
         p.setHeading(steerMissile(p.angleOfTravel, p, target, p.weapon.homing, dt));
         p.trailTimer -= dt;
         if (p.trailTimer <= 0) {

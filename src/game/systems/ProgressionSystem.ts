@@ -82,6 +82,7 @@ export class ProgressionSystem {
     this.save();
     events.emit('pickup:collected', grant);
     this.emitLoadout();
+    if (grant.ability) this.emitAbilities();
     return { hpBonus: spec.minor === 'armor_plate' ? ARMOR_PLATE_HP : 0 };
   }
 
@@ -122,6 +123,11 @@ export class ProgressionSystem {
   grant(ability: AbilityId): void {
     grantAbility(this.state, ability);
     this.emitLoadout();
+    this.emitAbilities();
+  }
+
+  emitAbilities(): void {
+    events.emit('abilities:changed', { abilities: [...this.state.abilities] });
   }
 
   save(): boolean {

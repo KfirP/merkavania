@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { getAsset } from '../../data/assetManifest';
 import { RESPAWN_DELAY } from '../../data/combat';
 import { crushes } from '../../logic/combat/crush';
+import { closestAlive } from '../../logic/enemy/target';
 import { hazardDamage } from '../../logic/combat/hazard';
 import { CHUNK_H, CHUNK_PX_H, CHUNK_PX_W, CHUNK_W, TILE } from '../../logic/world/chunks';
 import { ABOVE_DEPTH } from '../../logic/world/depth';
@@ -21,14 +22,16 @@ import type { Door } from '../entities/Door';
 import type { Enemy, EnemyContext } from '../entities/Enemy';
 import type { Pickup } from '../entities/Pickup';
 import { Projectile } from '../entities/Projectile';
+import type { Scout } from '../entities/Scout';
 import { Tank } from '../entities/Tank';
-import { events, type GameEvents } from '../events';
+import { events, type GameEvents, type PawnTelemetry } from '../events';
 import { ChunkStreamer } from '../systems/ChunkStreamer';
 import { CombatSystem } from '../systems/CombatSystem';
 import { EffectsSystem } from '../systems/EffectsSystem';
 import { ElevationSystem } from '../systems/ElevationSystem';
 import { InputSystem } from '../systems/InputSystem';
 import { MortarSystem } from '../systems/MortarSystem';
+import { PawnSystem } from '../systems/PawnSystem';
 import { ProgressionSystem, slotFromUrl } from '../systems/ProgressionSystem';
 import { ProjectileSystem } from '../systems/ProjectileSystem';
 import { SpawnSystem } from '../systems/SpawnSystem';
@@ -62,6 +65,7 @@ export class WorldScene extends Phaser.Scene {
   private world!: ParsedWorld;
   private progression!: ProgressionSystem;
   private mortar!: MortarSystem;
+  private pawns!: PawnSystem;
   /** Depot pad the tank is on, so a depot fires once per visit. */
   private onDepot: string | null = null;
   private elevationOverlay: Phaser.GameObjects.Graphics | null = null;
@@ -113,11 +117,23 @@ export class WorldScene extends Phaser.Scene {
     this.combat.watch(this.spawner.enemies);
     this.combat.watchTriggers(this.spawner.switches);
     this.addEntityColliders();
+    const pawns = new PawnSystem(this, this.tank, {
+      combat: this.combat,
+      effects: this.effects,
+      projectiles: this.projectiles,
+      spawner: this.spawner,
+      elevation: this.elevation,
+      progression: this.progression,
+      onPickup: (p) => this.collect(p),
+    });
+    this.pawns = pawns;
     this.projectiles.onTrail = (p) => this.effects.trail(p.x, p.y, p.depth);
-    this.projectiles.homingTarget = (owner) =>
-      owner === 'enemy' && this.tank.alive ? this.tank.pos : null;
+    this.projectiles.homingTarget = (owner, from) =>
+      owner === 'enemy' ? (closestAlive(from, pawns.players)?.pos ?? null) : null;
     this.enemyContext = {
-      player: this.tank,
+      get players() {
+        return pawns.players;
+      },
       cellAt: this.elevation.cellAt,
       projectiles: this.projectiles,
     };
@@ -133,6 +149,7 @@ export class WorldScene extends Phaser.Scene {
         this.physics.add.collider(this.spawner.enemies, walls),
         this.physics.add.collider(this.spawner.boulders, walls),
         this.projectiles.addWalls(walls),
+        ...this.pawns.wallColliders(walls),
       ],
       this.spawner,
     );
@@ -147,6 +164,7 @@ export class WorldScene extends Phaser.Scene {
     this.inputSystem = new InputSystem(this);
 
     this.progression.emitLoadout();
+    this.progression.emitAbilities();
     this.scene.launch(SceneKey.Hud);
     events.emit('hp:changed', { target: 'player', hp: this.tank.hp, max: this.tank.maxHp });
     if (this.sys.game.device.input.touch) this.scene.launch(SceneKey.TouchControls);
@@ -156,6 +174,7 @@ export class WorldScene extends Phaser.Scene {
       events.on('debug:toggleElevation', this.toggleElevation, this);
       events.on('debug:teleport', this.teleport, this);
       events.on('debug:damagePlayer', this.debugDamage, this);
+      events.on('debug:damageScout', this.debugDamageScout, this);
       events.on('debug:god', this.debugGod, this);
       events.on('debug:spawnEnemy', this.debugSpawnEnemy, this);
       events.on('debug:grantAbility', this.debugGrant, this);
@@ -167,6 +186,8 @@ export class WorldScene extends Phaser.Scene {
       this.streamer.destroy();
       this.spawner.destroy();
       this.mortar.destroy();
+      this.pawns.destroy();
+      events.off('debug:damageScout', this.debugDamageScout, this);
       events.off('debug:grantAbility', this.debugGrant, this);
       events.off('world:chunks', this.onChunks, this);
       events.off('debug:toggleBodies', this.toggleBodies, this);
@@ -189,37 +210,24 @@ export class WorldScene extends Phaser.Scene {
     this.progression.tick(delta);
     // Positions come from `pos` (the body), not the sprite: Arcade has already stepped it.
     // Stream first, so the cells around the pawn exist before movement is checked against them.
-    const { x, y } = this.tank.pos;
+    const pawn = this.pawns.active;
+    const { x, y } = pawn.pos;
     this.streamer.update(x, y);
     this.elevation.prepare(this.tank);
-    const cmd = this.inputSystem.update({ x, y, turretAngle: this.tank.aim, dt });
+    const cmd = this.inputSystem.update({ x, y, turretAngle: pawn.aim, dt });
     // A dead tank ignores input until it respawns; input is still polled so edges stay current.
-    if (this.tank.alive) {
-      this.tank.applyCommand(cmd, dt);
-      this.elevation.constrain(this.tank, dt);
-      this.applyHazards(dt);
-      this.checkDepot();
-    }
+    this.pawns.update(cmd, dt);
+    this.applyHazards(dt);
+    if (this.tank.alive) this.checkDepot();
     this.updateEnemies(dt);
     this.updateBoulders(dt);
     this.projectiles.update(dt);
     this.mortar.update(dt);
 
-    if (isDebug())
-      events.emit('debug:pawn', {
-        // After constrain, which may have moved the body back from a cliff.
-        ...this.tank.pos,
-        heading: this.tank.heading,
-        speed: this.tank.speed,
-        turretAngle: this.tank.aim,
-        device: this.inputSystem.active,
-        level: this.tank.level,
-        chunk: this.streamer.currentChunk,
-        hp: this.tank.hp,
-        maxHp: this.tank.maxHp,
-        alive: this.tank.alive,
-      });
     if (isDebug()) {
+      const tank = this.telemetry(this.tank);
+      events.emit('debug:pawn', this.pawns.scout ? this.telemetry(this.pawns.scout) : tank);
+      events.emit('debug:tank', tank);
       events.emit('debug:entities', {
         destructibles: this.spawner.destructibles(),
         enemies: this.spawner.enemyTelemetry(),
@@ -227,6 +235,25 @@ export class WorldScene extends Phaser.Scene {
       events.emit('debug:objects', this.spawner.objectTelemetry());
       events.emit('debug:state', this.progression.snapshot());
     }
+  }
+
+  /** Debug telemetry for a pawn, read after constrain (which may have moved it back from a cliff). */
+  private telemetry(pawn: Tank | Scout): PawnTelemetry {
+    const tank = pawn instanceof Tank;
+    return {
+      kind: pawn.kind,
+      x: pawn.pos.x,
+      y: pawn.pos.y,
+      heading: tank ? pawn.heading : pawn.aim,
+      speed: tank ? pawn.speed : pawn.body.speed,
+      turretAngle: pawn.aim,
+      device: this.inputSystem.active,
+      level: pawn.level,
+      chunk: this.streamer.currentChunk,
+      hp: pawn.hp,
+      maxHp: pawn.maxHp,
+      alive: pawn.alive,
+    };
   }
 
   /** The last depot used, or the `start` spawn. */
@@ -364,12 +391,15 @@ export class WorldScene extends Phaser.Scene {
     this.spawner.spawnDebugEnemy(type, x, y, facing);
   }
 
-  /** Minefields and missile zones hurt a tank without the matching ability. */
+  /** Minefields and missile zones hurt a pawn without the matching ability. */
   private applyHazards(dt: number): void {
-    const { x, y } = this.tank.pos;
-    const cell = this.elevation.cellAt(Math.floor(x / TILE), Math.floor(y / TILE));
-    const damage = hazardDamage(cell, this.elevation.abilities(), dt);
-    if (damage > 0) this.combat.damage(this.tank, damage);
+    for (const pawn of this.pawns.players) {
+      if (!pawn.alive) continue;
+      const { x, y } = pawn.pos;
+      const cell = this.elevation.cellAt(Math.floor(x / TILE), Math.floor(y / TILE));
+      const damage = hazardDamage(cell, this.elevation.abilities(), dt);
+      if (damage > 0) this.combat.damage(pawn, damage);
+    }
   }
 
   private onPlayerDied(): void {
@@ -391,6 +421,10 @@ export class WorldScene extends Phaser.Scene {
     this.combat.damage(this.tank, amount);
   }
 
+  private debugDamageScout({ amount }: GameEvents['debug:damageScout']): void {
+    if (this.pawns.scout) this.combat.damage(this.pawns.scout, amount);
+  }
+
   private debugGod({ on }: GameEvents['debug:god']): void {
     this.combat.god = on;
   }
@@ -403,9 +437,10 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private teleport({ x, y, heading }: GameEvents['debug:teleport']): void {
-    this.tank.teleport(x, y, heading);
+    const pawn = this.pawns.active;
+    pawn.teleport(x, y, heading);
     this.streamer.update(x, y);
-    this.elevation.prepare(this.tank);
+    this.elevation.prepare(pawn);
   }
 
   private toggleElevation(): void {

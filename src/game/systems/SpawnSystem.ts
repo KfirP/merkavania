@@ -158,6 +158,23 @@ export class SpawnSystem {
     p.destroy();
   }
 
+  /**
+   * Whether a closed door, destructible or boulder on `level` covers the circle at (x, y), e.g.
+   * the spot behind the tank where the scout would climb out.
+   */
+  blocksAt(x: number, y: number, radius: number, level: number): boolean {
+    const groups = [this.doors, this.solids, this.boulders];
+    return this.scene.physics.overlapCirc(x, y, radius, true, true).some((body) => {
+      const o = body.gameObject as Phaser.GameObjects.GameObject & { level?: number };
+      return o.level === level && groups.some((g) => g.contains(o));
+    });
+  }
+
+  /** World rects of the closed doors (recall routes go around them). */
+  doorRects(): Phaser.Geom.Rectangle[] {
+    return (this.doors.getChildren() as Door[]).map((d) => d.getBounds());
+  }
+
   /** The depot pad under world (x, y) on `level`, if any. */
   depotAt(x: number, y: number, level: number): Depot | null {
     for (const d of this.depots) if (d.level === level && d.contains(x, y)) return d;
