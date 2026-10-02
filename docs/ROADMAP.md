@@ -28,11 +28,13 @@ Current target: **Vertical slice** (desert biome, M0–M8). Tick milestones off 
 - [x] Desert enemies: `rifle_squad`, `technical`, `bunker_mg`, `atgm_team`, `light_tank` (brain state machine, line of sight, guided ATGMs, entity-vs-entity level filtering)
 - [x] Explosions, hit feedback, screen shake; PixelLab sprites for enemies, destructibles and explosions (the rifle soldier stays a placeholder)
 
-## M4: Progression & saves
-- [ ] `GameState`, abilities, pickups, persistent flags per `<chunkId>:<id>`
-- [ ] Gates: `rubble`/dozer, `mortar` arc + mortar switches, doors/switches
-- [ ] Depots, 3 save slots, versioned save + migrations, respawn on death
-- [ ] `validate:maps` progression reachability
+## M4: Progression & saves ✅
+- [x] `GameState`, abilities, pickups (saved on collection), persistent flags per `<chunkId>:<id>`
+- [x] Gates: `rubble`/dozer (plus dozer-shoved `boulder`s), `mortar` arc + mortar switches, cannon switches, doors
+- [x] Depots (drive onto the pad), 3 save slots (slot 1 or `?slot=N` until M6's slot select), versioned save + migrations, respawn at the last depot
+- [x] `validate:maps` rule 6, progression reachability
+- [x] Test world row y02, the progression gallery; e2e specs for every gate and the save loop
+- Carried over: using a `repair_kit` charge needs the M6 HUD; rubble doesn't change look once the dozer can cross it (M7 art)
 
 ## M5: Rear hatch
 - [ ] Pawn switching, scout pawn, `crawlspace`, scout switches, recall

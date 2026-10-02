@@ -11,10 +11,10 @@
 src/
   main.ts                 # Phaser.Game config (480x270, pixelArt, Arcade)
   logic/                  # PURE TS: no Phaser imports (ESLint-enforced)
-    state/                # GameState, PlayerState, progression, ability checks (WorldFlags for now)
+    state/                # GameState (gameState.ts: pickups, secondaries, depots, max HP), WorldFlags
     combat/               # damage formula, armor, material rules, factions, hazards, splash, missile guidance
     enemy/                # enemy brain (state machine), vehicle steering, getting unstuck
-    world/                # world graph, chunk coordinate math, elevation grid, gate reachability
+    world/                # chunk coordinate math, elevation grid, objects, switches, map validation and reachability
     save/                 # serialize/deserialize, SAVE_VERSION, migrations.ts
     input/                # TankCommand type + device-independent helpers (deadzones, aim math)
     tank/                 # hull momentum, turret traverse, main-gun quick rounds, fire-rate cooldowns
@@ -24,7 +24,7 @@ src/
     tiledLoader.ts        # loads .tmj + external .tsj and registers the embedded map
     scenes/               # Boot, Preload, Title, World, Hud, TouchControls, Map, Pause, Debug
     entities/             # Pawn base, Tank, Scout, Drone, Enemy, Destructible, Projectile, Pickup...
-    systems/              # ChunkStreamer, ElevationSystem, CombatSystem, SpawnSystem, EffectsSystem, ProjectileSystem, InputSystem, AudioSystem
+    systems/              # ChunkStreamer, ElevationSystem, CombatSystem, SpawnSystem, EffectsSystem, ProjectileSystem, MortarSystem, ProgressionSystem, InputSystem, AudioSystem
     input/                # KeyboardMouseAdapter, GamepadAdapter, TouchAdapter -> TankCommand
     events.ts             # typed event bus definitions
   i18n/                   # en.json, he.json, i18n.ts (t(key, params))
@@ -46,7 +46,7 @@ tests/e2e/                # Playwright specs
 - `Boot` loads the minimal assets for the loading bar. `Preload` loads the asset manifest. `Title` handles slot select, language and settings.
 - `WorldScene` owns the gameplay: pawns, chunk streaming, physics, enemies. `HudScene` and `TouchControlsScene` are launched in parallel (touch only on touch devices, or when forced in settings).
 - `MapScene`, `PauseScene` and `DebugScene` are overlay scenes. Opening Map or Pause pauses `WorldScene`.
-- Communication: one typed event bus (`game/events.ts`, e.g. `pickup:collected`, `pawn:switched`, `hp:changed`, `radio:message`) plus the shared `GameState` instance from `src/logic/state`. Scenes never hold references to each other's game objects.
+- Communication: one typed event bus (`game/events.ts`, e.g. `pickup:collected`, `depot:used`, `loadout:changed`, `hp:changed`) plus the shared `GameState` instance from `src/logic/state`. Scenes never hold references to each other's game objects. Overlay scenes start after WorldScene's first emits, so they read the current value with `events.latest(name)` and then follow the event.
 
 ## Input
 Each device adapter writes into a single `TankCommand` every frame:
@@ -55,13 +55,17 @@ interface TankCommand {
   throttle: number;      // -1..1
   turn: number;          // -1..1 (hull rotation)
   aimAngle: number | null; // world-space radians; null = keep current
-  fire: boolean; altFire: boolean;
+  aimDistance: number | null; // px to the aimed spot (mortar range); null = keep the last one
+  lob: { angle: number; distance: number } | null; // one-shot mortar fire (touch mortar button)
+  fire: boolean; altFire: boolean; // altFire = the selected secondary
+  altCoax: boolean; // alt fire is the coax whatever is selected (touch MG mode)
   cycleNext: boolean; cyclePrev: boolean;
   hatch: boolean; interact: boolean; map: boolean; pause: boolean;
 }
 ```
-- Keyboard/mouse: `aimAngle` is the angle from the pawn's world position to the mouse's world position.
-- Gamepad/touch: `aimAngle` comes from the right stick when it's past the deadzone.
+- Keyboard/mouse: `aimAngle` is the angle from the pawn's world position to the mouse's world position, and `aimDistance` the distance to it.
+- Gamepad/touch: `aimAngle` comes from the right stick when it's past the deadzone. On the gamepad, the stick's tilt past the deadzone maps onto the mortar's min..max range (`padLobDistance`).
+- Touch mortar button (`logic/input/touchLob.ts`): shown once the tank has the mortar. Drag from it to a spot and lift to lob a shell there; a tap or dragging back onto the button fires nothing. `TouchAdapter` turns the lifted screen point into a world angle and distance (`cmd.lob`).
 - Touch right stick (`logic/input/touchAim.ts`): dragging past the deadzone aims and arms the cannon, and lifting fires it. Dragging back inside the deadzone first cancels, and a tap never fires. The aim is sticky, so the turret finishes its swing after the thumb lifts. The released shot waits until the turret lines up, clears when the gun fires, and is dropped if the gun can't fire within a short window (e.g. during a quick-round refill). The ALT button toggles MG mode, which switches the stick from the cannon to the coax. The stick's outer ring then fires the MG while held, and lifting never fires the cannon. The knob is grey in the cancel zone, orange when a lift would fire and yellow while the MG fires.
 - `fire`/`altFire` are held states. `cycleNext`/`cyclePrev`/`hatch`/`interact`/`map`/`pause` are edge-triggered: true only on the frame they're pressed.
 - The mapping rules themselves (mouse buttons, stick deadzones, touch aim/fire, device selection, virtual-stick clamping) are pure functions in `logic/input/` (`mapping.ts`, `touchAim.ts`, `device.ts`, `virtualStick.ts`). The adapters only read devices and call them.
@@ -85,7 +89,7 @@ interface TankCommand {
 - `constrainMove` sweeps the circle body's leading edge axis by axis, so a blocked axis stops while the other keeps sliding. The body may never straddle a cliff, so a ramp must be wider than the pawn. `ElevationSystem` applies it to the pawn's **body**: Arcade steps bodies before the scene's `update` and copies the result to the sprite only in `postUpdate`, so the sprite is a step behind during `update`. Any gameplay code running in `update` (aim origin, muzzle position, depth, streaming, telemetry) reads the pawn's position through `Pawn.pos` (the body centre), never `x`/`y`. A blocked axis snaps the body to the boundary and zeroes that velocity, and the tank bleeds momentum as it does against walls.
 - A pawn's `level` is the level of the cell under its centre. Entities carry `level`. Physics colliders and overlaps between entities are filtered so that only same-level pairs interact (a process callback checks `a.level === b.level`): tank and enemies, tank and destructibles, enemies with each other and with destructibles, and projectiles through `canHit`.
 - Projectiles inherit the shooter's level. They expire when they enter a cell higher than their level, and walls only stop them on the wall's level or above. They pass over lower cells without hitting anything down there (direct fire flies over).
-- The **mortar** ignores levels while in flight (it arcs, drawn with a shadow) and resolves impact at the target cell's level.
+- The **mortar** (`MortarSystem`, math in `logic/combat/mortar.ts`) ignores levels and walls while in flight (an arc drawn above everything, with a shadow on the ground) and explodes on the level of the cell it lands on, clamped to the weapon's `lob.minRange`..`range`. It fires from its own mount toward the aim, not along the turret.
 - Rendering: depth = `level * LEVEL_DEPTH + y`. Cliff face tiles are drawn on the `walls` layer.
 
 ## Chunk streaming
@@ -94,8 +98,14 @@ interface TankCommand {
 - Chunk JSON is fetched ahead of time with Phaser's loader (`queueTiledWorld` queues the `.world` and then every chunk), so loading a chunk is synchronous. Tilesets are cached by path, so they're loaded once and shared.
 - Terrain (`data/terrain.ts`) gives each terrain id a top-speed multiplier and an optional gate: a required ability (without it the terrain either blocks or is a `hazard` that deals `hazardDps`) or the pawns allowed on it.
 - Phaser 3 can't read external `.tsj` tilesets, so `game/tiledLoader.ts` loads the `.tmj` as JSON, then queues each referenced `.tsj`, and inlines them (`logic/world/tiled.ts`) before registering the map in the tilemap cache. A tileset's `name` is its image's asset-manifest key.
-- Objects spawn from the chunk's `objects` layer when it loads: `ChunkStreamer` calls `SpawnSystem.onLoad`/`onUnload`, which parse them with `logic/world/objects.ts`. Persistent state (pickups taken, destructibles broken, switches, doors) lives in flags keyed by `<chunkId>:<objectId>` (`logic/state/flags.ts`, session-only until M4 moves it into the saved `GameState`), so reloading a chunk respects it. Regular enemies respawn when a chunk reloads and when the player respawns.
+- Objects spawn from the chunk's `objects` layer when it loads: `ChunkStreamer` calls `SpawnSystem.onLoad`/`onUnload`, which parse them with `logic/world/objects.ts`. Persistent state (pickups taken, destructibles broken, switches flipped) lives in the GameState's flags keyed by `<chunkId>:<objectId>` (`logic/state/flags.ts`), so reloading a chunk respects it; a door stays open once its switch's flag is set. Regular enemies respawn when a chunk reloads and when the player respawns, and boulders go back to their spot when their chunk reloads.
 - The camera follows the pawn, bounded by the world's overall bounds. Chunks are marked visited in `GameState` for the map screen.
+
+## Progression
+- `ProgressionSystem` owns the `GameState` and its save slot. The rules are pure functions in `logic/state/gameState.ts`: `collectPickup` (idempotent by flag; abilities, `armor_plate` max HP, `ammo_rack` capacity), `cycleSecondary` (skips locked ones), `spendAmmo`, `useDepot` (respawn point + refill), `maxHp`. Numbers are in `data/progression.ts`.
+- A pickup is taken when the tank overlaps it on its level, and the game saves right away. Rolling onto a depot pad heals, rearms and saves, once per visit. The tank respawns at the last depot (`findDepot`), or at `start`.
+- `ElevationSystem` reads the GameState's abilities, so `dozer_blade` opens rubble. Boulders are immovable bodies that only a tank with the dozer blade shoves (`Boulder.shove`); one that's jammed against a cliff, wall, door or another boulder blocks the blade.
+- Switches are `Trigger`s, not `Damageable`s: `CombatSystem` tells them about every direct hit and every blast in reach on their level, and `logic/world/switches.activates` decides whether that weapon flips them. A flipped switch sets its flag and opens the doors whose `opensWith` names it. Doors are static bodies in their own group: they block the tank and enemies on their level and stop fire like walls do.
 
 ## Combat flow
 - Everything hittable implements `Damageable` (`combatId`, `faction`, `level`, `hp`, `defense`, `die()`): the tank (`player`), enemies (`enemy`) and destructibles (`neutral`). `Projectile`s carry their `weapon` and `owner`.
@@ -103,7 +113,8 @@ interface TankCommand {
 - A hit resolves in `logic/combat/damage.ts`. Armored targets use `resolveHit`: weapon damage × `armorMultipliers[armor][weapon.class]` (`data/combat.ts`), ×1.5 when the shot arrives inside the ±45° rear arc of a target that has a hull `heading`. Destructibles use `damageMaterial`: full damage at or above their `minAmmo` (`standard` < `heat` < `apfsds`), none below. A low multiplier or a material the ammo can't break is a **ricochet** (sparks instead of a flash).
 - `logic/combat/health.applyDamage` updates HP; `hp:changed` and `combat:hit` go out, and the entity's `die()` runs on the killing hit. Splash weapons (`weapon.splash`) then damage everything else in range on that level with linear falloff (`logic/combat/splash.ts`); hits on walls and cliffs splash too.
 - Hazard terrain and debug damage go through `CombatSystem.damage` (no armor). A moving tank crushes soldiers on contact (`logic/combat/crush.ts`).
-- Player death: the tank hides and stops colliding, the camera fades, and after `RESPAWN_DELAY` it respawns at the `start` spawn (the last depot from M4) with full HP. Enemies reset on `player:respawned`.
+- Splash damage lives in `CombatSystem.explode(blast)`, which projectile impacts and landing mortar shells share.
+- Player death: the tank hides and stops colliding, the camera fades, and after `RESPAWN_DELAY` it respawns at the last depot used (or `start`) with full HP. Enemies reset on `player:respawned`.
 - `EffectsSystem` owns the short-lived feedback: impact puffs, explosions scaled to the splash radius, ricochet sparks, white hit flashes, missile smoke trails, and camera shake from `logic/combat/shake.ts` (player hits scale with damage; explosions fade with distance from the camera).
 
 ## Enemies
@@ -115,15 +126,16 @@ interface TankCommand {
 - Damaged enemies show a small HP bar for a few seconds; the tank's HP bar lives in `HudScene`.
 
 ## Save system
-- Keys: `merkavania.save.<slot>` (slots 1–3) and `merkavania.settings` (language, volume, touch-control override, keybinds).
-- Shape (versioned):
+- Keys: `merkavania.save.<slot>` (slots 1–3) and `merkavania.settings` (language, volume, touch-control override, keybinds; M6). The game uses slot 1, or `?slot=N`, until M6 adds slot select.
+- Shape (`logic/save/save.ts`, `SAVE_VERSION` 1):
 ```ts
 { version: SAVE_VERSION, updatedAt, playtimeMs,
-  mk: 'mk2'|'mk3'|'mk4', abilities: AbilityId[], minor: {armor_plate: n, ...},
-  selectedAmmo, secondaryAmmo, depotId, flags: Record<string, boolean|number>,
+  mk: 'mk2'|'mk3'|'mk4', abilities: AbilityId[], minor: {armor_plate: n, ammo_rack: n, repair_kit: n},
+  selectedSecondary, secondaryAmmo: {mortar: n}, depotId, flags: Record<string, boolean|number>,
   visitedChunks: Record<BiomeId, string[]> }
 ```
-- `deserialize` runs migrations in order from the stored version to the current one. Every migration has a Vitest test with a fixture of the old save.
+- `deserialize` runs migrations (`logic/save/migrations.ts`, `migrations[n]` turns version n into n+1) in order from the stored version to the current one, then validates. Unreadable, corrupt or newer saves load as an empty slot; unknown ability or secondary ids are dropped instead of failing the whole save. Every migration has a Vitest test with a fixture of the old save.
+- `SaveStore` wraps a `Storage`-like object and swallows storage errors; where localStorage is blocked the game keeps an in-memory store for the session.
 
 ## i18n
 - `t('hud.hp')`-style keys. `en.json` is the reference and `he.json` must have the same keys (a unit test enforces this).
@@ -133,12 +145,12 @@ interface TankCommand {
 ## Debug tools
 - Enabled with `?debug=1` or in dev builds. The backtick key toggles `DebugScene`: FPS, pawn position/heading/speed, active input device, gun state, and the current chunk, pawn level and loaded chunk count. `1` toggles physics bodies, and `2` toggles the elevation overlay (levels tinted, ramps cyan, steep ramps red, chunk borders magenta). Planned:
   - teleport by clicking on the map, jump to chunk, set Mk tier, grant/revoke abilities, kill all
-- Debug hooks are exposed on `window.__merkavania` (in debug mode only) so Playwright can drive state: `game`, `getPawn()` (last-frame telemetry, including `level`, `chunk`, `hp`, `maxHp` and `alive`), `getShots()` (the player's shots per weapon id), `getWorld()` (current and loaded chunk ids), `teleport(x, y, heading?)`, `worldToCanvas(x, y)` (so specs aim with the real mouse), `damagePlayer(n)`, `setGod(on)`, `getCombatLog()` (recent resolved hits), `getDestructibles()`, `getEnemies()` and `spawnEnemy(type, x, y, facing?)`.
+- Debug hooks are exposed on `window.__merkavania` (in debug mode only) so Playwright can drive state: `game`, `getPawn()` (last-frame telemetry, including `level`, `chunk`, `hp`, `maxHp` and `alive`), `getShots()` (the player's shots per weapon id), `getWorld()` (current and loaded chunk ids), `teleport(x, y, heading?)`, `worldToCanvas(x, y)` (so specs aim with the real mouse), `damagePlayer(n)`, `setGod(on)`, `getCombatLog()` (recent resolved hits), `getDestructibles()`, `getEnemies()`, `spawnEnemy(type, x, y, facing?)`, `getState()` (the GameState in save shape), `grantAbility(id)`, `getSave(slot)`, `clearSave(slot)`, `getObjects()` (pickups, switches, doors, depots and boulders in loaded chunks) and `getMortarLandings()`.
 
 ## Testing
 - **Work test-first** (see `CLAUDE.md`, Workflow). Game code stays a thin shell over tested `src/logic/` functions.
 - **Vitest:** everything in `src/logic/` and `scripts/` (tank handling, input mapping, damage, progression, save migrations, elevation traversal rules, gate reachability, i18n key parity), sanity tests for the `src/data/` tables (ids and asset keys resolve, values in range) and structural tests for hand-built maps.
-- **Playwright** (`tests/e2e/`, shared helpers in `helpers.ts`): boot the game and confirm the title and then `WorldScene` load with no console errors. Behaviour that only exists in a running scene (collisions, turret traverse, fire cadence, combat and enemies in `combat.spec.ts`, the gamepad via a stubbed `navigator.getGamepads`, touch via CDP multi-touch, debug overlay keys) is checked through `window.__merkavania` hooks. Later: grant abilities and test a gate.
+- **Playwright** (`tests/e2e/`, shared helpers in `helpers.ts`): boot the game and confirm the title and then `WorldScene` load with no console errors. Behaviour that only exists in a running scene (collisions, turret traverse, fire cadence, combat and enemies in `combat.spec.ts`, pickups, gates, depots and saves in `progression.spec.ts`, the gamepad via a stubbed `navigator.getGamepads`, touch via CDP multi-touch, debug overlay keys) is checked through `window.__merkavania` hooks. Input is polled once per frame, so specs hold keys and mouse buttons for a few frames rather than tapping them.
 - **Map validation:** `npm run validate:maps` (see `LEVEL_DESIGN.md`).
 
 ## Deploy
