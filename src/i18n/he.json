@@ -70,5 +70,10 @@
   "pause.resume": "המשך",
   "pause.quit": "יציאה למסך הפתיחה",
   "hud.repair": "ערכה {n}/{max}",
-  "repair.used": "תיקון שטח: +{hp} חיים"
+  "repair.used": "תיקון שטח: +{hp} חיים",
+  "map.title": "מפה",
+  "map.legend_you": "אתם",
+  "map.legend_depot": "מוסך",
+  "map.legend_pickup": "פריט",
+  "map.legend_taken": "נאסף"
 }

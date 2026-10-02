@@ -3,14 +3,14 @@ import { RisingEdge } from '../../logic/input/edge';
 import { menuInputFromCode, type MenuInput } from '../../logic/ui/menu';
 
 /** Standard-mapping gamepad buttons used by menus. */
-const PAD = { a: 0, b: 1, start: 9, up: 12, down: 13, left: 14, right: 15 } as const;
+const PAD = { a: 0, b: 1, select: 8, start: 9, up: 12, down: 13, left: 14, right: 15 } as const;
 const STICK = 0.5;
 /** Held keys auto-repeat (sliders, long lists), but confirm and back don't. */
 const REPEATS = new Set<MenuInput>(['up', 'down', 'left', 'right']);
 
 /**
  * Menu input from the keyboard (fixed keys: arrows/WASD, Enter/Space, Esc/Backspace) and the
- * gamepad (d-pad or left stick, A, B or Start). Menus run while WorldScene is paused, so they read
+ * gamepad (d-pad or left stick, A, B/Start/Select). Menus run while WorldScene is paused, so they read
  * devices themselves instead of going through InputSystem.
  * Keys are plain DOM presses consumed once per frame (see DebugScene for why not Phaser's events).
  */
@@ -67,7 +67,7 @@ export class MenuInputReader {
       ['left', btn(PAD.left) || x < -STICK],
       ['right', btn(PAD.right) || x > STICK],
       ['confirm', btn(PAD.a)],
-      ['back', btn(PAD.b) || btn(PAD.start)],
+      ['back', btn(PAD.b) || btn(PAD.start) || btn(PAD.select)],
     ];
     const out: MenuInput[] = [];
     for (const [input, down] of held) {

@@ -70,5 +70,10 @@
   "pause.resume": "Resume",
   "pause.quit": "Quit to title",
   "hud.repair": "KIT {n}/{max}",
-  "repair.used": "Field repair: +{hp} HP"
+  "repair.used": "Field repair: +{hp} HP",
+  "map.title": "Map",
+  "map.legend_you": "You",
+  "map.legend_depot": "Depot",
+  "map.legend_pickup": "Item",
+  "map.legend_taken": "Taken"
 }

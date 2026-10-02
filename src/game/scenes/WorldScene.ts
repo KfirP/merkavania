@@ -4,10 +4,19 @@ import { RESPAWN_DELAY } from '../../data/combat';
 import { crushes } from '../../logic/combat/crush';
 import { closestAlive } from '../../logic/enemy/target';
 import { hazardDamage } from '../../logic/combat/hazard';
-import { CHUNK_H, CHUNK_PX_H, CHUNK_PX_W, CHUNK_W, TILE } from '../../logic/world/chunks';
+import {
+  CHUNK_H,
+  CHUNK_PX_H,
+  CHUNK_PX_W,
+  CHUNK_W,
+  chunkCoordAt,
+  chunkId,
+  TILE,
+} from '../../logic/world/chunks';
+import { buildMapView, type MapView } from '../../logic/world/mapScreen';
 import { ABOVE_DEPTH } from '../../logic/world/depth';
 import { WorldGrid } from '../../logic/world/grid';
-import { findDepot, type RawObject } from '../../logic/world/objects';
+import { findDepot, parseChunkObjects, type RawObject } from '../../logic/world/objects';
 import { wallBlocksProjectile } from '../../logic/world/traversal';
 import {
   findSpawn,
@@ -35,6 +44,7 @@ import { PawnSystem } from '../systems/PawnSystem';
 import { ProgressionSystem, slotFromUrl } from '../systems/ProgressionSystem';
 import { ProjectileSystem } from '../systems/ProjectileSystem';
 import { SpawnSystem } from '../systems/SpawnSystem';
+import { MAP_AREA } from './MapScene';
 import { settings } from '../settings';
 import { SceneKey } from './keys';
 
@@ -217,9 +227,9 @@ export class WorldScene extends Phaser.Scene {
   }
 
   /** Pauses the world under an overlay (pause menu, map); the touch controls sleep meanwhile. */
-  private openOverlay(key: string): void {
+  private openOverlay(key: string, data?: object): void {
     if (this.scene.isActive(SceneKey.TouchControls)) this.scene.sleep(SceneKey.TouchControls);
-    this.scene.launch(key);
+    this.scene.launch(key, data);
     this.scene.pause();
   }
 
@@ -241,6 +251,7 @@ export class WorldScene extends Phaser.Scene {
     const cmd = this.inputSystem.update({ x, y, turretAngle: pawn.aim, dt });
     if (this.overlayGuard > 0) this.overlayGuard--;
     else if (cmd.pause) return this.openOverlay(SceneKey.Pause);
+    else if (cmd.map) return this.openOverlay(SceneKey.Map, this.mapView());
     // A dead tank ignores input until it respawns; input is still polled so edges stay current.
     this.pawns.update(cmd, dt);
     if (cmd.repair) this.fieldRepair();
@@ -283,15 +294,40 @@ export class WorldScene extends Phaser.Scene {
     };
   }
 
+  /** The map screen's layout as of now. */
+  private mapView(): MapView {
+    const { biome, chunks } = this.world;
+    const state = this.progression.state;
+    const pawn = this.pawns.active.pos;
+    return buildMapView({
+      chunks,
+      visited: state.visitedChunks[biome] ?? [],
+      current: chunkId(biome, chunkCoordAt(pawn.x, pawn.y)),
+      pawn: { x: pawn.x, y: pawn.y },
+      objectsOf: (id) => {
+        const chunk = chunks.find((c) => c.id === id)!;
+        return parseChunkObjects(chunk, this.objectsOf(id));
+      },
+      taken: (key) => state.flags.has(key),
+      area: MAP_AREA,
+    });
+  }
+
+  /** A chunk map's raw `objects` layer, from the tilemap cache (every chunk is loaded at boot). */
+  private objectsOf(id: string): RawObject[] {
+    const data = this.cache.tilemap.get(id).data as {
+      layers: { name: string; objects?: RawObject[] }[];
+    };
+    return data.layers.find((l) => l.name === 'objects')?.objects ?? [];
+  }
+
   /** The last depot used, or the `start` spawn. */
   private respawnPoint(): { x: number; y: number; heading: number } {
     const mapOf = (id: string) =>
       this.cache.tilemap.get(id).data as { layers: { name: string; objects?: RawObject[] }[] };
-    const objectsOf = (id: string) =>
-      mapOf(id).layers.find((l) => l.name === 'objects')?.objects ?? [];
     const depot = this.progression.state.depot;
     const at =
-      (depot && findDepot(this.world.chunks, objectsOf, depot)) ||
+      (depot && findDepot(this.world.chunks, (id) => this.objectsOf(id), depot)) ||
       findSpawn(this.world.chunks, mapOf, 'start');
     if (!at) throw new Error(`${WORLD_KEY} has no start spawn`);
     return { x: at.x, y: at.y, heading: SPAWN_HEADING };

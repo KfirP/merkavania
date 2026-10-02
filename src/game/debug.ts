@@ -10,7 +10,9 @@ import {
   type PawnTelemetry,
   type WorldState,
 } from './events';
+import type { MapView } from '../logic/world/mapScreen';
 import type { HudScene, HudSnapshot } from './scenes/HudScene';
+import { openMapView } from './scenes/MapScene';
 import { menuSnapshot, type MenuSnapshot } from './ui/Menu';
 
 export function isDebug(): boolean {
@@ -65,6 +67,8 @@ export interface DebugHooks {
   getObjects(): ObjectsTelemetry;
   /** Where mortar shells came down since boot, oldest first. */
   getMortarLandings(): GameEvents['mortar:landed'][];
+  /** The open map screen's layout, or null while it's closed. */
+  getMapView(): MapView | null;
   /** What the HUD shows, or null while it isn't running. */
   getHud(): HudSnapshot | null;
   /** The menu open in scene `scene` (Title, Pause, Settings), or null. */
@@ -136,6 +140,7 @@ export function installDebugHooks(game: Phaser.Game): void {
     getObjects: () => JSON.parse(JSON.stringify(objects)) as ObjectsTelemetry,
     getMortarLandings: () => landings.map((l) => ({ ...l })),
     getMenu: (scene) => menuSnapshot(scene),
+    getMapView: () => openMapView(),
     getHud: () =>
       game.scene.isActive('Hud') ? (game.scene.getScene('Hud') as HudScene).snapshot() : null,
   };
