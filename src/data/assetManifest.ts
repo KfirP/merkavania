@@ -37,7 +37,7 @@ export const assetManifest = [
   { key: 'door', type: 'image', path: '', status: 'placeholder' },
   { key: 'boulder', type: 'image', path: '', status: 'placeholder' },
   { key: 'enemy_rifle_soldier', type: 'image', path: '', status: 'placeholder' },
-  { key: 'scout', type: 'image', path: '', status: 'placeholder' },
+  { key: 'scout', type: 'image', path: 'assets/sprites/pawns/scout.png', status: 'generated' },
   {
     key: 'enemy_technical',
     type: 'image',

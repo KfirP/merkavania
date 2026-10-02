@@ -152,14 +152,6 @@ const drawers: Partial<Record<AssetKey, Draw>> = {
     g.fillStyle(OUTLINE).fillRect(5, 5, 5, 1);
     return { width: 10, height: 9 };
   },
-  scout: (g) => {
-    // The player's scout: olive helmet and shoulders, rifle pointing east.
-    g.fillStyle(OUTLINE).fillEllipse(5, 5, 8, 10);
-    g.fillStyle(OLIVE).fillEllipse(5, 5, 6, 8);
-    g.fillStyle(OLIVE_LIGHT).fillCircle(5, 5, 2);
-    g.fillStyle(OUTLINE).fillRect(6, 6, 5, 1);
-    return { width: 11, height: 10 };
-  },
   muzzle_flash: (g) => {
     g.fillStyle(0xffb030).fillTriangle(0, 0, 10, 4, 0, 8);
     g.fillStyle(0xfff4b0).fillTriangle(0, 2, 6, 4, 0, 6);

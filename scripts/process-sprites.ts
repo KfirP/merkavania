@@ -48,6 +48,8 @@ const JOBS: Job[] = [
     steps: ['trim', 'downscale2'] as Step[],
   })),
   { from: 'effects/explosion/raw.png', to: 'effects/explosion.png', steps: ['trim'] },
+  // raw-v2.png with its rifle redrawn (fix-rifle.ts).
+  { from: 'pawns/scout/fixed.png', to: 'pawns/scout.png', steps: ['trim', 'downscale2'] },
 ];
 
 function apply(b: Bitmap, step: Step): Bitmap {
