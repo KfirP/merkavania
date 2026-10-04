@@ -41,6 +41,8 @@ export interface BossDef {
   /** Radius of each explosion in the death chain, px. */
   blast: number;
   reward: { tier: MkTierId };
+  /** Radio message keys: on waking, on defeat, and when the tank takes its reward. */
+  radio: { intro: string; defeated: string; reward: string };
   sprites: { body: AssetKey; gun: AssetKey };
 }
 
@@ -69,6 +71,11 @@ export const bosses: Record<BossId, BossDef> = {
     },
     blast: 28,
     reward: { tier: 'mk3' },
+    radio: {
+      intro: 'radio.desert.boss_intro',
+      defeated: 'radio.desert.boss_down',
+      reward: 'radio.desert.mk3',
+    },
     sprites: { body: 'boss_desert_bunker', gun: 'boss_desert_gun' },
   },
 };

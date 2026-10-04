@@ -90,5 +90,7 @@
   "radio.desert.boss_down": "Bunker down! There's a crate in the rubble with your\nname on it. Literally. Someone wrote 'Tiger-1'.",
   "radio.desert.mk3": "Mk3 conversion complete. New gun, new shocks,\nsame smell. Steep ramps won't stop you now.",
   "radio.desert.final_01": "...tank... you weren't supposed to get this far.\nThe thing under the hills is waking. Come north.",
-  "radio.desert.final_02": "Uh, Tiger-1? That wasn't us.\nEnd of the slice. Nice driving!"
+  "radio.desert.final_02": "Uh, Tiger-1? That wasn't us.\nEnd of the slice. Nice driving!",
+  "boss.boss_desert": "COMMAND BUNKER",
+  "upgrade.mk3": "Merkava Mk3! 120mm gun and improved suspension"
 }

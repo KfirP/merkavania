@@ -29,6 +29,7 @@ import {
 } from '../../logic/world/world';
 import { isDebug } from '../debug';
 import { Boulder } from '../entities/Boulder';
+import type { MkUpgrade } from '../entities/MkUpgrade';
 import type { Door } from '../entities/Door';
 import type { Enemy, EnemyContext } from '../entities/Enemy';
 import type { Pickup } from '../entities/Pickup';
@@ -36,6 +37,7 @@ import { Projectile } from '../entities/Projectile';
 import type { Scout } from '../entities/Scout';
 import { Tank } from '../entities/Tank';
 import { events, type GameEvents, type PawnTelemetry } from '../events';
+import { BossSystem } from '../systems/BossSystem';
 import { ChunkStreamer } from '../systems/ChunkStreamer';
 import { CombatSystem } from '../systems/CombatSystem';
 import { EffectsSystem } from '../systems/EffectsSystem';
@@ -88,6 +90,7 @@ export class WorldScene extends Phaser.Scene {
   private mortar!: MortarSystem;
   private pawns!: PawnSystem;
   private radio!: RadioSystem;
+  private bosses!: BossSystem;
   /** Depot pad the tank is on, so a depot fires once per visit. */
   private onDepot: string | null = null;
   private elevationOverlay: Phaser.GameObjects.Graphics | null = null;
@@ -163,6 +166,24 @@ export class WorldScene extends Phaser.Scene {
       cellAt: this.elevation.cellAt,
       projectiles: this.projectiles,
     };
+    this.bosses = new BossSystem(this, {
+      combat: this.combat,
+      effects: this.effects,
+      projectiles: this.projectiles,
+      progression: this.progression,
+      radio: this.radio,
+      spawner: this.spawner,
+      cellAt: this.elevation.cellAt,
+      upgrade: (mk) => this.upgradeTank(mk),
+      refollow: () => this.cameras.main.startFollow(this.pawns.active, true, 0.15, 0.15),
+    });
+    this.bosses.addColliders([this.tank, this.spawner.enemies, pawns.scouts]);
+    this.physics.add.overlap(
+      this.tank,
+      this.bosses.upgrades,
+      (_t, c) => this.bosses.collect(c as MkUpgrade),
+      (_t, c) => this.tank.alive && (c as MkUpgrade).level === this.tank.level,
+    );
     events.on('player:respawned', this.onPlayerRespawned, this);
     events.on('world:chunks', this.onChunks, this);
 
@@ -177,7 +198,16 @@ export class WorldScene extends Phaser.Scene {
         this.projectiles.addWalls(walls),
         ...this.pawns.wallColliders(walls),
       ],
-      this.spawner,
+      {
+        onLoad: (chunk, objects) => {
+          this.spawner.onLoad(chunk, objects);
+          this.bosses.onLoad(chunk, objects);
+        },
+        onUnload: (chunk) => {
+          this.bosses.onUnload(chunk);
+          this.spawner.onUnload(chunk);
+        },
+      },
       () => state.abilities,
     );
     events.on('abilities:changed', this.onAbilitiesChanged, this);
@@ -211,6 +241,7 @@ export class WorldScene extends Phaser.Scene {
       events.on('debug:spawnEnemy', this.debugSpawnEnemy, this);
       events.on('debug:grantAbility', this.debugGrant, this);
       events.on('debug:setMk', this.debugSetMk, this);
+      events.on('debug:damageBoss', this.debugDamageBoss, this);
       events.on('world:chunks', this.redrawElevation, this);
     }
 
@@ -219,12 +250,14 @@ export class WorldScene extends Phaser.Scene {
       this.events.off(Phaser.Scenes.Events.RESUME, this.onResume, this);
       this.inputSystem.destroy();
       this.streamer.destroy();
+      this.bosses.destroy();
       this.spawner.destroy();
       this.mortar.destroy();
       this.pawns.destroy();
       events.off('debug:damageScout', this.debugDamageScout, this);
       events.off('debug:grantAbility', this.debugGrant, this);
       events.off('debug:setMk', this.debugSetMk, this);
+      events.off('debug:damageBoss', this.debugDamageBoss, this);
       events.off('abilities:changed', this.onAbilitiesChanged, this);
       events.off('world:chunks', this.onChunks, this);
       events.off('debug:toggleBodies', this.toggleBodies, this);
@@ -298,6 +331,7 @@ export class WorldScene extends Phaser.Scene {
     this.applyHazards(dt);
     if (this.tank.alive) this.checkDepot();
     this.updateEnemies(dt);
+    this.bosses.update(dt, this.pawns.active);
     this.updateBoulders(dt);
     this.projectiles.update(dt);
     this.mortar.update(dt);
@@ -312,6 +346,7 @@ export class WorldScene extends Phaser.Scene {
       });
       events.emit('debug:objects', this.spawner.objectTelemetry());
       events.emit('debug:state', this.progression.snapshot());
+      events.emit('debug:boss', this.bosses.telemetry());
     }
   }
 
@@ -506,6 +541,10 @@ export class WorldScene extends Phaser.Scene {
     this.streamer.refreshLooks();
   }
 
+  private debugDamageBoss({ amount }: GameEvents['debug:damageBoss']): void {
+    this.bosses.damageAll(amount);
+  }
+
   private debugSetMk({ mk }: GameEvents['debug:setMk']): void {
     this.upgradeTank(mk);
   }
@@ -514,10 +553,13 @@ export class WorldScene extends Phaser.Scene {
   private upgradeTank(mk: MkTierId): void {
     if (!this.progression.upgrade(mk)) return;
     this.tank.setTier(mk, this.progression.maxHp);
+    this.cameras.main.flash(300, 255, 244, 200);
+    events.emit('tank:upgraded', { mk });
   }
 
   private onPlayerRespawned(): void {
     this.spawner.resetEnemies();
+    this.bosses.reset();
   }
 
   private debugSpawnEnemy({ type, x, y, facing }: GameEvents['debug:spawnEnemy']): void {

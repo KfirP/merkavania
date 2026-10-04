@@ -4,6 +4,7 @@ import type { MkTierId } from '../data/mkTiers';
 import { slotKey, type SaveData } from '../logic/save/save';
 import {
   events,
+  type BossTelemetry,
   type CombatHit,
   type EntitiesTelemetry,
   type GameEvents,
@@ -62,6 +63,10 @@ export interface DebugHooks {
   getState(): SaveData | null;
   /** Gives the tank an ability without its pickup. */
   grantAbility(ability: AbilityId): void;
+  /** The boss in the loaded chunks (or the upgrade crate it left), as of the last frame. */
+  getBoss(): BossTelemetry | null;
+  /** Deals `amount` damage to every living boss, ignoring armor. */
+  damageBoss(amount: number): void;
   /** Upgrades the tank to Mk tier `mk` (as a boss reward would; saved at once). */
   setMk(mk: MkTierId): void;
   /** What's stored in save slot `slot` (parsed), or null. */
@@ -107,6 +112,8 @@ export function installDebugHooks(game: Phaser.Game): void {
   let state: SaveData | null = null;
   const landings: GameEvents['mortar:landed'][] = [];
   events.on('debug:objects', (o) => (objects = o));
+  let boss: BossTelemetry | null = null;
+  events.on('debug:boss', (b) => (boss = b));
   events.on('debug:state', (s) => (state = s));
   events.on('mortar:landed', (l) => landings.push(l));
   events.on('debug:entities', (e) => (entities = e));
@@ -140,6 +147,8 @@ export function installDebugHooks(game: Phaser.Game): void {
     getState: () => state && (JSON.parse(JSON.stringify(state)) as SaveData),
     grantAbility: (ability) => events.emit('debug:grantAbility', { ability }),
     setMk: (mk) => events.emit('debug:setMk', { mk }),
+    getBoss: () => boss && (JSON.parse(JSON.stringify(boss)) as BossTelemetry),
+    damageBoss: (amount) => events.emit('debug:damageBoss', { amount }),
     getSave: (slot) => {
       const raw = window.localStorage.getItem(slotKey(slot));
       return raw === null ? null : (JSON.parse(raw) as unknown);

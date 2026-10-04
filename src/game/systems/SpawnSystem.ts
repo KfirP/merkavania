@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { enemies as enemyDefs, isEnemyId } from '../../data/enemies';
+import { enemies as enemyDefs, isEnemyId, type EnemyId } from '../../data/enemies';
 import { isMaterialId, materials } from '../../data/materials';
 import type { WorldFlags } from '../../logic/state/flags';
 import {
@@ -37,6 +37,8 @@ const SQUAD_OFFSETS = [
 ];
 /** Specs spawned through the debug hook live under this pseudo-chunk. */
 const DEBUG_CHUNK = 'debug';
+/** Boss reinforcements live under this pseudo-chunk (dropped when the player respawns). */
+const BOSS_CHUNK = 'boss';
 
 /**
  * Builds entities from each chunk's `objects` layer as it streams in, and removes them when it
@@ -150,6 +152,7 @@ export class SpawnSystem {
   resetEnemies(): void {
     for (const e of [...this.enemies.getChildren()] as Enemy[]) e.destroy();
     this.byChunk.delete(DEBUG_CHUNK);
+    this.byChunk.delete(BOSS_CHUNK);
     for (const [chunkId, specs] of this.enemySpecs) {
       const kept = (this.byChunk.get(chunkId) ?? []).filter((o) => o.active);
       this.byChunk.set(chunkId, kept);
@@ -165,6 +168,13 @@ export class SpawnSystem {
     }
     const key = `${DEBUG_CHUNK}:${type}_${++this.debugCount}`;
     this.spawnEnemies(DEBUG_CHUNK, { key, enemyType: type, level: 0, x, y, facing });
+  }
+
+  /** A boss calls for help: spawns `type` at (x, y) and returns the new enemies. */
+  spawnReinforcement(type: EnemyId, x: number, y: number, facing: number): Enemy[] {
+    const key = `${BOSS_CHUNK}:${type}_${++this.debugCount}`;
+    const level = levelAt(x, y, this.cellAt);
+    return this.spawnEnemies(BOSS_CHUNK, { key, enemyType: type, level, x, y, facing });
   }
 
   /** A taken pickup leaves the world (its flag is set by the GameState). */
@@ -247,10 +257,11 @@ export class SpawnSystem {
     }));
   }
 
-  private spawnEnemies(chunkId: string, spec: EnemySpec): void {
-    if (!isEnemyId(spec.enemyType)) return;
+  private spawnEnemies(chunkId: string, spec: EnemySpec): Enemy[] {
+    if (!isEnemyId(spec.enemyType)) return [];
     const def = enemyDefs[spec.enemyType];
     const list = this.byChunk.get(chunkId) ?? [];
+    const spawned: Enemy[] = [];
     for (let i = 0; i < def.count; i++) {
       const off = SQUAD_OFFSETS[i % SQUAD_OFFSETS.length]!;
       const x = spec.x + off.x;
@@ -264,8 +275,10 @@ export class SpawnSystem {
       e.configureBody();
       this.combat.add(e);
       list.push(e);
+      spawned.push(e);
     }
     this.byChunk.set(chunkId, list);
+    return spawned;
   }
 
   private killed(e: Enemy): void {

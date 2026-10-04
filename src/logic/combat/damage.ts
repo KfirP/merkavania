@@ -12,6 +12,8 @@ import { wrapAngle } from '../input/stick';
 
 /** The parts of a weapon the damage rules read (a `WeaponDef` fits). */
 export interface HitWeapon {
+  /** Matched against a target's `weakTo`. */
+  id?: string;
   damage: number;
   class: WeaponClass;
   ammo: AmmoType;
@@ -21,6 +23,8 @@ export interface HitTarget {
   armor: ArmorId;
   /** Hull heading, radians; targets without one (infantry, bunkers' round sides…) have no rear. */
   heading?: number;
+  /** Extra multiplier per weapon id (boss weak points). */
+  weakTo?: Partial<Record<string, number>>;
 }
 
 export interface HitResult {
@@ -38,12 +42,16 @@ export function isRearHit(targetHeading: number, shotAngle: number): boolean {
   return Math.abs(wrapAngle(shotAngle - targetHeading)) <= REAR_ARC + 1e-9;
 }
 
-/** Damage = weapon damage × armor multiplier for its class, ×1.5 in the rear arc (GAME_DESIGN.md). */
+/**
+ * Damage = weapon damage × armor multiplier for its class × any weakness to that weapon, ×1.5 in
+ * the rear arc (GAME_DESIGN.md).
+ */
 export function resolveHit(weapon: HitWeapon, target: HitTarget, shotAngle: number): HitResult {
   const mul = armorMultipliers[target.armor][weapon.class];
   const rear = target.heading !== undefined && isRearHit(target.heading, shotAngle);
+  const weak = (weapon.id !== undefined && target.weakTo?.[weapon.id]) || 1;
   return {
-    damage: weapon.damage * mul * (rear ? REAR_MULTIPLIER : 1),
+    damage: weapon.damage * mul * weak * (rear ? REAR_MULTIPLIER : 1),
     rear,
     ricochet: mul <= RICOCHET_MULTIPLIER,
   };

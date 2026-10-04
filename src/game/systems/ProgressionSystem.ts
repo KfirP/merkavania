@@ -138,6 +138,12 @@ export class ProgressionSystem {
     return true;
   }
 
+  /** A boss is beaten: remembered (and saved) so it stays beaten. */
+  beatBoss(key: string): void {
+    this.state.flags.set(key);
+    this.save();
+  }
+
   /** A `once` radio played: remembered (and saved) so it never plays again. */
   hearRadio(key: string): void {
     this.state.flags.set(key);

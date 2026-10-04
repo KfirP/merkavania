@@ -3,7 +3,7 @@ import type { WeaponDef } from '../../data/weapons';
 import { damageMaterial, resolveHit } from '../../logic/combat/damage';
 import { canHit, type Owner } from '../../logic/combat/faction';
 import { applyDamage } from '../../logic/combat/health';
-import { splashFalloff } from '../../logic/combat/splash';
+import { distanceToRect, splashFalloff } from '../../logic/combat/splash';
 import type { Damageable } from '../entities/Damageable';
 import { Projectile } from '../entities/Projectile';
 import { events } from '../events';
@@ -150,10 +150,10 @@ export class CombatSystem {
     this.effects.explosion(b.x, b.y, radius, b.depth);
     for (const t of [...this.targets]) {
       if (t === this.direct || !t.alive || !canHit(b, t)) continue;
-      const falloff = splashFalloff(
-        Phaser.Math.Distance.Between(b.x, b.y, t.pos.x, t.pos.y),
-        radius,
-      );
+      const dist = t.halfExtent
+        ? distanceToRect(b, { ...t.pos, halfW: t.halfExtent.w, halfH: t.halfExtent.h })
+        : Phaser.Math.Distance.Between(b.x, b.y, t.pos.x, t.pos.y);
+      const falloff = splashFalloff(dist, radius);
       if (falloff <= 0) continue;
       const angle = Phaser.Math.Angle.Between(b.x, b.y, t.pos.x, t.pos.y);
       const hit = this.resolve(b.weapon, t, angle);

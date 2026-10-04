@@ -146,6 +146,28 @@ const drawers: Partial<Record<AssetKey, Draw>> = {
     g.fillStyle(0xffffff).fillRect(5, 0, 3, 2);
     return { width: 8, height: 2 };
   },
+  mk_upgrade: (g) => {
+    // A big olive crate with a yellow star: the Mk upgrade a boss leaves behind.
+    g.fillStyle(OUTLINE).fillRect(0, 0, 20, 20);
+    g.fillStyle(OLIVE).fillRect(1, 1, 18, 18);
+    g.fillStyle(OLIVE_LIGHT).fillRect(1, 1, 18, 2);
+    g.fillStyle(0xf0c040).fillPoints(
+      [
+        { x: 10, y: 3 },
+        { x: 12, y: 8 },
+        { x: 17, y: 8 },
+        { x: 13, y: 11 },
+        { x: 15, y: 16 },
+        { x: 10, y: 13 },
+        { x: 5, y: 16 },
+        { x: 7, y: 11 },
+        { x: 3, y: 8 },
+        { x: 8, y: 8 },
+      ],
+      true,
+    );
+    return { width: 20, height: 20 };
+  },
   boss_desert_bunker: (g) => {
     // A squat concrete command bunker seen from above: slab roof, vents, aerials, sandbagged front.
     g.fillStyle(OUTLINE).fillRect(0, 0, 96, 48);
