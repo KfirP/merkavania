@@ -40,7 +40,7 @@ async function click(page: Page, button: 'left' | 'right') {
 
 /** Boots straight into the world on save slot `slot`. */
 async function enterSlot(page: Page, slot: number) {
-  await page.goto(`/?debug=1&slot=${slot}`);
+  await page.goto(`/?debug=1&world=test&slot=${slot}`);
   await expect.poll(() => isSceneActive(page, 'Title')).toBe(true);
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.__merkavania?.getPawn() != null)).toBe(true);

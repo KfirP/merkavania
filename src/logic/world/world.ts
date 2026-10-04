@@ -66,3 +66,11 @@ export function worldBounds(chunks: readonly ChunkCoord[]) {
     height: (Math.max(...ys) - y0 + 1) * CHUNK_PX_H,
   };
 }
+
+/** The biome a new session plays: the vertical slice's desert. */
+export const DEFAULT_BIOME = 'desert';
+
+/** `requested` (e.g. `?world=test`) if it's one of the `known` biomes, else the default. */
+export function pickBiome(requested: string | null, known: readonly string[]): string {
+  return requested !== null && known.includes(requested) ? requested : DEFAULT_BIOME;
+}

@@ -66,7 +66,7 @@ test.describe('HUD', () => {
   });
 
   test('mirrors in Hebrew', async ({ page }) => {
-    await page.goto('/?debug=1');
+    await page.goto('/?debug=1&world=test');
     await page.evaluate(() =>
       localStorage.setItem('merkavania.settings', JSON.stringify({ language: 'he' })),
     );

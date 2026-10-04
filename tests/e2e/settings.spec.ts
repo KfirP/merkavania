@@ -20,7 +20,7 @@ async function focus(page: Page, scene: string, id: string) {
 }
 
 async function openSettings(page: Page) {
-  await page.goto('/?debug=1');
+  await page.goto('/?debug=1&world=test');
   await expect.poll(async () => (await getMenu(page, 'Title'))?.focused ?? null).toBe('slot_1');
   await focus(page, 'Title', 'settings');
   await pressKey(page, 'Enter');

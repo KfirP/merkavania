@@ -17,7 +17,7 @@ const SAVE = {
 };
 
 async function openTitle(page: Page, query = '') {
-  await page.goto(`/?debug=1${query}`);
+  await page.goto(`/?debug=1&world=test${query}`);
   await expect.poll(() => isSceneActive(page, 'Title')).toBe(true);
   await expect
     .poll(async () => (await getMenu(page, 'Title'))?.items.length ?? 0)

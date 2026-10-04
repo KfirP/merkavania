@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { getAsset } from '../../data/assetManifest';
+import { assetManifest, getAsset, type AssetKey } from '../../data/assetManifest';
 import { RESPAWN_DELAY } from '../../data/combat';
 import type { MkTierId } from '../../data/mkTiers';
 import { crushes } from '../../logic/combat/crush';
@@ -22,6 +22,7 @@ import { wallBlocksProjectile } from '../../logic/world/traversal';
 import {
   findSpawn,
   parseWorld,
+  pickBiome,
   worldBounds,
   type TiledWorld,
   type ParsedWorld,
@@ -51,7 +52,6 @@ import { SceneKey } from './keys';
 
 /** Longest step fed to pawns, so a tab-switch hitch doesn't launch the tank through a wall. */
 const MAX_DT = 1 / 20;
-const WORLD_KEY = 'world_test';
 /** Camera fade around a respawn, ms. */
 const FADE_MS = 400;
 /** The tank faces north at the start spawn and at depots. */
@@ -61,6 +61,14 @@ const SPAWN_HEADING = -Math.PI / 2;
 const LEVEL_TINTS = [0x000000, 0xe8d24a, 0xe8883a, 0xd6453e];
 const RAMP_TINT = 0x3ec7d6;
 const STEEP_TINT = 0xb00020;
+
+/** Biome from `?world=<biome>` (one with a `world_<biome>` manifest entry), else the desert. */
+function biomeFromUrl(): string {
+  const known = assetManifest
+    .filter((a) => a.key.startsWith('world_'))
+    .map((a) => a.key.slice('world_'.length));
+  return pickBiome(new URLSearchParams(window.location.search).get('world'), known);
+}
 
 /** Gameplay scene: streams the world's chunks around the tank. */
 export class WorldScene extends Phaser.Scene {
@@ -91,11 +99,9 @@ export class WorldScene extends Phaser.Scene {
     super(SceneKey.World);
   }
 
-  create(data: { slot?: number } = {}): void {
-    const world = parseWorld(
-      this.cache.json.get(WORLD_KEY) as TiledWorld,
-      getAsset(WORLD_KEY).path,
-    );
+  create(data: { slot?: number; biome?: string } = {}): void {
+    const key = `world_${data.biome ?? biomeFromUrl()}` as AssetKey;
+    const world = parseWorld(this.cache.json.get(key) as TiledWorld, getAsset(key).path);
     this.world = world;
     this.progression = new ProgressionSystem(data.slot ?? slotFromUrl());
     const state = this.progression.state;
@@ -169,7 +175,9 @@ export class WorldScene extends Phaser.Scene {
         ...this.pawns.wallColliders(walls),
       ],
       this.spawner,
+      () => state.abilities,
     );
+    events.on('abilities:changed', this.onAbilitiesChanged, this);
     this.streamer.update(this.tank.x, this.tank.y);
 
     const b = worldBounds(world.chunks);
@@ -214,6 +222,7 @@ export class WorldScene extends Phaser.Scene {
       events.off('debug:damageScout', this.debugDamageScout, this);
       events.off('debug:grantAbility', this.debugGrant, this);
       events.off('debug:setMk', this.debugSetMk, this);
+      events.off('abilities:changed', this.onAbilitiesChanged, this);
       events.off('world:chunks', this.onChunks, this);
       events.off('debug:toggleBodies', this.toggleBodies, this);
       events.off('debug:toggleElevation', this.toggleElevation, this);
@@ -354,7 +363,7 @@ export class WorldScene extends Phaser.Scene {
     const at =
       (depot && findDepot(this.world.chunks, (id) => this.objectsOf(id), depot)) ||
       findSpawn(this.world.chunks, mapOf, 'start');
-    if (!at) throw new Error(`${WORLD_KEY} has no start spawn`);
+    if (!at) throw new Error(`${this.world.biome} has no start spawn`);
     return { x: at.x, y: at.y, heading: SPAWN_HEADING };
   }
 
@@ -485,6 +494,10 @@ export class WorldScene extends Phaser.Scene {
 
   private debugGrant({ ability }: GameEvents['debug:grantAbility']): void {
     this.progression.grant(ability);
+  }
+
+  private onAbilitiesChanged(): void {
+    this.streamer.refreshLooks();
   }
 
   private debugSetMk({ mk }: GameEvents['debug:setMk']): void {

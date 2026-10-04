@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import type { AbilityId } from '../../data/abilities';
 import {
   CHUNK_PX_H,
   CHUNK_PX_W,
@@ -7,6 +8,7 @@ import {
   chunksToLoad,
   chunksToUnload,
 } from '../../logic/world/chunks';
+import { clearedLook } from '../../logic/world/clearedLook';
 import { ABOVE_DEPTH } from '../../logic/world/depth';
 import { parseChunkGrid, type GridMap, type WorldGrid } from '../../logic/world/grid';
 import type { RawObject } from '../../logic/world/objects';
@@ -32,6 +34,7 @@ export interface ChunkHooks {
 interface LoadedChunk {
   chunk: WorldChunk;
   map: Phaser.Tilemaps.Tilemap;
+  ground: Phaser.Tilemaps.TilemapLayer;
   colliders: Phaser.Physics.Arcade.Collider[];
 }
 
@@ -53,6 +56,8 @@ export class ChunkStreamer {
       walls: Phaser.Tilemaps.TilemapLayer,
     ) => Phaser.Physics.Arcade.Collider[],
     private readonly hooks?: ChunkHooks,
+    /** The player's abilities: gated ground shows its cleared look once they can cross it. */
+    private readonly abilities: () => readonly AbilityId[] = () => [],
   ) {
     for (const c of world.chunks) this.byCoord.set(`${c.cx},${c.cy}`, c);
   }
@@ -82,6 +87,11 @@ export class ChunkStreamer {
     events.emit('world:chunks', { chunk: id, loaded: [...this.loaded.keys()] });
   }
 
+  /** Re-applies cleared looks to the loaded chunks (call when the abilities change). */
+  refreshLooks(): void {
+    for (const { ground } of this.loaded.values()) this.applyLooks(ground);
+  }
+
   destroy(): void {
     for (const id of [...this.loaded.keys()]) this.unload(id);
   }
@@ -96,10 +106,12 @@ export class ChunkStreamer {
     const y = chunk.cy * CHUNK_PX_H;
 
     const colliders: Phaser.Physics.Arcade.Collider[] = [];
+    let ground: Phaser.Tilemaps.TilemapLayer | null = null;
     for (const [name, depth] of DRAWN_LAYERS) {
       const layer = map.createLayer(name, tilesets, x, y);
       if (!layer) throw new Error(`Chunk ${chunk.id} has no ${name} layer`);
       layer.setDepth(depth);
+      if (name === 'ground') ground = layer;
       if (name === 'walls') {
         layer.setCollisionByProperty({ solid: true });
         colliders.push(...this.addColliders(layer));
@@ -108,9 +120,20 @@ export class ChunkStreamer {
 
     const data = this.scene.cache.tilemap.get(chunk.id).data as GridMap;
     this.grid.add(chunk, parseChunkGrid(data));
-    this.loaded.set(chunk.id, { chunk, map, colliders });
+    this.applyLooks(ground!);
+    this.loaded.set(chunk.id, { chunk, map, ground: ground!, colliders });
     const objects = data.layers.find((l) => l.name === 'objects')?.objects ?? [];
     this.hooks?.onLoad(chunk, objects as RawObject[]);
+  }
+
+  /** Swaps gated ground tiles for their cleared look (logic/world/clearedLook.ts). */
+  private applyLooks(ground: Phaser.Tilemaps.TilemapLayer): void {
+    const abilities = this.abilities();
+    ground.forEachTile((tile) => {
+      const props = (tile.properties ?? {}) as Record<string, unknown>;
+      const cleared = clearedLook(props, abilities);
+      if (cleared !== null && tile.tileset) tile.index = tile.tileset.firstgid + cleared;
+    });
   }
 
   private unload(id: string): void {

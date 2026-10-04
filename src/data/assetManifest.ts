@@ -135,9 +135,18 @@ export const assetManifest = [
     path: 'assets/tiles/test/terrain.png',
     status: 'placeholder',
   },
+  // Desert terrain, drawn in code by scripts/gen-desert-tiles.ts (desert palette).
+  {
+    key: 'tiles_desert',
+    type: 'image',
+    path: 'assets/tiles/desert/desert.png',
+    status: 'final',
+  },
   // Elevation data tiles: shown in Tiled only (the layer is hidden in game).
   { key: 'tiles_elevation', type: 'image', path: 'assets/tiles/elevation.png', status: 'final' },
   { key: 'world_test', type: 'json', path: 'maps/test/test.world', status: 'final' },
+  // Built from maps-src/desert by `npm run build:maps`.
+  { key: 'world_desert', type: 'json', path: 'maps/desert/desert.world', status: 'final' },
 ] as const satisfies readonly AssetEntry[];
 
 export type AssetKey = (typeof assetManifest)[number]['key'];

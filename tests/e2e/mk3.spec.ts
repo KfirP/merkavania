@@ -72,7 +72,7 @@ test.describe('Mk3 upgrade', () => {
       )
       .toBe('mk3');
 
-    await page.goto('/?debug=1&slot=1');
+    await page.goto('/?debug=1&world=test&slot=1');
     await expect.poll(() => isSceneActive(page, 'Title')).toBe(true);
     await page.keyboard.press('Enter');
     await expect.poll(() => page.evaluate(() => window.__merkavania?.getPawn() != null)).toBe(true);

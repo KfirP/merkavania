@@ -27,7 +27,7 @@ function buttonVisible(page: Page, id: string) {
 }
 
 async function enter(page: Page, settings?: object) {
-  await page.goto('/?debug=1');
+  await page.goto('/?debug=1&world=test');
   if (settings) {
     await page.evaluate(
       (s) => localStorage.setItem('merkavania.settings', JSON.stringify(s)),

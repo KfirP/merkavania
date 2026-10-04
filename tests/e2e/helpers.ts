@@ -54,9 +54,12 @@ export function collectErrors(page: Page): string[] {
   return errors;
 }
 
-/** Boots with the debug hooks, leaves the title with a key press and waits for the first frame. */
-export async function enterWorld(page: Page) {
-  await page.goto('/?debug=1');
+/**
+ * Boots with the debug hooks, leaves the title with a key press and waits for the first frame.
+ * Specs run in the test sandbox (`?world=test`) unless they name another biome.
+ */
+export async function enterWorld(page: Page, world = 'test') {
+  await page.goto(`/?debug=1&world=${world}`);
   await expect.poll(() => isSceneActive(page, 'Title')).toBe(true);
   await page.keyboard.press('Enter');
   await expect.poll(() => isSceneActive(page, 'World')).toBe(true);
