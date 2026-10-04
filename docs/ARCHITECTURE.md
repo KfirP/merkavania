@@ -13,14 +13,14 @@ src/
   logic/                  # PURE TS: no Phaser imports (ESLint-enforced)
     state/                # GameState (gameState.ts: pickups, secondaries, depots, max HP), WorldFlags
     combat/               # damage formula, armor, material rules, factions, hazards, splash, missile guidance
-    enemy/                # enemy brain (state machine), vehicle steering, getting unstuck
-    world/                # chunk coordinate math, elevation grid, objects, switches, map validation and reachability
+    enemy/                # enemy brain (state machine), vehicle steering, getting unstuck, boss brain + rail geometry
+    world/                # chunk coordinate math, elevation grid, objects, switches, radio triggers/queue, cleared looks, map validation and reachability
     save/                 # serialize/deserialize, SAVE_VERSION, migrations.ts
     input/                # TankCommand type + device-independent helpers (deadzones, aim math), keybinds, touch buttons
     settings/             # player settings (language, touch controls, volumes, keybinds) + SettingsStore
     ui/                   # menu navigation, HUD layout (RTL mirroring), minimap, number formatting
     tank/                 # hull momentum, turret traverse, main-gun quick rounds, fire-rate cooldowns
-  data/                   # tables: mkTiers.ts, weapons.ts, combat.ts, materials.ts, abilities.ts, enemies.ts, terrain.ts, assetManifest.ts
+  data/                   # tables: mkTiers.ts, weapons.ts, combat.ts, materials.ts, abilities.ts, enemies.ts, bosses.ts, radio.ts, terrain.ts, assetManifest.ts
   game/
     placeholders.ts       # code-drawn textures for manifest entries without a file
     tiledLoader.ts        # loads .tmj + external .tsj and registers the embedded map
@@ -29,15 +29,16 @@ src/
     settings.ts           # the loaded Settings and updateSettings (saves + applies the language)
     rotate.ts             # the rotate-device prompt (DOM overlay)
     entities/             # Pawn base, Tank, Scout, Drone, Enemy, Destructible, Projectile, Pickup...
-    systems/              # ChunkStreamer, ElevationSystem, CombatSystem, SpawnSystem, EffectsSystem, ProjectileSystem, MortarSystem, ProgressionSystem, InputSystem, AudioSystem
+    systems/              # ChunkStreamer, ElevationSystem, CombatSystem, SpawnSystem, BossSystem, RadioSystem, EffectsSystem, ProjectileSystem, MortarSystem, ProgressionSystem, InputSystem, AudioSystem
     input/                # KeyboardMouseAdapter, GamepadAdapter, TouchAdapter -> TankCommand
     events.ts             # typed event bus definitions
   i18n/                   # en.json, he.json, i18n.ts (t(key, params))
 public/
   assets/                 # game-ready sprites, tiles, sfx, music
   maps/<biome>/           # <biome>.world, chunk .tmj files, tilesets .tsj
+maps-src/<biome>/         # chunk layouts (ASCII grids + objects) that `npm run build:maps` turns into public/maps/<biome>/
 assets-src/               # raw AI generations + source files (not shipped)
-scripts/                  # validate-maps.ts, process-sprites.ts (+ pure bitmap ops in sprites.ts), fontCmap.ts (font glyph coverage)
+scripts/                  # validate-maps.ts, build-maps.ts (+ mapBuild.ts, mapLayout.ts), gen-desert-tiles.ts (+ desertTiles.ts, tileset.ts), process-sprites.ts (+ pure bitmap ops in sprites.ts), fontCmap.ts (font glyph coverage)
 tests/e2e/                # Playwright specs
 .github/workflows/        # ci.yml, deploy.yml
 ```
@@ -48,7 +49,7 @@ tests/e2e/                # Playwright specs
 - Arcade physics. Tanks and pawns use **circle bodies**, because the hull's rotation is visual only; a circle body avoids rotated-AABB problems.
 
 ## Scenes and communication
-- `Boot` loads the UI font (so even the loading text uses it). `Preload` loads the asset manifest. `Title` lists the three save slots (continue, with playtime and date from `SaveStore.info`, or new game), settings, language and deleting a save behind a confirm; the chosen slot reaches `WorldScene` as scene data. `?slot=N` only picks which slot has focus first.
+- `Boot` loads the UI font (so even the loading text uses it). `Preload` loads the asset manifest. `Title` lists the three save slots (continue, with playtime and date from `SaveStore.info`, or new game), settings, language and deleting a save behind a confirm; the chosen slot reaches `WorldScene` as scene data. `?slot=N` only picks which slot has focus first. `WorldScene` plays the desert unless `?world=<biome>` names another world in the manifest (`logic/world/world.pickBiome`); the e2e specs use `?world=test`. A save whose depot isn't in the loaded world respawns at `start`.
 - `WorldScene` owns the gameplay: pawns, chunk streaming, physics, enemies. `HudScene` and `TouchControlsScene` are launched in parallel (touch per the setting: `auto` on touch devices, hidden until the first touch; `on` always and shown at once; `off` never). Stopping `WorldScene` stops them too.
 - `PauseScene` (Resume, Settings, Quit to title), `MapScene` and `DebugScene` are overlays. Pause (`cmd.pause`) and the map (`cmd.map`) pause `WorldScene` and put the touch controls to sleep. On resume the world re-reads the keybinds and the touch setting, and ignores pause/map for a couple of frames so the press that closed an overlay can't reopen it. `SettingsScene` opens from Title or Pause, pausing the scene under it until Back.
 - Menus (`game/ui/Menu.ts`) are lists of items whose focus and value rules live in `logic/ui/menu.ts` (wrapping focus, choices, 0..1 sliders). They read input themselves, because the world is paused while they're up: fixed keys (arrows/WASD, Enter/Space, Esc/Backspace, so a bad keybind can't trap you), the gamepad (d-pad/stick, A, B/Start/Select) and taps. A menu paused under another drops input, and the gamepad's held buttons are ignored when it comes back.
@@ -85,7 +86,7 @@ interface TankCommand {
 
 ## Pawns
 - `Pawn` base class: `level`, circle body, health, and `applyCommand(cmd, dt)`.
-- `Tank`: hull sprite plus a child turret sprite. The hull holds heading, speed and momentum. The turret rotates toward `aimAngle` at the tier's traverse rate. The Mk tier's stats and sprites are looked up from `data/mkTiers.ts`, so upgrading swaps both in place.
+- `Tank`: hull sprite plus a child turret sprite. The hull holds heading, speed and momentum. The turret rotates toward `aimAngle` at the tier's traverse rate. The Mk tier's stats and sprites are looked up from `data/mkTiers.ts`. An upgrade (`logic/state/gameState.grantTier`: never downgrades, grants the tier's signature ability) goes through `ProgressionSystem.upgrade` (saved at once, `tank:tier`) and then `Tank.setTier`, which swaps sprites, gun, quick rounds, body radius and max HP in place.
 - `Scout` (`data/pawns.ts`): a small circle body that walks 8-way (`logic/pawn/scoutMove.scoutVelocity`), faces its aim and fires the `rifle_scout` (small arms). It fits through `crawlspace`, takes pickups, flips `scout` switches by walking onto them (`logic/world/switches.pawnActivates`), and is stopped by walls, doors, destructibles, boulders and enemies on its level. Hazard terrain hurts it; depots ignore it.
 - `PawnSystem` owns the tank, the scout while it's out and the hatch state (`logic/pawn/hatch.ts`). `active` is the pawn that takes input and that the camera, chunk streaming and `getPawn()` follow; `players` is what enemies may target. The scout lives in a physics group, so its colliders are made once and survive deploys.
 - The **hatch** deploys the scout (and later the drone) just behind the tank's **rear** (`deployPoint`). It opens only with `hatch_scout`, a living tank slower than `deploySpeedMax`, no cooldown, and a free spot: on the tank's level, walkable for the scout from under the tank, and clear of doors, destructibles and boulders. A refusal for being blocked or moving shows a HUD toast (`hatch:refused`). While the scout is out the tank gets empty commands, so it holds still and can still be hit.
@@ -104,6 +105,7 @@ interface TankCommand {
 - `constrainMove` sweeps the circle body's leading edge axis by axis, so a blocked axis stops while the other keeps sliding. The body may never straddle a cliff, so a ramp must be wider than the pawn. `ElevationSystem` applies it to the pawn's **body**: Arcade steps bodies before the scene's `update` and copies the result to the sprite only in `postUpdate`, so the sprite is a step behind during `update`. Any gameplay code running in `update` (aim origin, muzzle position, depth, streaming, telemetry) reads the pawn's position through `Pawn.pos` (the body centre), never `x`/`y`. A blocked axis snaps the body to the boundary and zeroes that velocity, and the tank bleeds momentum as it does against walls.
 - A pawn's `level` is the level of the cell under its centre. Entities carry `level`. Physics colliders and overlaps between entities are filtered so that only same-level pairs interact (a process callback checks `a.level === b.level`): tank and enemies, tank and destructibles, enemies with each other and with destructibles, and projectiles through `canHit`.
 - Projectiles inherit the shooter's level. They expire when they enter a cell higher than their level, and walls only stop them on the wall's level or above. They pass over lower cells without hitting anything down there (direct fire flies over).
+- Gated ground can show a cleared look once the player can cross it (a tile's `cleared` property, `logic/world/clearedLook.ts`): `ChunkStreamer` swaps those tiles on load and on `abilities:changed`, so rubble looks flattened once the tank has the dozer blade.
 - The **mortar** (`MortarSystem`, math in `logic/combat/mortar.ts`) ignores levels and walls while in flight (an arc drawn above everything, with a shadow on the ground) and explodes on the level of the cell it lands on, clamped to the weapon's `lob.minRange`..`range`. It fires from its own mount toward the aim, not along the turret.
 - Rendering: depth = `level * LEVEL_DEPTH + y`. Cliff face tiles are drawn on the `walls` layer.
 
@@ -141,6 +143,15 @@ interface TankCommand {
 - ATGMs home in on the closest living player pawn: `ProjectileSystem` steers them each frame with `logic/combat/guidance.steerMissile` at the weapon's `homing` turn rate. They're slower than the tank on a road, so they can be outrun, out-turned or blocked by walls.
 - Damaged enemies show a small HP bar for a few seconds; the tank's HP bar lives in `HudScene`.
 
+## Bosses
+- `data/bosses.ts` holds every number (HP, armor, `weakTo` per weapon, size, the rail gun's speed, telegraph and interval, intro length, phase 2 threshold and reinforcements, reward tier, radio keys). `boss_desert` is a fortified bunker whose roof takes double damage from the mortar.
+- `logic/enemy/bossBrain.ts` is pure: `dormant` → `intro` (when the active pawn enters the `boss_arena` zone) → `fight` → `dead`. In the fight the gun slides along the chunk's `rail` polyline toward the point nearest the target, turns to aim, and fires on a cycle whose last `telegraph` seconds show a blinking laser. Below `phase2.at` HP it fires faster and calls reinforcements, up to a cap.
+- `BossSystem` spawns bosses from the chunk hooks (alongside `SpawnSystem`), pans the camera on waking, plays the boss's radio lines, spawns reinforcements through `SpawnSystem.spawnReinforcement`, and resets a boss mid-fight when the player respawns. `Boss` is a static Arcade body (`halfExtent`, so splash measures to its edge) with the gun and rail drawn on top. Beaten, the boss's flag is set and saved, and it leaves an `MkUpgrade` crate; the crate comes back with its chunk until the tank has that tier. `HudScene` shows a boss bar (bottom centre) while one is awake (`boss:state`).
+
+## Radio
+- `radio` objects (`logic/world/radio.ts`): `stepRadios` fires a radio when the active pawn enters it (not while it stays); a `once` radio is saved as heard (`ProgressionSystem.hearRadio`) and never plays again. `RadioSystem` runs it each frame once the HUD is up and plays scripted lines (boss, Mk upgrade) through the same `radio:message` event.
+- `HudScene` queues messages (`RadioQueue`) in a panel at the top centre (mirrored in RTL): the speaker, then the text typed out (`RADIO_TYPE_RATE`), shown for a base time plus a little per character. Interact (Space / A) or a tap on the panel finishes the typing, then skips. It holds still while the world is paused, and a language change re-translates the queue. `i18n.test.ts` keeps each message to at most 3 lines of 57 characters.
+
 ## HUD
 - Bottom corner on the reading side: the Mk tier and main-gun quick rounds (pips), the selected secondary with its ammo and the repair kit charges, and the active pawn's HP bar and number. Top corner opposite: a 3×3 minimap of the chunks around you (visited ones filled, the current one bright; unvisited ones stay blank). Bottom centre: toasts for pickups, depots, the hatch and repairs.
 - Positions come from `logic/ui/hudLayout.ts`, mirrored horizontally in RTL; the minimap cells from `logic/ui/minimap.ts`.
@@ -149,6 +160,7 @@ interface TankCommand {
 ## Save system
 - Keys: `merkavania.save.<slot>` (slots 1–3) and `merkavania.settings`.
 - Settings (`logic/settings/settings.ts`): `{ version, language, touchControls: auto|on|off, volume: {master, sfx, music} (0..1; audio arrives in M8), keybinds }`. They're saved on every change (`game/settings.updateSettings`). Unreadable parts fall back to their defaults, so there's nothing to migrate.
+- Beaten bosses (`<chunkId>:<bossId>`) and heard `once` radios (`<chunkId>:<radioId>`) are flags, so M7 needed no save version bump.
 - Shape (`logic/save/save.ts`, `SAVE_VERSION` 2):
 ```ts
 { version: SAVE_VERSION, updatedAt, playtimeMs,
@@ -169,7 +181,7 @@ interface TankCommand {
 ## Debug tools
 - Enabled with `?debug=1` or in dev builds. The backtick key toggles `DebugScene`: FPS, pawn position/heading/speed, active input device, gun state, and the current chunk, pawn level and loaded chunk count. `1` toggles physics bodies, and `2` toggles the elevation overlay (levels tinted, ramps cyan, steep ramps red, chunk borders magenta). Planned:
   - teleport by clicking on the map, jump to chunk, set Mk tier, grant/revoke abilities, kill all
-- Debug hooks are exposed on `window.__merkavania` (in debug mode only) so Playwright can drive state: `game`, `getPawn()` (last-frame telemetry of the active pawn, including `kind`, `level`, `chunk`, `hp`, `maxHp` and `alive`), `getTank()` (the tank's, whichever pawn is active), `pressHatch()`, `damageScout(n)`, `getShots()` (the player's shots per weapon id), `getWorld()` (current and loaded chunk ids), `teleport(x, y, heading?)` (moves the active pawn; the scout's leash still applies), `worldToCanvas(x, y)` (so specs aim with the real mouse), `damagePlayer(n)`, `setGod(on)`, `getCombatLog()` (recent resolved hits), `getDestructibles()`, `getEnemies()`, `spawnEnemy(type, x, y, facing?)`, `getState()` (the GameState in save shape), `grantAbility(id)`, `getSave(slot)`, `clearSave(slot)`, `getObjects()` (pickups, switches, doors, depots and boulders in loaded chunks), `getMortarLandings()`, `getMenu(scene)` (the rows, focus and canvas rects of the menu in Title, Pause or Settings), `getHud()` (what the HUD shows), `getMapView()` (the open map's layout) and `getTouchButtons()` (the touch buttons on screen).
+- Debug hooks are exposed on `window.__merkavania` (in debug mode only) so Playwright can drive state: `game`, `getPawn()` (last-frame telemetry of the active pawn, including `kind`, `level`, `chunk`, `hp`, `maxHp` and `alive`), `getTank()` (the tank's, whichever pawn is active), `pressHatch()`, `damageScout(n)`, `getShots()` (the player's shots per weapon id), `getWorld()` (current and loaded chunk ids), `teleport(x, y, heading?)` (moves the active pawn; the scout's leash still applies), `worldToCanvas(x, y)` (so specs aim with the real mouse), `damagePlayer(n)`, `setGod(on)`, `getCombatLog()` (recent resolved hits), `getDestructibles()`, `getEnemies()`, `spawnEnemy(type, x, y, facing?)`, `getState()` (the GameState in save shape), `grantAbility(id)`, `getSave(slot)`, `clearSave(slot)`, `getObjects()` (pickups, switches, doors, depots and boulders in loaded chunks), `getMortarLandings()`, `getMenu(scene)` (the rows, focus and canvas rects of the menu in Title, Pause or Settings), `getHud()` (what the HUD shows, including the radio message and boss bar), `setMk(tier)`, `getBoss()` (the boss in the loaded chunks, or the crate it left), `damageBoss(n)`, `getMapView()` (the open map's layout) and `getTouchButtons()` (the touch buttons on screen).
 
 ## Testing
 - **Work test-first** (see `CLAUDE.md`, Workflow). Game code stays a thin shell over tested `src/logic/` functions.

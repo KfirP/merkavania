@@ -48,12 +48,16 @@ Current target: **Vertical slice** (desert biome, M0–M8). Tick milestones off 
 - [x] Touch UI polish (pause, map, swap and repair buttons; touch-controls setting), rotate-device prompt
 - [x] Repair kit charges (carried over from M4): R / X / touch button, refilled at depots; save v2
 
-## M7: Vertical slice content
-- [ ] Desert biome, 15–20 chunks, per the `GAME_DESIGN.md` slice spec
-- [ ] `boss_desert`, Mk3 upgrade (sprites, 120mm, `suspension` + steep ramps)
-- [ ] Radio messages, final generated art replacing placeholders
+## M7: Vertical slice content ✅
+- [x] Desert biome, 18 chunks (5×4 minus two corners), per the `GAME_DESIGN.md` slice spec: hatch_scout → mortar → dozer_blade → boss → Mk3 → steep ramp → final radio, 3 depots, all five enemies. Authored as ASCII layouts in `maps-src/desert/` and built with `npm run build:maps`; code-drawn desert tileset. The desert is the default world (`?world=test` for the sandbox)
+- [x] `boss_desert` (rail-gun command bunker, telegraphed shots, phase 2 reinforcements, mortar-weak roof), Mk3 upgrade (in-place tier swap, 120mm, `suspension` + steep ramps)
+- [x] Radio messages (triggers, HUD panel with typewriter and skip, en/he)
+- [x] Rubble shows a cleared look once the dozer can cross it (carried over from M4)
+- [x] Art: PixelLab Mk2/Mk3 hulls and turrets
+- Carried over to M8: the remaining placeholders (boss bunker and gun, the Mk-upgrade crate, pickups, depot pad, switches, doors, boulder, projectiles, the rifle soldier). The boss bunker generation was rejected; 15 trial generations are left
 
 ## M8: Polish & audio
+- [ ] Final art for the placeholders carried over from M7
 - [ ] ElevenLabs SFX + desert music, AudioSystem with volume settings
 - [ ] Playwright smoke suite covering boot → play → gate → save/load
 - [ ] Performance pass on mobile; public deploy

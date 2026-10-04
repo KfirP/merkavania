@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Merkavania** is a web metroidvania with top-down pixel art. The player drives a Merkava tank. It starts as a Mk2 and upgrades to Mk3 and then Mk4; each Mk tier is a major milestone. Other upgrades are pickups that open new areas. The stack is Phaser 3, TypeScript, Vite and Tiled. It targets desktop browsers (keyboard/mouse and gamepad) and mobile (touch), and deploys to GitHub Pages.
 
-**Status:** M0–M6 complete; next up is M7 (vertical slice content: desert biome, `boss_desert`, Mk3 upgrade, radio messages, final art). See `docs/ROADMAP.md` for the current milestone. The commands below are the `package.json` scripts. If you change a script name, update this file too. Phaser is pinned to 3.x (`phaser@^3`); don't upgrade to Phaser 4 without an explicit decision.
+**Status:** M0–M7 complete; next up is M8 (polish and audio: ElevenLabs SFX and music, the remaining final art, smoke suite, mobile performance, public deploy). See `docs/ROADMAP.md` for the current milestone. The commands below are the `package.json` scripts. If you change a script name, update this file too. Phaser is pinned to 3.x (`phaser@^3`); don't upgrade to Phaser 4 without an explicit decision.
 
 Design docs (read the relevant one before working in its area):
 - `docs/GAME_DESIGN.md`: mechanics, Mk tiers, the ability→gate table, biomes and the vertical-slice spec. This is the source of truth for ability and terrain ids.
@@ -27,6 +27,7 @@ npm test               # Vitest, all unit tests (src/logic, scripts)
 npx vitest run src/logic/progression.test.ts -t "grants mk3"   # single test file/name
 npm run test:e2e       # Playwright smoke tests (starts the dev server itself)
 npx playwright test tests/e2e/boot.spec.ts                      # single e2e spec
+npm run build:maps     # build public/maps/<biome>/ from the layouts in maps-src/<biome>/
 npm run validate:maps  # check every Tiled map/world under public/maps
 npm run check          # typecheck + lint + test + validate:maps (what CI runs)
 ```
@@ -60,5 +61,5 @@ From M2 onward, every change is test-first:
 - All player-facing text goes through i18n keys (`src/i18n/en.json`, `src/i18n/he.json`). Hebrew is RTL, so render it with Phaser `Text` using `rtl: true`. Never put literal UI strings in code.
 - Assets are referenced only through `src/data/assetManifest.ts` keys, never raw paths. Placeholder art generated in code is fine until the real asset exists; the manifest records which assets are placeholders.
 - Render at 480×270 internal resolution on a 16px grid with `pixelArt: true` and integer scaling. The tank is about 32×32. Top-down 90° sprites face **east** and are rotated in the engine.
-- Tiled maps are saved as JSON (`.tmj` maps, external `.tsj` tilesets) under `public/maps/<biome>/`. Run `npm run validate:maps` after editing any map.
+- Tiled maps are saved as JSON (`.tmj` maps, external `.tsj` tilesets) under `public/maps/<biome>/`. The desert is built from `maps-src/desert/` layouts: edit those and run `npm run build:maps`, never hand-edit its `.tmj` files. Run `npm run validate:maps` after editing any map. The game plays the desert by default; `?world=test` loads the sandbox the e2e specs use.
 - Art and audio are generated through MCP servers (PixelLab and ElevenLabs; see `docs/ASSET_PIPELINE.md`). Raw generations go in `assets-src/` and processed game-ready files in `public/assets/`.
