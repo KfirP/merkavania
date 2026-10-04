@@ -1,7 +1,9 @@
 import { abilityIds, minorPickupIds } from '../../data/abilities';
+import { isBossId } from '../../data/bosses';
 import { isEnemyId } from '../../data/enemies';
 import { isMaterialId } from '../../data/materials';
 import { allMkTierIds } from '../../data/mkTiers';
+import { radioSpeakers } from '../../data/radio';
 import { isTerrainId } from '../../data/terrain';
 import { CHUNK_H, CHUNK_W, chunkId } from './chunks';
 import { parseChunkGrid, type ChunkGrid, type Dir, type GridMap } from './grid';
@@ -14,7 +16,7 @@ import { parseWorld, type TiledWorld, type WorldChunk } from './world';
 /**
  * Map validation rules (docs/LEVEL_DESIGN.md, "What validate:maps checks", rules 1–6; rule 6,
  * reachability, lives in reachability.ts). Pure: files come in through `load(path)` with
- * public/-relative paths. Boss ids are only checked for presence until their table exists (M7).
+ * public/-relative paths.
  */
 
 export interface MapIssue {
@@ -171,7 +173,12 @@ const OBJECT_RULES: Record<string, ObjectRule> = {
       level: (value) => tilePropertyIssue({ name: 'level', value }),
     },
   },
-  boss: { required: ['bossType', 'arena'] },
+  boss: {
+    required: ['id', 'bossType', 'arena', 'rail'],
+    checks: {
+      bossType: (v) => (isBossId(v) ? null : `unknown boss type ${JSON.stringify(v)}`),
+    },
+  },
   destructible: {
     required: ['material', 'id'],
     checks: {
@@ -186,15 +193,27 @@ const OBJECT_RULES: Record<string, ObjectRule> = {
   door: { required: ['id', 'opensWith'] },
   zone: { required: ['kind'], checks: { kind: oneOf('kind', ZONE_KINDS) } },
   radio: {
-    required: ['messageKey'],
+    required: ['id', 'messageKey'],
     checks: {
       messageKey: (v, known) =>
         known.messageKeys.has(v as string) ? null : `unknown message key ${JSON.stringify(v)}`,
+      once: (v) => (typeof v === 'boolean' ? null : 'once must be a boolean'),
+      speaker: (v) =>
+        radioSpeakers.includes(v as never) ? null : `unknown speaker ${JSON.stringify(v)}`,
     },
   },
 };
 
-const PERSISTENT_TYPES = new Set(['depot', 'pickup', 'destructible', 'boulder', 'switch', 'door']);
+const PERSISTENT_TYPES = new Set([
+  'depot',
+  'pickup',
+  'destructible',
+  'boulder',
+  'switch',
+  'door',
+  'boss',
+  'radio',
+]);
 
 const propsOf = (o: RawObject) =>
   Object.fromEntries((o.properties ?? []).map((p) => [p.name, p.value])) as Record<string, unknown>;
@@ -241,6 +260,20 @@ function validateObjects(file: string, objects: RawObject[], known: KnownIds): M
     const patrol = propsOf(o).patrol;
     if (o.type === 'enemy' && patrol !== undefined && !polylines.has(String(patrol)))
       at(o, `patrol "${patrol}" is not a polyline here`);
+  }
+
+  const arenas = new Set(
+    objects
+      .filter((o) => o.type === 'zone' && propsOf(o).kind === 'boss_arena' && o.width && o.height)
+      .map((o) => o.name),
+  );
+  for (const o of objects) {
+    if (o.type !== 'boss') continue;
+    const { arena, rail } = propsOf(o);
+    if (arena !== undefined && !arenas.has(String(arena)))
+      at(o, `arena "${arena}" is not a boss_arena zone here`);
+    if (rail !== undefined && !polylines.has(String(rail)))
+      at(o, `rail "${rail}" is not a polyline here`);
   }
 
   const switches = new Set(

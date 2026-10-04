@@ -146,6 +146,39 @@ const drawers: Partial<Record<AssetKey, Draw>> = {
     g.fillStyle(0xffffff).fillRect(5, 0, 3, 2);
     return { width: 8, height: 2 };
   },
+  boss_desert_bunker: (g) => {
+    // A squat concrete command bunker seen from above: slab roof, vents, aerials, sandbagged front.
+    g.fillStyle(OUTLINE).fillRect(0, 0, 96, 48);
+    g.fillStyle(0x9a978c).fillRect(1, 1, 94, 46);
+    g.fillStyle(0xb4b1a6).fillRect(1, 1, 94, 3);
+    g.fillStyle(0x76736a).fillRect(1, 43, 94, 4);
+    g.fillStyle(0x76736a);
+    for (let x = 24; x < 96; x += 24) g.fillRect(x, 4, 1, 39);
+    // Roof hatches and vents (the mortar's favourite targets).
+    g.fillStyle(0x4f4d47).fillRect(10, 12, 8, 8).fillRect(78, 12, 8, 8);
+    g.fillStyle(0x2f2e2a).fillRect(40, 10, 16, 4).fillRect(40, 18, 16, 4);
+    // Aerials and a radar dish.
+    g.fillStyle(OUTLINE).fillRect(6, 30, 1, 10).fillRect(89, 28, 1, 12);
+    g.fillStyle(0xc6c4bc).fillCircle(70, 32, 5);
+    g.fillStyle(0x76736a).fillCircle(70, 32, 2);
+    // Sandbags along the south face.
+    g.fillStyle(0x8e7a50).fillRect(4, 40, 88, 6);
+    g.fillStyle(0xcbb282);
+    for (let x = 5; x < 91; x += 6) g.fillRect(x, 41, 5, 4);
+    return { width: 96, height: 48 };
+  },
+  boss_desert_gun: (g) => {
+    // Rail gun on a turntable: pivot at x=10, a long barrel with a muzzle brake to x=40.
+    g.fillStyle(OUTLINE).fillRect(14, 5, 26, 6);
+    g.fillStyle(ENEMY_DARK).fillRect(15, 6, 24, 4);
+    g.fillStyle(OUTLINE).fillRect(34, 3, 6, 10);
+    g.fillStyle(ENEMY_KHAKI).fillRect(35, 4, 4, 8);
+    g.fillStyle(OUTLINE).fillCircle(10, 8, 8);
+    g.fillStyle(ENEMY_KHAKI).fillCircle(10, 8, 7);
+    g.fillStyle(ENEMY_DARK).fillRect(5, 4, 8, 8);
+    g.fillStyle(0xd6453e).fillRect(8, 7, 2, 2);
+    return { width: 40, height: 16 };
+  },
   shell_105: (g) => {
     g.fillStyle(0xfff2a8).fillRect(0, 0, 6, 2);
     g.fillStyle(0xffffff).fillRect(4, 0, 2, 2);

@@ -11,7 +11,8 @@ export type WeaponId =
   | 'mg_bunker'
   | 'atgm'
   | 'gun_light_tank'
-  | 'mortar_60';
+  | 'mortar_60'
+  | 'gun_rail';
 
 export interface WeaponDef {
   id: WeaponId;
@@ -177,5 +178,19 @@ export const weapons: Record<WeaponId, WeaponDef> = {
     interval: 0.9,
     recoil: 0,
     lob: { minRange: 48, apex: 48 },
+  },
+  /** boss_desert's rail gun: a slow, heavy shell with a big splash (outrun it sideways). */
+  gun_rail: {
+    id: 'gun_rail',
+    projectile: 'shell_120',
+    speed: 200,
+    range: 420,
+    damage: 28,
+    class: 'cannon',
+    ammo: 'heat',
+    splash: 22,
+    spread: 0.02,
+    interval: 3.2,
+    recoil: 4,
   },
 };

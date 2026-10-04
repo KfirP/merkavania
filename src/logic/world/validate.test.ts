@@ -248,7 +248,11 @@ describe('validateWorlds: objects', () => {
           height: 48,
           properties: [prop('id', 'd1'), prop('opensWith', 's1')],
         },
-        { id: 6, type: 'radio', properties: [prop('messageKey', 'radio.test.hello')] },
+        {
+          id: 6,
+          type: 'radio',
+          properties: [prop('id', 'r1'), prop('messageKey', 'radio.test.hello')],
+        },
         { id: 7, type: 'depot', properties: [prop('id', 'depot_1')] },
         { id: 8, type: 'mk_upgrade', properties: [prop('tier', 'mk3')] },
         { id: 9, type: 'zone', properties: [prop('kind', 'sensor')] },
@@ -262,7 +266,7 @@ describe('validateWorlds: objects', () => {
       { id: 2, type: 'pickup', properties: [prop('ability', 'jetpack'), prop('id', 'p1')] },
       { id: 3, type: 'pickup', properties: [prop('ability', 'mortar')] },
       { id: 4, type: 'switch', properties: [prop('id', 's1'), prop('activatedBy', 'magic')] },
-      { id: 5, type: 'radio', properties: [prop('messageKey', 'radio.nope')] },
+      { id: 5, type: 'radio', properties: [prop('id', 'r1'), prop('messageKey', 'radio.nope')] },
       { id: 6, type: 'spawn' },
       { id: 7, type: 'mk_upgrade', properties: [prop('tier', 'mk9')] },
     ]);
@@ -275,6 +279,81 @@ describe('validateWorlds: objects', () => {
       '#6 spawn needs a name',
       '#7 unknown tier "mk9"',
     ]);
+  });
+
+  it('checks radios: an id, a boolean once and a known speaker', () => {
+    const issues = withObjects([
+      { id: 1, type: 'radio', properties: [prop('messageKey', 'radio.test.hello')] },
+      {
+        id: 2,
+        type: 'radio',
+        properties: [
+          prop('id', 'r2'),
+          prop('messageKey', 'radio.test.hello'),
+          prop('once', 'yes'),
+          prop('speaker', 'santa'),
+        ],
+      },
+      {
+        id: 3,
+        type: 'radio',
+        properties: [
+          prop('id', 'r3'),
+          prop('messageKey', 'radio.test.hello'),
+          prop('once', false),
+          prop('speaker', 'unknown'),
+        ],
+      },
+    ]);
+    expect(issues.map((i) => `${i.object} ${i.message}`)).toEqual([
+      '#1 missing property "id"',
+      '#2 once must be a boolean',
+      '#2 unknown speaker "santa"',
+    ]);
+  });
+
+  describe('bosses', () => {
+    const arena: Obj = {
+      id: 1,
+      type: 'zone',
+      name: 'arena',
+      width: 320,
+      height: 160,
+      properties: [prop('kind', 'boss_arena')],
+    };
+    const rail: Obj = {
+      id: 2,
+      type: '',
+      name: 'rail',
+      polyline: [
+        { x: 0, y: 0 },
+        { x: 200, y: 0 },
+      ],
+    };
+    const boss = (props: Record<string, unknown>): Obj => ({
+      id: 3,
+      type: 'boss',
+      properties: Object.entries(props).map(([k, v]) => prop(k, v)),
+    });
+    const good = { id: 'b', bossType: 'boss_desert', arena: 'arena', rail: 'rail' };
+
+    it('accepts a boss with its arena zone and rail here', () => {
+      expect(withObjects([arena, rail, boss(good)])).toEqual([]);
+    });
+
+    it('reports an unknown boss, a missing id, and an arena or rail that is not here', () => {
+      const sensor: Obj = { ...arena, properties: [prop('kind', 'sensor')] };
+      const issues = withObjects([
+        sensor,
+        boss({ bossType: 'boss_moon', arena: 'arena', rail: 'nowhere' }),
+      ]);
+      expect(issues.map((i) => `${i.object} ${i.message}`)).toEqual([
+        '#3 unknown boss type "boss_moon"',
+        '#3 missing property "id"',
+        '#3 arena "arena" is not a boss_arena zone here',
+        '#3 rail "nowhere" is not a polyline here',
+      ]);
+    });
   });
 
   it('checks destructible materials against data/materials.ts', () => {

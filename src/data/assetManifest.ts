@@ -105,6 +105,15 @@ export const assetManifest = [
     path: 'assets/sprites/destructibles/armored.png',
     status: 'generated',
   },
+  { key: 'boss_desert_bunker', type: 'image', path: '', status: 'placeholder' },
+  // Pivot on the gun's turntable; the barrel extends east of it.
+  {
+    key: 'boss_desert_gun',
+    type: 'image',
+    path: '',
+    status: 'placeholder',
+    origin: { x: 10 / 40, y: 0.5 },
+  },
   { key: 'muzzle_flash', type: 'image', path: '', status: 'placeholder', origin: { x: 0, y: 0.5 } },
   { key: 'impact_puff', type: 'image', path: '', status: 'placeholder' },
   { key: 'spark', type: 'image', path: '', status: 'placeholder' },
