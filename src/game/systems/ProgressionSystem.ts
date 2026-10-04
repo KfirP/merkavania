@@ -1,4 +1,5 @@
 import type { AbilityId } from '../../data/abilities';
+import type { MkTierId } from '../../data/mkTiers';
 import { ARMOR_PLATE_HP, type SecondaryId } from '../../data/progression';
 import {
   SaveStore,
@@ -12,6 +13,7 @@ import {
   collectPickup,
   cycleSecondary,
   grantAbility,
+  grantTier,
   hasAbility,
   maxHp,
   newGame,
@@ -125,6 +127,15 @@ export class ProgressionSystem {
     const known = this.state.visitedChunks[biome]?.includes(chunkId) ?? false;
     visitChunk(this.state, biome, chunkId);
     return !known;
+  }
+
+  /** A Mk upgrade: the tier and its signature ability, saved at once. False if nothing changed. */
+  upgrade(tier: MkTierId): boolean {
+    if (!grantTier(this.state, tier)) return false;
+    this.save();
+    events.emit('tank:tier', { mk: tier });
+    this.emitAbilities();
+    return true;
   }
 
   /** Debug: grants an ability without a pickup (saved with the next save). */

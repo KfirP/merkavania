@@ -8,6 +8,8 @@ const OUTLINE = 0x1f1f10;
 const OLIVE = 0x6b6b3a;
 const OLIVE_LIGHT = 0x85854a;
 const TRACK = 0x3a3a26;
+/** Mk3 side skirts and add-on armour. */
+const SKIRT = 0x5c5c32;
 /** Enemies wear rust and brown so they never read as the olive player tank. */
 const ENEMY_KHAKI = 0xb07a4a;
 const ENEMY_DARK = 0x7a4e2e;
@@ -76,6 +78,73 @@ const drawers: Partial<Record<AssetKey, Draw>> = {
     // Commander's cupola.
     g.fillStyle(OLIVE).fillRect(5, 3, 4, 3);
     return { width: 34, height: 12 };
+  },
+  mk3_hull: (g) => {
+    // Wider tracks behind side skirts, and a longer glacis than the Mk2.
+    g.fillStyle(OUTLINE).fillRect(0, 2, 32, 8).fillRect(0, 22, 32, 8);
+    g.fillStyle(TRACK).fillRect(1, 3, 30, 6).fillRect(1, 23, 30, 6);
+    g.fillStyle(SKIRT).fillRect(2, 3, 26, 3).fillRect(2, 26, 26, 3);
+    g.fillStyle(OUTLINE).fillPoints(
+      [
+        { x: 1, y: 7 },
+        { x: 23, y: 7 },
+        { x: 31, y: 12 },
+        { x: 31, y: 20 },
+        { x: 23, y: 25 },
+        { x: 1, y: 25 },
+      ],
+      true,
+    );
+    g.fillStyle(OLIVE).fillRect(2, 8, 21, 16);
+    g.fillStyle(OLIVE_LIGHT).fillPoints(
+      [
+        { x: 22, y: 8 },
+        { x: 30, y: 13 },
+        { x: 30, y: 19 },
+        { x: 22, y: 24 },
+      ],
+      true,
+    );
+    g.fillStyle(0x4f4f2c).fillRect(17, 11, 5, 10);
+    g.fillStyle(0x4f4f2c).fillRect(2, 13, 2, 6);
+    return { width: 32, height: 32 };
+  },
+  mk3_turret: (g) => {
+    // Longer 120mm barrel with a thermal sleeve: pivot at x=10, tip at x=38.
+    g.fillStyle(OUTLINE).fillRect(18, 5, 20, 4);
+    g.fillStyle(0x4a4a2a).fillRect(19, 6, 19, 2);
+    g.fillStyle(OUTLINE).fillRect(26, 4, 4, 6);
+    // Sharper, longer wedge with add-on armour blocks.
+    g.fillStyle(OUTLINE).fillPoints(
+      [
+        { x: 0, y: 1 },
+        { x: 13, y: 0 },
+        { x: 23, y: 5 },
+        { x: 23, y: 9 },
+        { x: 13, y: 14 },
+        { x: 0, y: 13 },
+      ],
+      true,
+    );
+    g.fillStyle(OLIVE_LIGHT).fillPoints(
+      [
+        { x: 1, y: 2 },
+        { x: 13, y: 1 },
+        { x: 22, y: 6 },
+        { x: 22, y: 8 },
+        { x: 13, y: 13 },
+        { x: 1, y: 12 },
+      ],
+      true,
+    );
+    g.fillStyle(SKIRT).fillRect(13, 3, 4, 2).fillRect(13, 9, 4, 2);
+    g.fillStyle(OLIVE).fillRect(4, 3, 4, 3).fillRect(4, 8, 3, 3);
+    return { width: 38, height: 14 };
+  },
+  shell_120: (g) => {
+    g.fillStyle(0xfff2a8).fillRect(0, 0, 8, 2);
+    g.fillStyle(0xffffff).fillRect(5, 0, 3, 2);
+    return { width: 8, height: 2 };
   },
   shell_105: (g) => {
     g.fillStyle(0xfff2a8).fillRect(0, 0, 6, 2);

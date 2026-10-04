@@ -157,6 +157,7 @@ export interface GameEvents {
   /** Debug builds only: the GameState as it would be saved, emitted every frame. */
   'debug:state': SaveData;
   'debug:grantAbility': { ability: AbilityId };
+  'debug:setMk': { mk: MkTierId };
   'debug:toggleBodies': undefined;
   'debug:toggleElevation': undefined;
   /** Moves the active pawn and stops it; `heading` in radians, kept if omitted. */

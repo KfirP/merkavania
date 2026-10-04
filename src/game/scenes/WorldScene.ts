@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { getAsset } from '../../data/assetManifest';
 import { RESPAWN_DELAY } from '../../data/combat';
+import type { MkTierId } from '../../data/mkTiers';
 import { crushes } from '../../logic/combat/crush';
 import { closestAlive } from '../../logic/enemy/target';
 import { hazardDamage } from '../../logic/combat/hazard';
@@ -198,6 +199,7 @@ export class WorldScene extends Phaser.Scene {
       events.on('debug:god', this.debugGod, this);
       events.on('debug:spawnEnemy', this.debugSpawnEnemy, this);
       events.on('debug:grantAbility', this.debugGrant, this);
+      events.on('debug:setMk', this.debugSetMk, this);
       events.on('world:chunks', this.redrawElevation, this);
     }
 
@@ -211,6 +213,7 @@ export class WorldScene extends Phaser.Scene {
       this.pawns.destroy();
       events.off('debug:damageScout', this.debugDamageScout, this);
       events.off('debug:grantAbility', this.debugGrant, this);
+      events.off('debug:setMk', this.debugSetMk, this);
       events.off('world:chunks', this.onChunks, this);
       events.off('debug:toggleBodies', this.toggleBodies, this);
       events.off('debug:toggleElevation', this.toggleElevation, this);
@@ -482,6 +485,16 @@ export class WorldScene extends Phaser.Scene {
 
   private debugGrant({ ability }: GameEvents['debug:grantAbility']): void {
     this.progression.grant(ability);
+  }
+
+  private debugSetMk({ mk }: GameEvents['debug:setMk']): void {
+    this.upgradeTank(mk);
+  }
+
+  /** A Mk upgrade: GameState first (saved), then the tank swaps sprites, gun and HP in place. */
+  private upgradeTank(mk: MkTierId): void {
+    if (!this.progression.upgrade(mk)) return;
+    this.tank.setTier(mk, this.progression.maxHp);
   }
 
   private onPlayerRespawned(): void {

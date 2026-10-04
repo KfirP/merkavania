@@ -1,5 +1,6 @@
 import type Phaser from 'phaser';
 import type { AbilityId } from '../data/abilities';
+import type { MkTierId } from '../data/mkTiers';
 import { slotKey, type SaveData } from '../logic/save/save';
 import {
   events,
@@ -61,6 +62,8 @@ export interface DebugHooks {
   getState(): SaveData | null;
   /** Gives the tank an ability without its pickup. */
   grantAbility(ability: AbilityId): void;
+  /** Upgrades the tank to Mk tier `mk` (as a boss reward would; saved at once). */
+  setMk(mk: MkTierId): void;
   /** What's stored in save slot `slot` (parsed), or null. */
   getSave(slot: number): unknown;
   /** Empties save slot `slot`. */
@@ -136,6 +139,7 @@ export function installDebugHooks(game: Phaser.Game): void {
     spawnEnemy: (type, x, y, facing = 0) => events.emit('debug:spawnEnemy', { type, x, y, facing }),
     getState: () => state && (JSON.parse(JSON.stringify(state)) as SaveData),
     grantAbility: (ability) => events.emit('debug:grantAbility', { ability }),
+    setMk: (mk) => events.emit('debug:setMk', { mk }),
     getSave: (slot) => {
       const raw = window.localStorage.getItem(slotKey(slot));
       return raw === null ? null : (JSON.parse(raw) as unknown);

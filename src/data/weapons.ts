@@ -3,6 +3,7 @@ import type { AmmoType, WeaponClass } from './combat';
 
 export type WeaponId =
   | 'gun_105'
+  | 'gun_120'
   | 'coax_mg'
   | 'rifle'
   | 'rifle_scout'
@@ -60,6 +61,20 @@ export const weapons: Record<WeaponId, WeaponDef> = {
     spread: 0,
     interval: 0,
     recoil: 3,
+  },
+  /** The Mk3's 120mm: heavier, faster and longer-ranged than the 105. */
+  gun_120: {
+    id: 'gun_120',
+    projectile: 'shell_120',
+    speed: 380,
+    range: 360,
+    damage: 55,
+    class: 'cannon',
+    ammo: 'standard',
+    splash: 16,
+    spread: 0,
+    interval: 0,
+    recoil: 4,
   },
   coax_mg: {
     id: 'coax_mg',
