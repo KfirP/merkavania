@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { AbilityId, MinorPickupId } from '../data/abilities';
 import type { MkTierId } from '../data/mkTiers';
+import type { RadioSpeaker } from '../data/radio';
 import type { SecondaryId } from '../data/progression';
 import type { PawnKind } from '../data/terrain';
 import type { DeployRefusal } from '../logic/pawn/hatch';
@@ -140,6 +141,10 @@ export interface GameEvents {
   'mortar:landed': { x: number; y: number; level: number };
   /** The tank's Mk tier (on start, and when it's upgraded). */
   'tank:tier': { mk: MkTierId };
+  /** A radio message to show (HudScene queues them). */
+  'radio:message': { messageKey: string; speaker: RadioSpeaker };
+  /** Skip/fast-forward the radio message on screen (interact: Space, A). */
+  'radio:skip': undefined;
   /** The world's chunk grid and the chunks visited (on start, and when a new one is visited). */
   'map:changed': MapState;
   /** The pawn entered another chunk, or chunks were streamed in or out. */

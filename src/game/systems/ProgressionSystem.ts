@@ -138,6 +138,12 @@ export class ProgressionSystem {
     return true;
   }
 
+  /** A `once` radio played: remembered (and saved) so it never plays again. */
+  hearRadio(key: string): void {
+    this.state.flags.set(key);
+    this.save();
+  }
+
   /** Debug: grants an ability without a pickup (saved with the next save). */
   grant(ability: AbilityId): void {
     grantAbility(this.state, ability);

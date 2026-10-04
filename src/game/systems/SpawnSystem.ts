@@ -2,7 +2,12 @@ import Phaser from 'phaser';
 import { enemies as enemyDefs, isEnemyId } from '../../data/enemies';
 import { isMaterialId, materials } from '../../data/materials';
 import type { WorldFlags } from '../../logic/state/flags';
-import { parseChunkObjects, type EnemySpec, type RawObject } from '../../logic/world/objects';
+import {
+  parseChunkObjects,
+  type EnemySpec,
+  type RadioSpec,
+  type RawObject,
+} from '../../logic/world/objects';
 import { levelAt, type CellLookup } from '../../logic/world/traversal';
 import type { WorldChunk } from '../../logic/world/world';
 import { Boulder } from '../entities/Boulder';
@@ -53,6 +58,8 @@ export class SpawnSystem {
   private readonly byChunk = new Map<string, Phaser.GameObjects.GameObject[]>();
   /** Enemy specs of each loaded chunk, to respawn them on a reset. */
   private readonly enemySpecs = new Map<string, EnemySpec[]>();
+  /** Radio triggers of each loaded chunk (RadioSystem reads them). */
+  private readonly radioSpecs = new Map<string, RadioSpec[]>();
   private debugCount = 0;
 
   constructor(
@@ -72,8 +79,9 @@ export class SpawnSystem {
 
   onLoad(chunk: WorldChunk, raw: readonly RawObject[]): void {
     const spawned: Phaser.GameObjects.GameObject[] = [];
-    const { destructibles, enemies, pickups, depots, switches, doors, boulders } =
+    const { destructibles, enemies, pickups, depots, switches, doors, boulders, radios } =
       parseChunkObjects(chunk, raw);
+    this.radioSpecs.set(chunk.id, radios);
     const levelOf = (p: { x: number; y: number }) => levelAt(p.x, p.y, this.cellAt);
     for (const spec of pickups) {
       if (this.flags.has(spec.key)) continue;
@@ -126,6 +134,12 @@ export class SpawnSystem {
     for (const o of this.byChunk.get(chunk.id) ?? []) if (o.active) o.destroy();
     this.byChunk.delete(chunk.id);
     this.enemySpecs.delete(chunk.id);
+    this.radioSpecs.delete(chunk.id);
+  }
+
+  /** Radios in the loaded chunks, in chunk-load and map order. */
+  get radios(): RadioSpec[] {
+    return [...this.radioSpecs.values()].flat();
   }
 
   destroy(): void {

@@ -45,6 +45,7 @@ import { MortarSystem } from '../systems/MortarSystem';
 import { PawnSystem } from '../systems/PawnSystem';
 import { ProgressionSystem, slotFromUrl } from '../systems/ProgressionSystem';
 import { ProjectileSystem } from '../systems/ProjectileSystem';
+import { RadioSystem } from '../systems/RadioSystem';
 import { SpawnSystem } from '../systems/SpawnSystem';
 import { MAP_AREA } from './MapScene';
 import { settings } from '../settings';
@@ -86,6 +87,7 @@ export class WorldScene extends Phaser.Scene {
   private progression!: ProgressionSystem;
   private mortar!: MortarSystem;
   private pawns!: PawnSystem;
+  private radio!: RadioSystem;
   /** Depot pad the tank is on, so a depot fires once per visit. */
   private onDepot: string | null = null;
   private elevationOverlay: Phaser.GameObjects.Graphics | null = null;
@@ -136,6 +138,7 @@ export class WorldScene extends Phaser.Scene {
       state.flags,
       this.elevation.cellAt,
     );
+    this.radio = new RadioSystem(this.spawner, this.progression);
     this.combat.watch(this.spawner.solids);
     this.combat.watch(this.spawner.enemies);
     this.combat.watchTriggers(this.spawner.switches);
@@ -289,6 +292,9 @@ export class WorldScene extends Phaser.Scene {
     // A dead tank ignores input until it respawns; input is still polled so edges stay current.
     this.pawns.update(cmd, dt);
     if (cmd.repair) this.fieldRepair();
+    if (cmd.interact) events.emit('radio:skip', undefined);
+    // Wait for the HUD, so a message triggered on the first frame (the intro) isn't lost.
+    if (this.scene.isActive(SceneKey.Hud)) this.radio.update(this.pawns.active.pos);
     this.applyHazards(dt);
     if (this.tank.alive) this.checkDepot();
     this.updateEnemies(dt);

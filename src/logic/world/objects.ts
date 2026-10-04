@@ -1,4 +1,5 @@
 import type { AbilityId, MinorPickupId } from '../../data/abilities';
+import type { RadioSpeaker } from '../../data/radio';
 import { CHUNK_PX_H, CHUNK_PX_W, type ChunkCoord } from './chunks';
 
 /**
@@ -80,6 +81,31 @@ export interface BoulderSpec {
   y: number;
 }
 
+export interface RadioSpec {
+  /** `<chunkId>:<id>`; a `once` radio sets this flag when it plays. */
+  key: string;
+  messageKey: string;
+  speaker: RadioSpeaker;
+  once: boolean;
+  /** Centre, world px; width and height are 0 for a point radio. */
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface BossSpec {
+  /** `<chunkId>:<id>`; set once the boss is beaten. */
+  key: string;
+  bossType: string;
+  x: number;
+  y: number;
+  /** The `boss_arena` zone named by `arena`: entering it wakes the boss. */
+  arena: RectSpec | null;
+  /** Rail waypoints, world px, from the polyline named by `rail`. */
+  rail: { x: number; y: number }[];
+}
+
 export interface ChunkObjects {
   destructibles: DestructibleSpec[];
   enemies: EnemySpec[];
@@ -88,6 +114,8 @@ export interface ChunkObjects {
   switches: SwitchSpec[];
   doors: DoorSpec[];
   boulders: BoulderSpec[];
+  radios: RadioSpec[];
+  bosses: BossSpec[];
 }
 
 /** A depot placed as a point gets a pad this size, px. */
@@ -110,6 +138,8 @@ export function parseChunkObjects(
     switches: [],
     doors: [],
     boulders: [],
+    radios: [],
+    bosses: [],
   };
   /** Centre of a rect object, or the point itself. */
   const centre = (o: RawObject) => ({
@@ -154,6 +184,33 @@ export function parseChunkObjects(
         y: oy + o.y + height / 2,
         width,
         height,
+      });
+    } else if (o.type === 'radio') {
+      result.radios.push({
+        key,
+        messageKey: String(props.messageKey),
+        speaker: (props.speaker as RadioSpeaker | undefined) ?? 'command',
+        once: props.once !== false,
+        ...centre(o),
+        width: o.width ?? 0,
+        height: o.height ?? 0,
+      });
+    } else if (o.type === 'boss') {
+      const zone = objects.find((z) => z.type === 'zone' && z.name === props.arena);
+      const rail = objects.find((r) => r.polyline && r.name === props.rail);
+      result.bosses.push({
+        key,
+        bossType: String(props.bossType),
+        ...centre(o),
+        arena: zone
+          ? {
+              key: `${chunk.id}:${zone.name}`,
+              ...centre(zone),
+              width: zone.width ?? 0,
+              height: zone.height ?? 0,
+            }
+          : null,
+        rail: (rail?.polyline ?? []).map((p) => ({ x: ox + rail!.x + p.x, y: oy + rail!.y + p.y })),
       });
     } else if (o.type === 'enemy') {
       const line = objects.find((p) => p.polyline && p.name === props.patrol);
