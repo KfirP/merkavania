@@ -225,6 +225,36 @@ describe('checkReachability', () => {
     expect(messages(world(g, [start(2, 8), depot('shelf', 25, 8)]))).toHaveLength(1);
   });
 
+  it('a boss grants its reward tier, and with it the signature ability', () => {
+    const g = grid({
+      ...columns(16, 28, { level: 1 }),
+      ...columns(15, 15, { level: 0, ramp: 'e', steep: true }),
+    });
+    const boss: RawObject = {
+      id: nextId++,
+      type: 'boss',
+      ...at(5, 8),
+      properties: props({ id: 'b', bossType: 'boss_desert', arena: 'a', rail: 'r' }),
+    };
+    expect(checkReachability(world(g, [start(2, 8), boss, depot('shelf', 25, 8)]))).toEqual([]);
+  });
+
+  it('reports a radio message nobody can reach', () => {
+    const g = grid(columns(15, 15, { solid: true }));
+    const radio: RawObject = {
+      id: nextId++,
+      type: 'radio',
+      x: 20 * TILE,
+      y: 4 * TILE,
+      width: 3 * TILE,
+      height: 3 * TILE,
+      properties: props({ id: 'final', messageKey: 'radio.test.hello' }),
+    };
+    expect(messages(world(g, [start(2, 8), radio]))).toEqual([
+      expect.stringMatching(/radio "final" is unreachable/),
+    ]);
+  });
+
   it('skips a world without a start spawn (other biomes are entered through exits)', () => {
     expect(checkReachability(world(grid(), [depot('d', 5, 5)]))).toEqual([]);
   });

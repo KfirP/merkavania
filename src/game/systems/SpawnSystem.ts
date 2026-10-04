@@ -1,8 +1,13 @@
 import Phaser from 'phaser';
-import { enemies as enemyDefs, isEnemyId } from '../../data/enemies';
+import { enemies as enemyDefs, isEnemyId, type EnemyId } from '../../data/enemies';
 import { isMaterialId, materials } from '../../data/materials';
 import type { WorldFlags } from '../../logic/state/flags';
-import { parseChunkObjects, type EnemySpec, type RawObject } from '../../logic/world/objects';
+import {
+  parseChunkObjects,
+  type EnemySpec,
+  type RadioSpec,
+  type RawObject,
+} from '../../logic/world/objects';
 import { levelAt, type CellLookup } from '../../logic/world/traversal';
 import type { WorldChunk } from '../../logic/world/world';
 import { Boulder } from '../entities/Boulder';
@@ -32,6 +37,8 @@ const SQUAD_OFFSETS = [
 ];
 /** Specs spawned through the debug hook live under this pseudo-chunk. */
 const DEBUG_CHUNK = 'debug';
+/** Boss reinforcements live under this pseudo-chunk (dropped when the player respawns). */
+const BOSS_CHUNK = 'boss';
 
 /**
  * Builds entities from each chunk's `objects` layer as it streams in, and removes them when it
@@ -53,6 +60,8 @@ export class SpawnSystem {
   private readonly byChunk = new Map<string, Phaser.GameObjects.GameObject[]>();
   /** Enemy specs of each loaded chunk, to respawn them on a reset. */
   private readonly enemySpecs = new Map<string, EnemySpec[]>();
+  /** Radio triggers of each loaded chunk (RadioSystem reads them). */
+  private readonly radioSpecs = new Map<string, RadioSpec[]>();
   private debugCount = 0;
 
   constructor(
@@ -72,8 +81,9 @@ export class SpawnSystem {
 
   onLoad(chunk: WorldChunk, raw: readonly RawObject[]): void {
     const spawned: Phaser.GameObjects.GameObject[] = [];
-    const { destructibles, enemies, pickups, depots, switches, doors, boulders } =
+    const { destructibles, enemies, pickups, depots, switches, doors, boulders, radios } =
       parseChunkObjects(chunk, raw);
+    this.radioSpecs.set(chunk.id, radios);
     const levelOf = (p: { x: number; y: number }) => levelAt(p.x, p.y, this.cellAt);
     for (const spec of pickups) {
       if (this.flags.has(spec.key)) continue;
@@ -126,6 +136,12 @@ export class SpawnSystem {
     for (const o of this.byChunk.get(chunk.id) ?? []) if (o.active) o.destroy();
     this.byChunk.delete(chunk.id);
     this.enemySpecs.delete(chunk.id);
+    this.radioSpecs.delete(chunk.id);
+  }
+
+  /** Radios in the loaded chunks, in chunk-load and map order. */
+  get radios(): RadioSpec[] {
+    return [...this.radioSpecs.values()].flat();
   }
 
   destroy(): void {
@@ -136,6 +152,7 @@ export class SpawnSystem {
   resetEnemies(): void {
     for (const e of [...this.enemies.getChildren()] as Enemy[]) e.destroy();
     this.byChunk.delete(DEBUG_CHUNK);
+    this.byChunk.delete(BOSS_CHUNK);
     for (const [chunkId, specs] of this.enemySpecs) {
       const kept = (this.byChunk.get(chunkId) ?? []).filter((o) => o.active);
       this.byChunk.set(chunkId, kept);
@@ -151,6 +168,13 @@ export class SpawnSystem {
     }
     const key = `${DEBUG_CHUNK}:${type}_${++this.debugCount}`;
     this.spawnEnemies(DEBUG_CHUNK, { key, enemyType: type, level: 0, x, y, facing });
+  }
+
+  /** A boss calls for help: spawns `type` at (x, y) and returns the new enemies. */
+  spawnReinforcement(type: EnemyId, x: number, y: number, facing: number): Enemy[] {
+    const key = `${BOSS_CHUNK}:${type}_${++this.debugCount}`;
+    const level = levelAt(x, y, this.cellAt);
+    return this.spawnEnemies(BOSS_CHUNK, { key, enemyType: type, level, x, y, facing });
   }
 
   /** A taken pickup leaves the world (its flag is set by the GameState). */
@@ -233,10 +257,11 @@ export class SpawnSystem {
     }));
   }
 
-  private spawnEnemies(chunkId: string, spec: EnemySpec): void {
-    if (!isEnemyId(spec.enemyType)) return;
+  private spawnEnemies(chunkId: string, spec: EnemySpec): Enemy[] {
+    if (!isEnemyId(spec.enemyType)) return [];
     const def = enemyDefs[spec.enemyType];
     const list = this.byChunk.get(chunkId) ?? [];
+    const spawned: Enemy[] = [];
     for (let i = 0; i < def.count; i++) {
       const off = SQUAD_OFFSETS[i % SQUAD_OFFSETS.length]!;
       const x = spec.x + off.x;
@@ -250,8 +275,10 @@ export class SpawnSystem {
       e.configureBody();
       this.combat.add(e);
       list.push(e);
+      spawned.push(e);
     }
     this.byChunk.set(chunkId, list);
+    return spawned;
   }
 
   private killed(e: Enemy): void {

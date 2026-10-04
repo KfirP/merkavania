@@ -3,6 +3,7 @@ import type { AmmoType, WeaponClass } from './combat';
 
 export type WeaponId =
   | 'gun_105'
+  | 'gun_120'
   | 'coax_mg'
   | 'rifle'
   | 'rifle_scout'
@@ -10,7 +11,8 @@ export type WeaponId =
   | 'mg_bunker'
   | 'atgm'
   | 'gun_light_tank'
-  | 'mortar_60';
+  | 'mortar_60'
+  | 'gun_rail';
 
 export interface WeaponDef {
   id: WeaponId;
@@ -60,6 +62,20 @@ export const weapons: Record<WeaponId, WeaponDef> = {
     spread: 0,
     interval: 0,
     recoil: 3,
+  },
+  /** The Mk3's 120mm: heavier, faster and longer-ranged than the 105. */
+  gun_120: {
+    id: 'gun_120',
+    projectile: 'shell_120',
+    speed: 380,
+    range: 360,
+    damage: 55,
+    class: 'cannon',
+    ammo: 'standard',
+    splash: 16,
+    spread: 0,
+    interval: 0,
+    recoil: 4,
   },
   coax_mg: {
     id: 'coax_mg',
@@ -162,5 +178,19 @@ export const weapons: Record<WeaponId, WeaponDef> = {
     interval: 0.9,
     recoil: 0,
     lob: { minRange: 48, apex: 48 },
+  },
+  /** boss_desert's rail gun: a slow, heavy shell with a big splash (outrun it sideways). */
+  gun_rail: {
+    id: 'gun_rail',
+    projectile: 'shell_120',
+    speed: 200,
+    range: 420,
+    damage: 28,
+    class: 'cannon',
+    ammo: 'heat',
+    splash: 22,
+    spread: 0.02,
+    interval: 3.2,
+    recoil: 4,
   },
 };

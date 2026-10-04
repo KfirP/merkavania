@@ -11,6 +11,7 @@ import {
   collectPickup,
   cycleSecondary,
   grantAbility,
+  grantTier,
   hasAbility,
   maxHp,
   newGame,
@@ -184,5 +185,24 @@ describe('grantAbility', () => {
     expect(s.abilities).toEqual(['mortar']);
     expect(s.secondaryAmmo.mortar).toBe(MORTAR_AMMO);
     expect(s.flags.toJSON()).toEqual([]);
+  });
+});
+
+describe('grantTier', () => {
+  it('upgrades the Mk, grants its signature ability and raises max HP', () => {
+    const s = newGame();
+    expect(grantTier(s, 'mk3')).toBe(true);
+    expect(s.mk).toBe('mk3');
+    expect(hasAbility(s, 'suspension')).toBe(true);
+    expect(maxHp(s)).toBe(mkTiers.mk3.hp);
+  });
+
+  it('is idempotent and never downgrades', () => {
+    const s = newGame();
+    grantTier(s, 'mk3');
+    expect(grantTier(s, 'mk3')).toBe(false);
+    expect(grantTier(s, 'mk2')).toBe(false);
+    expect(s.mk).toBe('mk3');
+    expect(s.abilities).toEqual(['suspension']);
   });
 });

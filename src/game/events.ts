@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { AbilityId, MinorPickupId } from '../data/abilities';
 import type { MkTierId } from '../data/mkTiers';
+import type { RadioSpeaker } from '../data/radio';
 import type { SecondaryId } from '../data/progression';
 import type { PawnKind } from '../data/terrain';
 import type { DeployRefusal } from '../logic/pawn/hatch';
@@ -105,6 +106,27 @@ export interface WorldState {
 }
 
 /** Event name → payload. Scenes communicate only through this bus and the shared GameState. */
+/** The boss in the loaded chunks (or the crate it left), for the `getBoss` debug hook. */
+export interface BossTelemetry {
+  boss: {
+    key: string;
+    bossType: string;
+    mode: string;
+    phase: number;
+    hp: number;
+    maxHp: number;
+    x: number;
+    y: number;
+    gun: { x: number; y: number };
+    telegraphing: boolean;
+    /** Shots fired since it spawned. */
+    shots: number;
+    /** Reinforcements alive. */
+    helpers: number;
+  } | null;
+  upgrade: { x: number; y: number; tier: string } | null;
+}
+
 export interface GameEvents {
   'weapon:fired': { weapon: WeaponId };
   /** Main-gun quick rounds; emitted when the displayed value changes. */
@@ -140,6 +162,15 @@ export interface GameEvents {
   'mortar:landed': { x: number; y: number; level: number };
   /** The tank's Mk tier (on start, and when it's upgraded). */
   'tank:tier': { mk: MkTierId };
+  /** A radio message to show (HudScene queues them). */
+  'radio:message': { messageKey: string; speaker: RadioSpeaker };
+  /** Skip/fast-forward the radio message on screen (interact: Space, A). */
+  'radio:skip': undefined;
+  /** The HUD boss bar: shown while a boss is awake. */
+  'boss:state': { active: boolean; bossType: string; hp: number; max: number };
+  'boss:defeated': { key: string; bossType: string };
+  /** A Mk upgrade was taken (the HUD shows a toast). */
+  'tank:upgraded': { mk: MkTierId };
   /** The world's chunk grid and the chunks visited (on start, and when a new one is visited). */
   'map:changed': MapState;
   /** The pawn entered another chunk, or chunks were streamed in or out. */
@@ -157,6 +188,9 @@ export interface GameEvents {
   /** Debug builds only: the GameState as it would be saved, emitted every frame. */
   'debug:state': SaveData;
   'debug:grantAbility': { ability: AbilityId };
+  'debug:setMk': { mk: MkTierId };
+  'debug:damageBoss': { amount: number };
+  'debug:boss': BossTelemetry | null;
   'debug:toggleBodies': undefined;
   'debug:toggleElevation': undefined;
   /** Moves the active pawn and stops it; `heading` in radians, kept if omitted. */

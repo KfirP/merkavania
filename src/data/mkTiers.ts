@@ -27,7 +27,7 @@ export interface MkTier {
 /** Every tier in the design (GAME_DESIGN.md), including those without stats yet. */
 export const allMkTierIds = ['mk2', 'mk3', 'mk4'] as const;
 
-// Only mk2 exists until M7 adds mk3; mk4 arrives with the underground biome.
+// mk4 arrives with the underground biome.
 export const mkTiers = {
   mk2: {
     id: 'mk2',
@@ -44,11 +44,33 @@ export const mkTiers = {
     traverseRate: 2.2,
     bodyRadius: 13,
     turretOffset: -3,
-    muzzleLength: 25,
+    muzzleLength: 26,
     mainGun: 'gun_105',
     quickRounds: 6,
     gunCooldown: 0.8,
     sprites: { hull: 'mk2_hull', turret: 'mk2_turret' },
+  },
+  // Heavier than the Mk2: a little slower to turn, but tougher and harder-hitting.
+  mk3: {
+    id: 'mk3',
+    hp: 160,
+    armor: 'med',
+    hull: {
+      maxSpeed: 72,
+      reverseSpeed: 40,
+      accel: 55,
+      brake: 160,
+      drag: 90,
+      turnRate: 1.6,
+    },
+    traverseRate: 2.4,
+    bodyRadius: 14,
+    turretOffset: -4,
+    muzzleLength: 29,
+    mainGun: 'gun_120',
+    quickRounds: 5,
+    gunCooldown: 0.65,
+    sprites: { hull: 'mk3_hull', turret: 'mk3_turret' },
   },
 } satisfies Record<string, MkTier>;
 

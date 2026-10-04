@@ -131,6 +131,25 @@ export class Tank extends Pawn implements Damageable {
     events.emit('player:respawned', undefined);
   }
 
+  /**
+   * A Mk upgrade: new hull and turret sprites, gun, handling and body, a fresh gun and full HP at
+   * the tier's `maxHp` (plus armor plates).
+   */
+  setTier(tierId: MkTierId, maxHp: number): void {
+    const tier = mkTiers[tierId];
+    this.tier = tier;
+    this.setTexture(tier.sprites.hull);
+    const r = tier.bodyRadius;
+    this.body.setCircle(r, this.width / 2 - r, this.height / 2 - r);
+    const origin = getAsset(tier.sprites.turret).origin ?? { x: 0.5, y: 0.5 };
+    this.turret.setTexture(tier.sprites.turret).setOrigin(origin.x, origin.y);
+    this.gun = initialGun(this.gunStats);
+    this.lastGunEvent = '';
+    this.maxHp = maxHp;
+    this.repair();
+    this.emitGunState();
+  }
+
   /** An armor plate: max HP grows and the tank gains the same HP. */
   raiseMaxHp(max: number): void {
     const gained = max - this.maxHp;

@@ -11,7 +11,7 @@ import {
 
 test.describe('Mk2 tank on keyboard and mouse', () => {
   test('the click that leaves the title does not fire', async ({ page }) => {
-    await page.goto('/?debug=1');
+    await page.goto('/?debug=1&world=test');
     await expect.poll(() => isSceneActive(page, 'Title')).toBe(true);
     const p = await canvasPoint(page, 0.5, 0.5);
     await page.mouse.move(p.x, p.y);

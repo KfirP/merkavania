@@ -31,6 +31,16 @@ describe('resolveHit', () => {
     expect(hit.rear).toBe(false);
   });
 
+  it('multiplies by a weakness to that weapon (the boss roof vs the mortar)', () => {
+    const mortar = weapons.mortar_60;
+    const plain = resolveHit(mortar, { armor: 'fortified' }, 0);
+    const weak = resolveHit(mortar, { armor: 'fortified', weakTo: { mortar_60: 2 } }, 0);
+    expect(weak.damage).toBeCloseTo(plain.damage * 2);
+    expect(resolveHit(gun, { armor: 'fortified', weakTo: { mortar_60: 2 } }, 0).damage).toBeCloseTo(
+      resolveHit(gun, { armor: 'fortified' }, 0).damage,
+    );
+  });
+
   it('adds the rear-arc bonus only for targets with a heading', () => {
     const front = resolveHit(gun, { armor: 'low', heading: 0 }, Math.PI);
     const rear = resolveHit(gun, { armor: 'low', heading: 0 }, 0);

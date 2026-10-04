@@ -105,7 +105,7 @@ Desert enemies (numbers in `data/enemies.ts`): `rifle_squad` (three soldiers who
 | Underground | `security_turret`, `sentry_drone`, `prototype_walker` (sci-fi) |
 | Sci-fi core | Experimental versions of the above plus `anomaly` hazards |
 
-Bosses (one per biome): `boss_desert` is a fortified command bunker with a rail-mounted gun; the later bosses escalate into sci-fi (a prototype heavy tank, a walker, a core guardian).
+Bosses (one per biome): `boss_desert` is a fortified command bunker with a rail-mounted gun. It wakes when you enter its arena, slides its gun along the rail to follow you and fires a slow, heavy shell after a blinking-laser warning. Its front shrugs off cannon fire, but its roof takes double damage from the mortar. Below half health it fires faster and calls rifle squads out of its side doors. If you die it resets; beaten, it stays beaten and leaves the Mk3 upgrade crate; the later bosses escalate into sci-fi (a prototype heavy tank, a walker, a core guardian).
 
 ## Biomes (full game)
 1. **Desert outpost / ruined base** (`desert`): sand, bunkers, wrecked vehicles. Pickups: `mortar`, `hatch_scout`, `dozer_blade`. The boss grants **Mk3** (`suspension`).

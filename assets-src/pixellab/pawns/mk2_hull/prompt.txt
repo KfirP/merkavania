@@ -1,0 +1,7 @@
+tool: create_image_pixflux
+size: 64x64, no_background: true
+init_image: the code placeholder (mk2_hull) at 2x, init_image_strength: 120
+view: high top-down, direction: east, outline: single color black outline
+shading: basic shading, detail: medium detail, seed: 7001
+description: top-down overhead pixel art Israeli Merkava Mk2 main battle tank hull without turret, front-mounted engine deck with grilles, rear hatch, tracks on both sides, olive sand IDF color, facing right, transparent background
+result: REJECTED (raw.png): the fill was removed with the background, outline only. Retried as raw-v2 with an opaque backdrop.

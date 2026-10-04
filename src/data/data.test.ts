@@ -80,6 +80,21 @@ describe('mkTiers', () => {
     expect(mkTiers.mk2.quickRounds).toBe(6);
   });
 
+  it('mk3 matches GAME_DESIGN.md: HP 160, armor med, 120mm, 5 quick rounds', () => {
+    expect(mkTiers.mk3.hp).toBe(160);
+    expect(mkTiers.mk3.armor).toBe('med');
+    expect(mkTiers.mk3.mainGun).toBe('gun_120');
+    expect(mkTiers.mk3.quickRounds).toBe(5);
+  });
+
+  it('mk3 out-guns the mk2: the 120mm hits harder, flies faster and further, fires sooner', () => {
+    const [g105, g120] = [weapons.gun_105, weapons.gun_120];
+    expect(g120.damage).toBeGreaterThan(g105.damage);
+    expect(g120.speed).toBeGreaterThan(g105.speed);
+    expect(g120.range).toBeGreaterThan(g105.range);
+    expect(mkTiers.mk3.gunCooldown).toBeLessThan(mkTiers.mk2.gunCooldown);
+  });
+
   it('are all listed in allMkTierIds', () => {
     for (const id of Object.keys(mkTiers)) expect(allMkTierIds).toContain(id);
   });

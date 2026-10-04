@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { findSpawn, parseWorld, worldBounds, type TiledWorld } from './world';
+import {
+  DEFAULT_BIOME,
+  findSpawn,
+  parseWorld,
+  pickBiome,
+  worldBounds,
+  type TiledWorld,
+} from './world';
 
 const world: TiledWorld = {
   type: 'world',
@@ -54,5 +61,16 @@ describe('worldBounds', () => {
   it('covers every chunk in pixels', () => {
     const { chunks } = parseWorld(world, 'maps/test/test.world');
     expect(worldBounds(chunks)).toEqual({ x: 0, y: 0, width: 960, height: 544 });
+  });
+});
+
+describe('pickBiome', () => {
+  const known = ['desert', 'test'];
+
+  it('plays the desert unless a known biome is asked for (?world=test for the sandbox)', () => {
+    expect(DEFAULT_BIOME).toBe('desert');
+    expect(pickBiome(null, known)).toBe('desert');
+    expect(pickBiome('test', known)).toBe('test');
+    expect(pickBiome('moon', known)).toBe('desert');
   });
 });

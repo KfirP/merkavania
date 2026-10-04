@@ -1,0 +1,132 @@
+{
+    "maps": [
+        {
+            "fileName": "desert_x00_y01.tmj",
+            "height": 272,
+            "width": 480,
+            "x": 0,
+            "y": 272
+        },
+        {
+            "fileName": "desert_x00_y02.tmj",
+            "height": 272,
+            "width": 480,
+            "x": 0,
+            "y": 544
+        },
+        {
+            "fileName": "desert_x01_y00.tmj",
+            "height": 272,
+            "width": 480,
+            "x": 480,
+            "y": 0
+        },
+        {
+            "fileName": "desert_x01_y01.tmj",
+            "height": 272,
+            "width": 480,
+            "x": 480,
+            "y": 272
+        },
+        {
+            "fileName": "desert_x01_y02.tmj",
+            "height": 272,
+            "width": 480,
+            "x": 480,
+            "y": 544
+        },
+        {
+            "fileName": "desert_x01_y03.tmj",
+            "height": 272,
+            "width": 480,
+            "x": 480,
+            "y": 816
+        },
+        {
+            "fileName": "desert_x02_y00.tmj",
+            "height": 272,
+            "width": 480,
+            "x": 960,
+            "y": 0
+        },
+        {
+            "fileName": "desert_x02_y01.tmj",
+            "height": 272,
+            "width": 480,
+            "x": 960,
+            "y": 272
+        },
+        {
+            "fileName": "desert_x02_y02.tmj",
+            "height": 272,
+            "width": 480,
+            "x": 960,
+            "y": 544
+        },
+        {
+            "fileName": "desert_x02_y03.tmj",
+            "height": 272,
+            "width": 480,
+            "x": 960,
+            "y": 816
+        },
+        {
+            "fileName": "desert_x03_y00.tmj",
+            "height": 272,
+            "width": 480,
+            "x": 1440,
+            "y": 0
+        },
+        {
+            "fileName": "desert_x03_y01.tmj",
+            "height": 272,
+            "width": 480,
+            "x": 1440,
+            "y": 272
+        },
+        {
+            "fileName": "desert_x03_y02.tmj",
+            "height": 272,
+            "width": 480,
+            "x": 1440,
+            "y": 544
+        },
+        {
+            "fileName": "desert_x03_y03.tmj",
+            "height": 272,
+            "width": 480,
+            "x": 1440,
+            "y": 816
+        },
+        {
+            "fileName": "desert_x04_y00.tmj",
+            "height": 272,
+            "width": 480,
+            "x": 1920,
+            "y": 0
+        },
+        {
+            "fileName": "desert_x04_y01.tmj",
+            "height": 272,
+            "width": 480,
+            "x": 1920,
+            "y": 272
+        },
+        {
+            "fileName": "desert_x04_y02.tmj",
+            "height": 272,
+            "width": 480,
+            "x": 1920,
+            "y": 544
+        },
+        {
+            "fileName": "desert_x04_y03.tmj",
+            "height": 272,
+            "width": 480,
+            "x": 1920,
+            "y": 816
+        }
+    ],
+    "onlyShowAdjacentMaps": false,
+    "type": "world"
+}

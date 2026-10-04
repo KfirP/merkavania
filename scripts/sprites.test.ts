@@ -68,6 +68,15 @@ describe('keyBackground', () => {
     ]);
   });
 
+  it('can key a given colour when the sprite touches the top-left corner', () => {
+    const z = 'z'.charCodeAt(0);
+    expect(rows(keyBackground(bmp(['aazzz', 'aaaaz', 'zzzzz']), 0, [z, z, z]))).toEqual([
+      'aa...',
+      'aaaa.',
+      '.....',
+    ]);
+  });
+
   it('treats close colours as background within the tolerance', () => {
     expect(rows(keyBackground(bmp(['zy', 'ya']), 2))).toEqual(['..', '.a']);
   });

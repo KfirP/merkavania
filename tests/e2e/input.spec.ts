@@ -72,7 +72,7 @@ const MORTAR_BUTTON = { x: 820, y: 320 };
 const HATCH_BUTTON = { x: 900, y: 240 };
 
 async function enterTouchWorld(page: Page) {
-  await page.goto('/?debug=1');
+  await page.goto('/?debug=1&world=test');
   await expect.poll(() => isSceneActive(page, 'Title')).toBe(true);
   await page.keyboard.press('Enter');
   await expect.poll(() => isSceneActive(page, 'TouchControls')).toBe(true);

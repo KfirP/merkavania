@@ -29,7 +29,7 @@ const V1_SAVE = {
 };
 
 async function enterWithKits(page: Page) {
-  await page.goto('/?debug=1');
+  await page.goto('/?debug=1&world=test');
   await page.evaluate((s) => localStorage.setItem('merkavania.save.1', JSON.stringify(s)), V1_SAVE);
   await page.reload();
   await expect.poll(() => isSceneActive(page, 'Title')).toBe(true);

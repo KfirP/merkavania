@@ -76,5 +76,21 @@
   "map.legend_depot": "Depot",
   "map.legend_pickup": "Item",
   "map.legend_taken": "Taken",
-  "ui.rotate_device": "Rotate your device: the Merkava only fits sideways"
+  "ui.rotate_device": "Rotate your device: the Merkava only fits sideways",
+  "radio.speaker.command": "COMMAND",
+  "radio.speaker.unknown": "???",
+  "radio.desert.intro": "Tiger-1, this is Command. You're cut off. Head east\nand find what's left of the outpost. Try not to dent it.",
+  "radio.desert.hatch": "That rear door isn't just for groceries. Grab the\nhatch kit and send someone where the tank won't fit.",
+  "radio.desert.bunkers": "Bunker line ahead. They shoot through slits.\nThe back of a bunker is famously slit-free.",
+  "radio.desert.mortar": "A 60mm mortar! Lob it over walls and cliffs.\nAim for the switch, not the general.",
+  "radio.desert.steep": "That ramp's too steep for a Mk2. Come back with\nbetter shocks. Or a better tank.",
+  "radio.desert.dozer": "Blade fitted. Somewhere, a pile of rubble\njust felt a chill.",
+  "radio.desert.boss_approach": "Their command bunker is past this depot. It has a\nrail gun. We have... enthusiasm. Repair first.",
+  "radio.desert.boss_intro": "Is that a gun on a TRAIN TRACK? Keep moving,\nTiger-1! Mortar its roof!",
+  "radio.desert.boss_down": "Bunker down! There's a crate in the rubble with your\nname on it. Literally. Someone wrote 'Tiger-1'.",
+  "radio.desert.mk3": "Mk3 conversion complete. New gun, new shocks,\nsame smell. Steep ramps won't stop you now.",
+  "radio.desert.final_01": "...tank... you weren't supposed to get this far.\nThe thing under the hills is waking. Come north.",
+  "radio.desert.final_02": "Uh, Tiger-1? That wasn't us.\nEnd of the slice. Nice driving!",
+  "boss.boss_desert": "COMMAND BUNKER",
+  "upgrade.mk3": "Merkava Mk3! 120mm gun and improved suspension"
 }

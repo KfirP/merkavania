@@ -15,6 +15,7 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "validate:maps": "tsx scripts/validate-maps.ts",
+    "build:maps": "tsx scripts/build-maps.ts",
     "check": "npm run typecheck && npm run lint && npm test && npm run validate:maps"
   },
   "dependencies": {

@@ -1,4 +1,5 @@
 import { abilityIds, type AbilityId } from '../../data/abilities';
+import { bosses, isBossId } from '../../data/bosses';
 import { mkSignatures } from '../../data/mkTiers';
 import { weapons } from '../../data/weapons';
 import { CHUNK_PX_H, CHUNK_PX_W, TILE, type ChunkCoord } from './chunks';
@@ -11,9 +12,9 @@ import type { MapIssue } from './validate';
 /**
  * Progression reachability (docs/LEVEL_DESIGN.md, validate:maps rule 6). Starting at `start` as a
  * Mk2 with no abilities, it floods the cells the tank can drive to, takes every pickup and
- * `mk_upgrade` it reaches (plus, once it has `hatch_scout`, every pickup the scout can walk to from
+ * `mk_upgrade` it reaches, beats every boss it reaches (which grants its reward tier) (plus, once it has `hatch_scout`, every pickup the scout can walk to from
  * there), flips every switch it can activate (which opens their doors), and repeats until nothing
- * changes. Every pickup, depot, boss and `mk_upgrade` still unreached is
+ * changes. Every pickup, depot, boss, `mk_upgrade` and radio message still unreached is
  * reported. It works on single cells, so it's coarse: it doesn't know the tank is 2 tiles wide.
  */
 
@@ -41,7 +42,7 @@ const STEPS: [Dir, number, number][] = [
 ];
 
 /** Object types that must be reachable, and how a report names them. */
-const MUST_REACH = ['pickup', 'depot', 'boss', 'mk_upgrade'];
+const MUST_REACH = ['pickup', 'depot', 'boss', 'mk_upgrade', 'radio'];
 
 const tileKey = (tx: number, ty: number) => `${tx},${ty}`;
 const tileOf = (x: number, y: number) => tileKey(Math.floor(x / TILE), Math.floor(y / TILE));
@@ -175,7 +176,9 @@ export function checkReachability(chunks: readonly ReachChunk[]): MapIssue[] {
           ? o.props.ability
           : o.raw.type === 'mk_upgrade'
             ? mkSignatures[o.props.tier as keyof typeof mkSignatures]
-            : undefined;
+            : o.raw.type === 'boss' && isBossId(o.props.bossType)
+              ? mkSignatures[bosses[o.props.bossType].reward.tier]
+              : undefined;
       if (grant === undefined) continue;
       taken.add(o);
       if (abilityIds.includes(grant as AbilityId) && !abilities.has(grant as AbilityId)) {

@@ -19,7 +19,7 @@ test('boots to the title, starts the world, drives and fires the tank', async ({
   });
   page.on('pageerror', (err) => errors.push(err.message));
 
-  await page.goto('/?debug=1');
+  await page.goto('/?debug=1&world=test');
   await expect.poll(() => isSceneActive(page, 'Title')).toBe(true);
 
   await page.locator('canvas').click();

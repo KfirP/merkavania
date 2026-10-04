@@ -1,0 +1,6 @@
+tool: create_image_pixflux
+size: 64x64, no_background: false (flat magenta backdrop, keyed out by process-sprites)
+init_image: the code placeholder (mk2_hull) at 2x on magenta, init_image_strength: 120
+view: high top-down, direction: east, outline: single color black outline
+shading: basic shading, detail: medium detail, seed: 7003
+description: top-down overhead pixel art Israeli Merkava Mk2 main battle tank hull without turret, olive sand IDF painted armor deck, front-mounted engine with grilles at the right end, rear hatch at the left end, dark tracks on both sides, facing right, on a flat solid magenta background

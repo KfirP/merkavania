@@ -1,0 +1,575 @@
+{
+  "columns": 8,
+  "image": "../../assets/tiles/desert/desert.png",
+  "imageheight": 160,
+  "imagewidth": 128,
+  "margin": 0,
+  "name": "tiles_desert",
+  "spacing": 0,
+  "tilecount": 76,
+  "tiledversion": "1.11.2",
+  "tileheight": 16,
+  "tiles": [
+    {
+      "id": 0,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "sand"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "sand"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "sand"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "sand"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "sand"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "sand"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "sand"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "sand"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "sand"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "sand"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "sand"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "sand"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "sand"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "sand"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "sand"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "sand"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "road"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "road"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "road"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "road"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "rock"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "rock"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "rock"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "rock"
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "rubble"
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "rubble"
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "rubble"
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "rubble"
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "rubble"
+        },
+        {
+          "name": "cleared",
+          "type": "int",
+          "value": 24
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "rubble"
+        },
+        {
+          "name": "cleared",
+          "type": "int",
+          "value": 25
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "rubble"
+        },
+        {
+          "name": "cleared",
+          "type": "int",
+          "value": 26
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "rubble"
+        },
+        {
+          "name": "cleared",
+          "type": "int",
+          "value": 27
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "crawlspace"
+        }
+      ]
+    },
+    {
+      "id": 33,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "crawlspace"
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "crawlspace"
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "properties": [
+        {
+          "name": "terrain",
+          "type": "string",
+          "value": "crawlspace"
+        }
+      ]
+    },
+    {
+      "id": 36,
+      "properties": [
+        {
+          "name": "solid",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    },
+    {
+      "id": 37,
+      "properties": [
+        {
+          "name": "solid",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    },
+    {
+      "id": 38,
+      "properties": [
+        {
+          "name": "solid",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    },
+    {
+      "id": 39,
+      "properties": []
+    },
+    {
+      "id": 40,
+      "properties": []
+    },
+    {
+      "id": 41,
+      "properties": []
+    },
+    {
+      "id": 42,
+      "properties": []
+    },
+    {
+      "id": 43,
+      "properties": []
+    },
+    {
+      "id": 44,
+      "properties": []
+    },
+    {
+      "id": 45,
+      "properties": []
+    },
+    {
+      "id": 46,
+      "properties": []
+    },
+    {
+      "id": 47,
+      "properties": []
+    },
+    {
+      "id": 48,
+      "properties": []
+    },
+    {
+      "id": 49,
+      "properties": []
+    },
+    {
+      "id": 50,
+      "properties": []
+    },
+    {
+      "id": 51,
+      "properties": []
+    },
+    {
+      "id": 52,
+      "properties": []
+    },
+    {
+      "id": 53,
+      "properties": []
+    },
+    {
+      "id": 54,
+      "properties": []
+    },
+    {
+      "id": 55,
+      "properties": []
+    },
+    {
+      "id": 56,
+      "properties": []
+    },
+    {
+      "id": 57,
+      "properties": []
+    },
+    {
+      "id": 58,
+      "properties": []
+    },
+    {
+      "id": 59,
+      "properties": []
+    },
+    {
+      "id": 60,
+      "properties": []
+    },
+    {
+      "id": 61,
+      "properties": []
+    },
+    {
+      "id": 62,
+      "properties": []
+    },
+    {
+      "id": 63,
+      "properties": []
+    },
+    {
+      "id": 64,
+      "properties": []
+    },
+    {
+      "id": 65,
+      "properties": []
+    },
+    {
+      "id": 66,
+      "properties": []
+    },
+    {
+      "id": 67,
+      "properties": []
+    },
+    {
+      "id": 68,
+      "properties": []
+    },
+    {
+      "id": 69,
+      "properties": []
+    },
+    {
+      "id": 70,
+      "properties": []
+    },
+    {
+      "id": 71,
+      "properties": []
+    },
+    {
+      "id": 72,
+      "properties": []
+    },
+    {
+      "id": 73,
+      "properties": []
+    },
+    {
+      "id": 74,
+      "properties": []
+    },
+    {
+      "id": 75,
+      "properties": []
+    }
+  ],
+  "tilewidth": 16,
+  "type": "tileset",
+  "version": "1.10"
+}

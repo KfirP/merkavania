@@ -186,6 +186,101 @@ describe('parseChunkObjects', () => {
   });
 });
 
+describe('parseChunkObjects: radios and bosses', () => {
+  it('parses radios as rects or points, once by default and from Command', () => {
+    const { radios } = parseChunkObjects(chunk, [
+      {
+        id: 1,
+        type: 'radio',
+        x: 16,
+        y: 32,
+        width: 64,
+        height: 32,
+        properties: props({ id: 'intro', messageKey: 'radio.desert.intro' }),
+      },
+      {
+        id: 2,
+        type: 'radio',
+        x: 100,
+        y: 50,
+        properties: props({
+          id: 'odd',
+          messageKey: 'radio.desert.final_01',
+          once: false,
+          speaker: 'unknown',
+        }),
+      },
+    ]);
+    expect(radios).toEqual([
+      {
+        key: 'test_x01_y02:intro',
+        messageKey: 'radio.desert.intro',
+        speaker: 'command',
+        once: true,
+        x: ox + 48,
+        y: oy + 48,
+        width: 64,
+        height: 32,
+      },
+      {
+        key: 'test_x01_y02:odd',
+        messageKey: 'radio.desert.final_01',
+        speaker: 'unknown',
+        once: false,
+        x: ox + 100,
+        y: oy + 50,
+        width: 0,
+        height: 0,
+      },
+    ]);
+  });
+
+  it('parses a boss with its arena rect and rail, in world px', () => {
+    const { bosses } = parseChunkObjects(chunk, [
+      {
+        id: 1,
+        type: 'zone',
+        name: 'arena',
+        x: 16,
+        y: 16,
+        width: 400,
+        height: 200,
+        properties: props({ kind: 'boss_arena' }),
+      },
+      {
+        id: 2,
+        name: 'rail',
+        x: 40,
+        y: 150,
+        polyline: [
+          { x: 0, y: 0 },
+          { x: 300, y: 0 },
+        ],
+      },
+      {
+        id: 3,
+        type: 'boss',
+        x: 216,
+        y: 72,
+        properties: props({ id: 'bunker', bossType: 'boss_desert', arena: 'arena', rail: 'rail' }),
+      },
+    ]);
+    expect(bosses).toEqual([
+      {
+        key: 'test_x01_y02:bunker',
+        bossType: 'boss_desert',
+        x: ox + 216,
+        y: oy + 72,
+        arena: { key: 'test_x01_y02:arena', x: ox + 216, y: oy + 116, width: 400, height: 200 },
+        rail: [
+          { x: ox + 40, y: oy + 150 },
+          { x: ox + 340, y: oy + 150 },
+        ],
+      },
+    ]);
+  });
+});
+
 describe('findDepot', () => {
   const chunks = [
     { id: 'test_x00_y00', cx: 0, cy: 0 },

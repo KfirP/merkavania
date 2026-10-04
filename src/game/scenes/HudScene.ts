@@ -10,6 +10,8 @@ import {
   type HudElement,
 } from '../../logic/ui/hudLayout';
 import { minimapCells, type MinimapCell } from '../../logic/ui/minimap';
+import { RADIO_MAX_LINE } from '../../data/radio';
+import { RadioQueue, revealedChars } from '../../logic/world/radio';
 import { events, type GameEvents } from '../events';
 import { textStyle, UI_PANEL } from '../ui/text';
 import { SceneKey } from './keys';
@@ -29,6 +31,13 @@ const CELL_COLOR: Record<MinimapCell, number | null> = {
   current: 0xf0e6c8,
 };
 
+/** The radio panel: top centre, under the touch map/pause buttons. */
+const RADIO = { y: 28, width: RADIO_MAX_LINE * 8 + 8, pad: 4, line: 10 };
+const RADIO_SPEAKER_COLOR = '#f0c040';
+/** The boss bar: bottom centre, between the status block and the minimap side. */
+const BOSS_BAR = { y: GAME_HEIGHT - 12, width: 200, height: 4 };
+const BOSS_COLOR = 0xd6453e;
+
 const hudText = () => textStyle(1, { backgroundColor: UI_PANEL, padding: { x: 2, y: 1 } });
 
 /** What the `getHud` debug hook reports. */
@@ -42,7 +51,11 @@ export interface HudSnapshot {
   repair: string | null;
   gunRounds: number;
   gunMax: number;
+  /** The boss bar while a boss is awake: its name and the share of HP left. */
+  boss: { name: string; share: number } | null;
   minimap: MinimapCell[][];
+  /** The radio message on screen (text typed so far) and the keys waiting; null when quiet. */
+  radio: { messageKey: string; speaker: string; shown: string; queued: string[] } | null;
 }
 
 /**
@@ -63,6 +76,14 @@ export class HudScene extends Phaser.Scene {
   private minimap!: Phaser.GameObjects.Graphics;
   private toast!: Phaser.GameObjects.Text;
   private toastTimer: Phaser.Time.TimerEvent | null = null;
+  private bossName!: Phaser.GameObjects.Text;
+  private bossBack!: Phaser.GameObjects.Rectangle;
+  private bossFill!: Phaser.GameObjects.Rectangle;
+  private radioPanel!: Phaser.GameObjects.Rectangle;
+  private radioSpeaker!: Phaser.GameObjects.Text;
+  private radioText!: Phaser.GameObjects.Text;
+  /** Survives language rebuilds (its texts are re-translated). */
+  private readonly radio = new RadioQueue();
   /** Whose HP the bar shows: the tank (`player`) or the scout while it's out. */
   private hpTarget = 'player';
   private gun = { rounds: 0, max: 0 };
@@ -74,6 +95,7 @@ export class HudScene extends Phaser.Scene {
     tier?: GameEvents['tank:tier'];
     gun?: GameEvents['gun:state'];
     repair?: GameEvents['repair:changed'];
+    boss?: GameEvents['boss:state'];
   } = { hp: new Map() };
 
   constructor() {
@@ -81,6 +103,7 @@ export class HudScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.radio.clear();
     this.hpTarget = 'player';
     this.shown = { hp: new Map() };
     this.build();
@@ -94,6 +117,7 @@ export class HudScene extends Phaser.Scene {
       'repair:changed': this.onRepair,
       'map:changed': this.onMap,
       'world:chunks': this.onChunks,
+      'boss:state': this.onBoss,
     };
     // Overlays start after WorldScene's first emits: catch up, then follow.
     for (const [name, fn] of Object.entries(handlers)) {
@@ -108,6 +132,9 @@ export class HudScene extends Phaser.Scene {
       'hatch:refused': this.onHatchRefused,
       'scout:died': this.onScoutDied,
       'repair:used': this.onRepairUsed,
+      'radio:message': this.onRadio,
+      'radio:skip': this.onRadioSkip,
+      'tank:upgraded': this.onUpgraded,
     };
     for (const [name, fn] of Object.entries(toasts))
       events.on(name as keyof GameEvents, fn as (p: unknown) => void, this);
@@ -127,13 +154,21 @@ export class HudScene extends Phaser.Scene {
     this.tweens.killAll();
     this.children.removeAll(true);
     this.build();
-    const { hp, loadout, tier, gun, repair } = this.shown;
+    const { hp, loadout, tier, gun, repair, boss } = this.shown;
     for (const payload of hp.values()) this.onHp(payload);
     if (loadout) this.onLoadout(loadout);
     if (tier) this.onTier(tier);
     if (gun) this.onGun(gun);
     if (repair) this.onRepair(repair);
+    if (boss) this.onBoss(boss);
     this.drawMinimap();
+    this.radio.retext((m) => t(m.messageKey as I18nKey));
+  }
+
+  override update(_time: number, delta: number): void {
+    // The radio holds still while the world is paused (pause menu, map).
+    if (!this.scene.isPaused(SceneKey.World)) this.radio.tick(delta / 1000);
+    this.drawRadio();
   }
 
   private build(): void {
@@ -163,6 +198,80 @@ export class HudScene extends Phaser.Scene {
       })
       .setOrigin(0.5, 1)
       .setVisible(false);
+
+    this.bossName = this.add
+      .text(GAME_WIDTH / 2, BOSS_BAR.y - 2, '', hudText())
+      .setOrigin(0.5, 1)
+      .setVisible(false);
+    this.bossBack = this.add
+      .rectangle(GAME_WIDTH / 2, BOSS_BAR.y, BOSS_BAR.width + 2, BOSS_BAR.height + 2, 0, 0.6)
+      .setOrigin(0.5, 0)
+      .setStrokeStyle(1, 0x1f1f10)
+      .setVisible(false);
+    this.bossFill = this.add
+      .rectangle(
+        (GAME_WIDTH - BOSS_BAR.width) / 2,
+        BOSS_BAR.y + 1,
+        BOSS_BAR.width,
+        BOSS_BAR.height,
+        BOSS_COLOR,
+      )
+      .setOrigin(0, 0)
+      .setVisible(false);
+
+    const rtl = isRtl();
+    const left = (GAME_WIDTH - RADIO.width) / 2;
+    const textX = rtl ? left + RADIO.width - RADIO.pad : left + RADIO.pad;
+    this.radioPanel = this.add
+      .rectangle(GAME_WIDTH / 2, RADIO.y, RADIO.width, RADIO.line, 0x000000, 0.75)
+      .setOrigin(0.5, 0)
+      .setStrokeStyle(1, 0x8a7f5a)
+      .setVisible(false)
+      .setInteractive()
+      .on(Phaser.Input.Events.POINTER_DOWN, () => this.radio.skip());
+    this.radioSpeaker = this.add
+      .text(textX, RADIO.y + RADIO.pad, '', textStyle(1, { color: RADIO_SPEAKER_COLOR }))
+      .setOrigin(rtl ? 1 : 0, 0)
+      .setVisible(false);
+    this.radioText = this.add
+      .text(textX, RADIO.y + RADIO.pad + RADIO.line + 2, '', textStyle(1))
+      .setOrigin(rtl ? 1 : 0, 0)
+      .setVisible(false);
+  }
+
+  private drawRadio(): void {
+    const cur = this.radio.current;
+    for (const o of [this.radioPanel, this.radioSpeaker, this.radioText]) o.setVisible(!!cur);
+    if (!cur) return;
+    this.radioSpeaker.setText(t(`radio.speaker.${cur.speaker}` as I18nKey));
+    this.radioText.setText(cur.text.slice(0, revealedChars(cur.text, cur.elapsed)));
+    const lines = cur.text.split('\n').length;
+    this.radioPanel.height = RADIO.pad * 2 + RADIO.line * (lines + 1) + 2;
+    this.radioPanel.input?.hitArea.setSize(RADIO.width, this.radioPanel.height);
+  }
+
+  private onRadio({ messageKey, speaker }: GameEvents['radio:message']): void {
+    this.radio.push({ messageKey, speaker, text: t(messageKey as I18nKey) });
+  }
+
+  private onBoss(boss: GameEvents['boss:state']): void {
+    this.shown.boss = boss;
+    for (const o of [this.bossName, this.bossBack, this.bossFill]) o.setVisible(boss.active);
+    if (!boss.active) return;
+    this.bossName.setText(t(`boss.${boss.bossType}` as I18nKey));
+    this.bossFill.width = Math.ceil((BOSS_BAR.width * boss.hp) / boss.max);
+    // The bar drains toward the reading side's end.
+    this.bossFill.x = isRtl()
+      ? (GAME_WIDTH + BOSS_BAR.width) / 2 - this.bossFill.width
+      : (GAME_WIDTH - BOSS_BAR.width) / 2;
+  }
+
+  private onUpgraded({ mk }: GameEvents['tank:upgraded']): void {
+    this.showToast(t(`upgrade.${mk}` as I18nKey));
+  }
+
+  private onRadioSkip(): void {
+    this.radio.skip();
   }
 
   snapshot(): HudSnapshot {
@@ -175,7 +284,16 @@ export class HudScene extends Phaser.Scene {
       repair: this.repair.visible ? this.repair.text : null,
       gunRounds: this.gun.rounds,
       gunMax: this.gun.max,
+      boss: this.bossFill.visible
+        ? { name: this.bossName.text, share: this.bossFill.width / BOSS_BAR.width }
+        : null,
       minimap: this.cells.map((row) => [...row]),
+      radio: this.radio.current && {
+        messageKey: this.radio.current.messageKey,
+        speaker: this.radio.current.speaker,
+        shown: this.radioText.text,
+        queued: this.radio.queued.map((m) => m.messageKey),
+      },
     };
   }
 

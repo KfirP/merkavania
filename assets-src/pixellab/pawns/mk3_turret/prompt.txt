@@ -1,0 +1,6 @@
+tool: create_image_pixflux
+size: 76x28, no_background: false (flat magenta backdrop, keyed out by process-sprites)
+init_image: the code placeholder (mk3_turret) at 2x on magenta, init_image_strength: 120
+view: high top-down, direction: east, outline: single color black outline
+shading: basic shading, detail: medium detail, seed: 7006
+description: top-down overhead pixel art Merkava Mk3 tank turret, sharper longer angular wedge turret with add-on armor blocks, long 120mm gun barrel with thermal sleeve pointing right, olive sand color, on a flat solid magenta background

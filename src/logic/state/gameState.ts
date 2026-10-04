@@ -1,5 +1,5 @@
 import type { AbilityId, MinorPickupId } from '../../data/abilities';
-import { mkTiers, type MkTierId } from '../../data/mkTiers';
+import { allMkTierIds, mkSignatures, mkTiers, type MkTierId } from '../../data/mkTiers';
 import {
   AMMO_RACK_BONUS,
   ARMOR_PLATE_HP,
@@ -96,6 +96,18 @@ export function grantAbility(s: GameState, ability: AbilityId): void {
   s.abilities.push(ability);
   for (const id of secondaryIds)
     if (secondaries[id].ability === ability) s.secondaryAmmo[id] = ammoCapacity(s, id)!;
+}
+
+/**
+ * A Mk upgrade (a boss reward): sets the tier and grants its signature ability. Never downgrades;
+ * returns false when the tank already has this tier or a better one.
+ */
+export function grantTier(s: GameState, tier: MkTierId): boolean {
+  if (allMkTierIds.indexOf(tier) <= allMkTierIds.indexOf(s.mk)) return false;
+  s.mk = tier;
+  const signature = mkSignatures[tier];
+  if (signature) grantAbility(s, signature);
+  return true;
 }
 
 /** Takes a pickup; false if it was already taken. */
