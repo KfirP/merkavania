@@ -18,22 +18,34 @@ export interface AssetEntry {
 export const assetManifest = [
   // UI font: Latin + Hebrew, crisp at 8px multiples (CC0, see the licence file next to it).
   { key: 'font_ui', type: 'font', path: 'assets/fonts/PublicPixel.ttf', status: 'final' },
-  { key: 'mk2_hull', type: 'image', path: '', status: 'placeholder', origin: { x: 0.5, y: 0.5 } },
+  {
+    key: 'mk2_hull',
+    type: 'image',
+    path: 'assets/sprites/pawns/mk2_hull.png',
+    status: 'generated',
+    origin: { x: 0.5, y: 0.5 },
+  },
   // Pivot sits on the turret ring; the barrel extends east of it.
   {
     key: 'mk2_turret',
     type: 'image',
-    path: '',
-    status: 'placeholder',
-    origin: { x: 9 / 34, y: 0.5 },
+    path: 'assets/sprites/pawns/mk2_turret.png',
+    status: 'generated',
+    origin: { x: 8 / 34, y: 0.5 },
   },
-  { key: 'mk3_hull', type: 'image', path: '', status: 'placeholder', origin: { x: 0.5, y: 0.5 } },
+  {
+    key: 'mk3_hull',
+    type: 'image',
+    path: 'assets/sprites/pawns/mk3_hull.png',
+    status: 'generated',
+    origin: { x: 0.5, y: 0.5 },
+  },
   {
     key: 'mk3_turret',
     type: 'image',
-    path: '',
-    status: 'placeholder',
-    origin: { x: 10 / 38, y: 0.5 },
+    path: 'assets/sprites/pawns/mk3_turret.png',
+    status: 'generated',
+    origin: { x: 9 / 38, y: 0.5 },
   },
   { key: 'shell_105', type: 'image', path: '', status: 'placeholder' },
   { key: 'shell_120', type: 'image', path: '', status: 'placeholder' },

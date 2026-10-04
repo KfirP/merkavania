@@ -1,0 +1,5 @@
+tool: create_image_pixflux
+size: 96x48, no_background: false, no init image (the long init base64 kept getting truncated in transit)
+view: high top-down, outline: single color black outline, shading: basic shading, detail: medium detail, seed: 7007
+description: strict top-down 90 degree overhead view pixel art of a fortified grey concrete military command bunker roof, flat rectangular slab seen from directly above, roof hatches, vents, radio aerials, small radar dish, sandbags along the bottom edge, desert war game sprite, on a flat solid magenta background
+result: REJECTED (raw-rejected.png): drew a small isometric block. The boss keeps its code-drawn sprite.

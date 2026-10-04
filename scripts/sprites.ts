@@ -89,12 +89,15 @@ export function downscale(b: Bitmap, factor: number): Bitmap {
 
 /**
  * Makes an opaque background transparent: clears every pixel connected to the image border whose
- * colour is within `tolerance` (per channel) of the top-left pixel. Enclosed pixels of the same
- * colour stay, so a sprite's own sandy patches survive.
+ * colour is within `tolerance` (per channel) of `key` (default: the top-left pixel). Enclosed pixels
+ * of the same colour stay, so a sprite's own sandy patches survive.
  */
-export function keyBackground(b: Bitmap, tolerance: number): Bitmap {
+export function keyBackground(
+  b: Bitmap,
+  tolerance: number,
+  key: readonly number[] = [b.data[0]!, b.data[1]!, b.data[2]!],
+): Bitmap {
   const out: Bitmap = { width: b.width, height: b.height, data: new Uint8Array(b.data) };
-  const key = [b.data[0]!, b.data[1]!, b.data[2]!];
   const matches = (x: number, y: number) => {
     const i = (y * b.width + x) * 4;
     return (

@@ -12,8 +12,11 @@ import { downscale, keyBackground, rotate90, trim, type Bitmap } from './sprites
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 
-/** `key<n>`: remove the background colour, tolerance n (for outputs that came back opaque). */
-type Step = 'trim' | 'rotate90' | `downscale${number}` | `key${number}`;
+/**
+ * `key<n>`: remove the background colour, tolerance n (for outputs that came back opaque);
+ * `magenta<n>`: the same for a magenta backdrop, whatever colour the top-left pixel is.
+ */
+type Step = 'trim' | 'rotate90' | `downscale${number}` | `key${number}` | `magenta${number}`;
 
 interface Job {
   /** Relative to assets-src/pixellab. */
@@ -48,6 +51,12 @@ const JOBS: Job[] = [
     steps: ['trim', 'downscale2'] as Step[],
   })),
   { from: 'effects/explosion/raw.png', to: 'effects/explosion.png', steps: ['trim'] },
+  // The Merkava sets (M7): generated at 2x on a magenta backdrop, keyed out, then halved.
+  ...(['mk2_hull', 'mk2_turret', 'mk3_hull', 'mk3_turret'] as const).map((name) => ({
+    from: `pawns/${name}/${name === 'mk2_hull' ? 'raw-v2' : 'raw'}.png`,
+    to: `pawns/${name}.png`,
+    steps: ['magenta60', 'trim', 'downscale2'] as Step[],
+  })),
   // raw-v2.png with its rifle redrawn (fix-rifle.ts).
   { from: 'pawns/scout/fixed.png', to: 'pawns/scout.png', steps: ['trim', 'downscale2'] },
 ];
@@ -56,6 +65,8 @@ function apply(b: Bitmap, step: Step): Bitmap {
   if (step === 'trim') return trim(b);
   if (step === 'rotate90') return rotate90(b);
   if (step.startsWith('key')) return keyBackground(b, Number(step.slice('key'.length)));
+  if (step.startsWith('magenta'))
+    return keyBackground(b, Number(step.slice('magenta'.length)), [255, 0, 255]);
   return downscale(b, Number(step.slice('downscale'.length)));
 }
 
