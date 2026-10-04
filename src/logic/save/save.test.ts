@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { collectPickup, newGame, useDepot, visitChunk } from '../state/gameState';
-import { migrate, type Migrations } from './migrations';
+import { migrate, migrations, type Migrations } from './migrations';
 import { deserialize, SAVE_VERSION, SaveStore, serialize, slotKey, type StorageLike } from './save';
 
 function fakeStorage(): StorageLike & { data: Map<string, string> } {
@@ -46,7 +46,16 @@ describe('serialize / deserialize', () => {
         'test_x00_y01:sandbag_1': true,
       },
       visitedChunks: { test: ['test_x01_y01'] },
+      repairCharges: 0,
     });
+  });
+
+  it('keeps repair charges within what the kits allow', () => {
+    const s = progressed();
+    const data = { ...serialize(s, 1), minor: { armor_plate: 0, ammo_rack: 0, repair_kit: 2 } };
+    expect(deserialize({ ...data, repairCharges: 1 })!.repairCharges).toBe(1);
+    expect(deserialize({ ...data, repairCharges: 9 })!.repairCharges).toBe(2);
+    expect(deserialize({ ...data, repairCharges: 'x' })!.repairCharges).toBe(0);
   });
 
   it('round-trips through JSON', () => {
@@ -72,6 +81,38 @@ describe('serialize / deserialize', () => {
     expect(deserialize(data)!.abilities).toEqual(['mortar']);
     const sel = { ...serialize(newGame(), 1), selectedSecondary: 'flamethrower' };
     expect(deserialize(sel)!.selectedSecondary).toBe('coax_mg');
+  });
+});
+
+describe('migrations', () => {
+  it('v1 → v2 gives every repair kit a full charge', () => {
+    const v1 = {
+      version: 1,
+      updatedAt: 5,
+      playtimeMs: 1000,
+      mk: 'mk2',
+      abilities: ['mortar'],
+      minor: { armor_plate: 1, ammo_rack: 0, repair_kit: 2 },
+      selectedSecondary: 'mortar',
+      secondaryAmmo: { mortar: 4 },
+      depotId: 'test_x00_y02:depot_1',
+      flags: { 'test_x00_y02:kit_1': true },
+      visitedChunks: { test: ['test_x00_y02'] },
+    };
+    expect(SAVE_VERSION).toBe(2);
+    expect(migrate(v1, migrations, 2)).toEqual({ ...v1, version: 2, repairCharges: 2 });
+    const s = deserialize(v1)!;
+    expect(s.repairCharges).toBe(2);
+    expect(s.minor.repair_kit).toBe(2);
+    expect(s.secondaryAmmo.mortar).toBe(4);
+  });
+
+  it('a v1 save without a usable kit count migrates to no charges', () => {
+    expect(migrate({ version: 1, minor: {} }, migrations, 2)).toEqual({
+      version: 2,
+      minor: {},
+      repairCharges: 0,
+    });
   });
 });
 

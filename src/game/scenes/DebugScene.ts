@@ -1,15 +1,17 @@
 import Phaser from 'phaser';
 import { t } from '../../i18n/i18n';
 import { events, type GameEvents, type PawnTelemetry, type WorldState } from '../events';
+import { textStyle } from '../ui/text';
 import { SceneKey } from './keys';
 
-const TEXT_STYLE: Phaser.Types.GameObjects.Text.TextStyle = {
-  fontFamily: 'monospace',
-  fontSize: '8px',
-  color: '#ffffff',
-  backgroundColor: '#00000080',
-  padding: { x: 2, y: 1 },
-};
+// Debug text stays left-to-right whatever the language: it's numbers and ids.
+const TEXT_STYLE = (): Phaser.Types.GameObjects.Text.TextStyle =>
+  textStyle(1, {
+    color: '#ffffff',
+    backgroundColor: '#00000080',
+    padding: { x: 2, y: 1 },
+    rtl: false,
+  });
 
 /** Debug overlay (`?debug=1` or dev builds). Backtick shows/hides it; 1 toggles physics bodies. */
 export class DebugScene extends Phaser.Scene {
@@ -25,7 +27,7 @@ export class DebugScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.text = this.add.text(2, 2, '', TEXT_STYLE).setScrollFactor(0);
+    this.text = this.add.text(2, 2, '', TEXT_STYLE()).setScrollFactor(0);
 
     // Plain DOM presses, consumed once per frame. Phaser re-dispatches its per-frame key queue on
     // every key event (so `keydown-*` listeners can fire twice), and JustDown loses a press whose

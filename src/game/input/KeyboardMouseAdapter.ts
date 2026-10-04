@@ -1,24 +1,33 @@
 import Phaser from 'phaser';
 import { RisingEdge } from '../../logic/input/edge';
+import {
+  bindableActions,
+  PAUSE_KEY,
+  type BindableAction,
+  type Keybinds,
+} from '../../logic/input/keybinds';
 import { keyAxis, mouseButtons } from '../../logic/input/mapping';
 import { angleTo } from '../../logic/input/stick';
 import type { TankCommand } from '../../logic/input/TankCommand';
+import { settings } from '../settings';
 import type { InputAdapter, InputContext } from './InputAdapter';
 import { recentlyTouched } from './touchState';
 
 const K = Phaser.Input.Keyboard.KeyCodes;
 
 /**
- * WASD/arrows drive the hull and the mouse aims (world position). Right click fires the main gun,
+ * The bound keys (settings, default WASD/arrows) drive the hull and the mouse aims (world position). Right click fires the main gun,
  * left click is alt fire (the selected secondary; the mortar lands at the cursor). See
  * GAME_DESIGN.md controls.
  */
 export class KeyboardMouseAdapter implements InputAdapter {
-  private readonly keys;
+  private keys: Record<string, Phaser.Input.Keyboard.Key> = {};
+  private binds!: Keybinds;
   private readonly edges = {
     cycleNext: new RisingEdge(),
     cyclePrev: new RisingEdge(),
     hatch: new RisingEdge(),
+    repair: new RisingEdge(),
     interact: new RisingEdge(),
     map: new RisingEdge(),
     pause: new RisingEdge(),
@@ -31,45 +40,45 @@ export class KeyboardMouseAdapter implements InputAdapter {
     this.wheel += dy;
   };
 
-  constructor(private readonly scene: Phaser.Scene) {
-    const kb = scene.input.keyboard;
-    if (!kb) throw new Error('Keyboard input is disabled');
-    this.keys = kb.addKeys({
-      w: K.W,
-      a: K.A,
-      s: K.S,
-      d: K.D,
-      up: K.UP,
-      left: K.LEFT,
-      down: K.DOWN,
-      right: K.RIGHT,
-      q: K.Q,
-      e: K.E,
-      f: K.F,
-      space: K.SPACE,
-      m: K.M,
-      tab: K.TAB,
-      esc: K.ESC,
-    }) as Record<string, Phaser.Input.Keyboard.Key>;
+  constructor(
+    private readonly scene: Phaser.Scene,
+    binds: Keybinds = settings().keybinds,
+  ) {
+    this.useBindings(binds);
     scene.input.mouse?.disableContextMenu();
     scene.input.on('wheel', this.onWheel);
   }
 
+  /** Switches to new bindings (after the settings screen), registering any new keys. */
+  useBindings(binds: Keybinds): void {
+    const kb = this.scene.input.keyboard;
+    if (!kb) throw new Error('Keyboard input is disabled');
+    this.binds = binds;
+    const names = [PAUSE_KEY, ...bindableActions.flatMap((a) => binds[a])].filter(
+      (n) => !(n in this.keys),
+    );
+    Object.assign(
+      this.keys,
+      kb.addKeys(Object.fromEntries(names.map((n) => [n, K[n as keyof typeof K]]))),
+    );
+  }
+
   poll(cmd: TankCommand, origin: InputContext): boolean {
     const k = this.keys;
-    const down = (...names: string[]) => names.some((n) => k[n]?.isDown);
+    const down = (action: BindableAction) => this.binds[action].some((n) => k[n]?.isDown);
 
-    cmd.throttle = keyAxis(down('s', 'down'), down('w', 'up'));
-    cmd.turn = keyAxis(down('a', 'left'), down('d', 'right'));
+    cmd.throttle = keyAxis(down('throttle_back'), down('throttle_fwd'));
+    cmd.turn = keyAxis(down('turn_left'), down('turn_right'));
 
     const wheel = Math.sign(this.wheel);
     this.wheel = 0;
-    cmd.cycleNext = this.edges.cycleNext.update(down('e')) || wheel > 0;
-    cmd.cyclePrev = this.edges.cyclePrev.update(down('q')) || wheel < 0;
-    cmd.hatch = this.edges.hatch.update(down('f'));
-    cmd.interact = this.edges.interact.update(down('space'));
-    cmd.map = this.edges.map.update(down('m', 'tab'));
-    cmd.pause = this.edges.pause.update(down('esc'));
+    cmd.cycleNext = this.edges.cycleNext.update(down('cycle_next')) || wheel > 0;
+    cmd.cyclePrev = this.edges.cyclePrev.update(down('cycle_prev')) || wheel < 0;
+    cmd.hatch = this.edges.hatch.update(down('hatch'));
+    cmd.repair = this.edges.repair.update(down('repair'));
+    cmd.interact = this.edges.interact.update(down('interact'));
+    cmd.map = this.edges.map.update(down('map'));
+    cmd.pause = this.edges.pause.update(k[PAUSE_KEY]?.isDown ?? false);
 
     const anyKey = Object.values(k).some((key) => key.isDown) || wheel !== 0;
 

@@ -16,13 +16,18 @@ src/
     enemy/                # enemy brain (state machine), vehicle steering, getting unstuck
     world/                # chunk coordinate math, elevation grid, objects, switches, map validation and reachability
     save/                 # serialize/deserialize, SAVE_VERSION, migrations.ts
-    input/                # TankCommand type + device-independent helpers (deadzones, aim math)
+    input/                # TankCommand type + device-independent helpers (deadzones, aim math), keybinds, touch buttons
+    settings/             # player settings (language, touch controls, volumes, keybinds) + SettingsStore
+    ui/                   # menu navigation, HUD layout (RTL mirroring), minimap, number formatting
     tank/                 # hull momentum, turret traverse, main-gun quick rounds, fire-rate cooldowns
   data/                   # tables: mkTiers.ts, weapons.ts, combat.ts, materials.ts, abilities.ts, enemies.ts, terrain.ts, assetManifest.ts
   game/
     placeholders.ts       # code-drawn textures for manifest entries without a file
     tiledLoader.ts        # loads .tmj + external .tsj and registers the embedded map
-    scenes/               # Boot, Preload, Title, World, Hud, TouchControls, Map, Pause, Debug
+    scenes/               # Boot, Preload, Title, World, Hud, TouchControls, Pause, Map, Settings, Debug
+    ui/                   # text styles (the UI font), Menu widget, MenuInputReader
+    settings.ts           # the loaded Settings and updateSettings (saves + applies the language)
+    rotate.ts             # the rotate-device prompt (DOM overlay)
     entities/             # Pawn base, Tank, Scout, Drone, Enemy, Destructible, Projectile, Pickup...
     systems/              # ChunkStreamer, ElevationSystem, CombatSystem, SpawnSystem, EffectsSystem, ProjectileSystem, MortarSystem, ProgressionSystem, InputSystem, AudioSystem
     input/                # KeyboardMouseAdapter, GamepadAdapter, TouchAdapter -> TankCommand
@@ -32,21 +37,23 @@ public/
   assets/                 # game-ready sprites, tiles, sfx, music
   maps/<biome>/           # <biome>.world, chunk .tmj files, tilesets .tsj
 assets-src/               # raw AI generations + source files (not shipped)
-scripts/                  # validate-maps.ts, process-sprites.ts (+ pure bitmap ops in sprites.ts)
+scripts/                  # validate-maps.ts, process-sprites.ts (+ pure bitmap ops in sprites.ts), fontCmap.ts (font glyph coverage)
 tests/e2e/                # Playwright specs
 .github/workflows/        # ci.yml, deploy.yml
 ```
 
 ## Game config
 - Internal resolution 480×270. `pixelArt: true` and `roundPixels: true`.
-- Scaling: on resize, compute the largest **integer** zoom that fits the window and letterbox the rest. Non-integer scale is allowed only when the window is smaller than 1× (which happens on phones in portrait). If a phone is in portrait, show a "rotate device" prompt.
+- Scaling: on resize, compute the largest **integer** zoom that fits the window and letterbox the rest. Non-integer scale is allowed only when the window is smaller than 1× (which happens on phones in portrait). A touch device in portrait gets a "rotate your device" prompt (`game/rotate.ts`, a DOM overlay; `logic/scale.shouldPromptRotate`), which also pauses the game.
 - Arcade physics. Tanks and pawns use **circle bodies**, because the hull's rotation is visual only; a circle body avoids rotated-AABB problems.
 
 ## Scenes and communication
-- `Boot` loads the minimal assets for the loading bar. `Preload` loads the asset manifest. `Title` handles slot select, language and settings.
-- `WorldScene` owns the gameplay: pawns, chunk streaming, physics, enemies. `HudScene` and `TouchControlsScene` are launched in parallel (touch only on touch devices, or when forced in settings).
-- `MapScene`, `PauseScene` and `DebugScene` are overlay scenes. Opening Map or Pause pauses `WorldScene`.
-- Communication: one typed event bus (`game/events.ts`, e.g. `pickup:collected`, `depot:used`, `loadout:changed`, `hp:changed`) plus the shared `GameState` instance from `src/logic/state`. Scenes never hold references to each other's game objects. Overlay scenes start after WorldScene's first emits, so they read the current value with `events.latest(name)` and then follow the event.
+- `Boot` loads the UI font (so even the loading text uses it). `Preload` loads the asset manifest. `Title` lists the three save slots (continue, with playtime and date from `SaveStore.info`, or new game), settings, language and deleting a save behind a confirm; the chosen slot reaches `WorldScene` as scene data. `?slot=N` only picks which slot has focus first.
+- `WorldScene` owns the gameplay: pawns, chunk streaming, physics, enemies. `HudScene` and `TouchControlsScene` are launched in parallel (touch per the setting: `auto` on touch devices, hidden until the first touch; `on` always and shown at once; `off` never). Stopping `WorldScene` stops them too.
+- `PauseScene` (Resume, Settings, Quit to title), `MapScene` and `DebugScene` are overlays. Pause (`cmd.pause`) and the map (`cmd.map`) pause `WorldScene` and put the touch controls to sleep. On resume the world re-reads the keybinds and the touch setting, and ignores pause/map for a couple of frames so the press that closed an overlay can't reopen it. `SettingsScene` opens from Title or Pause, pausing the scene under it until Back.
+- Menus (`game/ui/Menu.ts`) are lists of items whose focus and value rules live in `logic/ui/menu.ts` (wrapping focus, choices, 0..1 sliders). They read input themselves, because the world is paused while they're up: fixed keys (arrows/WASD, Enter/Space, Esc/Backspace, so a bad keybind can't trap you), the gamepad (d-pad/stick, A, B/Start/Select) and taps. A menu paused under another drops input, and the gamepad's held buttons are ignored when it comes back.
+- The map screen's layout is pure (`logic/world/mapScreen.buildMapView`): the whole world's chunk grid sets the scale, visited chunks are drawn, and depots and pickups in them are marked (pickups as taken or not). `WorldScene` builds the view when the map opens and passes it to `MapScene`, which only draws it.
+- Communication: one typed event bus (`game/events.ts`, e.g. `pickup:collected`, `depot:used`, `loadout:changed`, `hp:changed`, `tank:tier`, `repair:changed`, `map:changed`) plus the shared `GameState` instance from `src/logic/state`. Scenes never hold references to each other's game objects. Overlay scenes start after WorldScene's first emits, so they read the current value with `events.latest(name)` and then follow the event.
 
 ## Input
 Each device adapter writes into a single `TankCommand` every frame:
@@ -68,6 +75,8 @@ interface TankCommand {
 - Touch mortar button (`logic/input/touchLob.ts`): shown once the tank has the mortar. Drag from it to a spot and lift to lob a shell there; a tap or dragging back onto the button fires nothing. `TouchAdapter` turns the lifted screen point into a world angle and distance (`cmd.lob`).
 - Touch right stick (`logic/input/touchAim.ts`): dragging past the deadzone aims and arms the cannon, and lifting fires it. Dragging back inside the deadzone first cancels, and a tap never fires. The aim is sticky, so the turret finishes its swing after the thumb lifts. The released shot waits until the turret lines up, clears when the gun fires, and is dropped if the gun can't fire within a short window (e.g. during a quick-round refill). The ALT button toggles MG mode, which switches the stick from the cannon to the coax. The stick's outer ring then fires the MG while held, and lifting never fires the cannon. The knob is grey in the cancel zone, orange when a lift would fire and yellow while the MG fires.
 - `fire`/`altFire` are held states. `cycleNext`/`cyclePrev`/`hatch`/`interact`/`map`/`pause` are edge-triggered: true only on the frame they're pressed.
+- Keyboard keys are rebindable (`logic/input/keybinds.ts`: up to two keys per action, named like Phaser's `KeyCodes`; binding a key takes it from any other action). Esc is the fixed pause key and the mouse buttons aren't rebindable. The bindings live in the settings.
+- Touch buttons (ALT, mortar, hatch, swap, repair, map, pause) are a layout table with hit-testing in `logic/input/touchButtons.ts`; the one-press ones reach `TouchAdapter` through `touchState.taps`.
 - The mapping rules themselves (mouse buttons, stick deadzones, touch aim/fire, device selection, virtual-stick clamping) are pure functions in `logic/input/` (`mapping.ts`, `touchAim.ts`, `device.ts`, `virtualStick.ts`). The adapters only read devices and call them.
 - Phaser quirk: its `KeyboardManager` re-dispatches the whole per-frame key queue on every DOM key event, so `keydown-*` listeners can fire more than once for one press when several key events land in a frame. `Key.JustDown` has the opposite problem: it loses a press whose down and up land in the same frame. Gameplay polls `isDown` through `RisingEdge`; one-shot toggles such as the debug keys read DOM `keydown` events and consume them once per frame.
 - `InputSystem` polls every adapter each frame and uses the command from the **most recently active** device, so an idle mouse can't override the gamepad's aim. Mouse input is ignored for a moment after any touch, because browsers emulate mouse events from touches.
@@ -132,32 +141,40 @@ interface TankCommand {
 - ATGMs home in on the closest living player pawn: `ProjectileSystem` steers them each frame with `logic/combat/guidance.steerMissile` at the weapon's `homing` turn rate. They're slower than the tank on a road, so they can be outrun, out-turned or blocked by walls.
 - Damaged enemies show a small HP bar for a few seconds; the tank's HP bar lives in `HudScene`.
 
+## HUD
+- Bottom corner on the reading side: the Mk tier and main-gun quick rounds (pips), the selected secondary with its ammo and the repair kit charges, and the active pawn's HP bar and number. Top corner opposite: a 3×3 minimap of the chunks around you (visited ones filled, the current one bright; unvisited ones stay blank). Bottom centre: toasts for pickups, depots, the hatch and repairs.
+- Positions come from `logic/ui/hudLayout.ts`, mirrored horizontally in RTL; the minimap cells from `logic/ui/minimap.ts`.
+- It's driven by events only. On a language change it rebuilds its objects and replays the payloads it last showed (rather than restarting and reading `events.latest`, which for `hp:changed` may be an enemy's).
+
 ## Save system
-- Keys: `merkavania.save.<slot>` (slots 1–3) and `merkavania.settings` (language, volume, touch-control override, keybinds; M6). The game uses slot 1, or `?slot=N`, until M6 adds slot select.
-- Shape (`logic/save/save.ts`, `SAVE_VERSION` 1):
+- Keys: `merkavania.save.<slot>` (slots 1–3) and `merkavania.settings`.
+- Settings (`logic/settings/settings.ts`): `{ version, language, touchControls: auto|on|off, volume: {master, sfx, music} (0..1; audio arrives in M8), keybinds }`. They're saved on every change (`game/settings.updateSettings`). Unreadable parts fall back to their defaults, so there's nothing to migrate.
+- Shape (`logic/save/save.ts`, `SAVE_VERSION` 2):
 ```ts
 { version: SAVE_VERSION, updatedAt, playtimeMs,
   mk: 'mk2'|'mk3'|'mk4', abilities: AbilityId[], minor: {armor_plate: n, ammo_rack: n, repair_kit: n},
   selectedSecondary, secondaryAmmo: {mortar: n}, depotId, flags: Record<string, boolean|number>,
-  visitedChunks: Record<BiomeId, string[]> }
+  visitedChunks: Record<BiomeId, string[]>, repairCharges }
 ```
+- v2 added `repairCharges` (field repairs left, at most one per `repair_kit`; depots refill them). The v1 → v2 migration charges every kit.
 - `deserialize` runs migrations (`logic/save/migrations.ts`, `migrations[n]` turns version n into n+1) in order from the stored version to the current one, then validates. Unreadable, corrupt or newer saves load as an empty slot; unknown ability or secondary ids are dropped instead of failing the whole save. Every migration has a Vitest test with a fixture of the old save.
 - `SaveStore` wraps a `Storage`-like object and swallows storage errors; where localStorage is blocked the game keeps an in-memory store for the session.
 
 ## i18n
 - `t('hud.hp')`-style keys. `en.json` is the reference and `he.json` must have the same keys (a unit test enforces this).
-- Hebrew is rendered with Phaser `Text` (not BitmapText) using a pixel-style web font that includes Hebrew glyphs and `rtl: true`. Pick the font in M6 and verify its glyph coverage. The HUD layout mirrors horizontally in RTL where it makes sense.
+- All text is Phaser `Text` (not BitmapText) in the UI font, **Public Pixel** (GGBotNet, CC0; `public/assets/fonts/`, manifest key `font_ui`): an 8×8 monospace pixel font with Latin and Hebrew. Sizes are multiples of 8px; `game/ui/text.textStyle` sets the font, `rtl` in Hebrew and pinned line metrics (Phaser's measured ones overlap lines). `scripts/font.test.ts` checks that the font has a glyph for every character in `en.json` and `he.json`.
+- The language is a setting. `setLanguage` tells `onLanguageChange` listeners: Title and Settings rebuild (Title once Settings closes), Pause refreshes and the HUD rebuilds mirrored. Menus are centred, so they read the same either way.
 - Radio messages are keys too (`radio.desert.intro_01`).
 
 ## Debug tools
 - Enabled with `?debug=1` or in dev builds. The backtick key toggles `DebugScene`: FPS, pawn position/heading/speed, active input device, gun state, and the current chunk, pawn level and loaded chunk count. `1` toggles physics bodies, and `2` toggles the elevation overlay (levels tinted, ramps cyan, steep ramps red, chunk borders magenta). Planned:
   - teleport by clicking on the map, jump to chunk, set Mk tier, grant/revoke abilities, kill all
-- Debug hooks are exposed on `window.__merkavania` (in debug mode only) so Playwright can drive state: `game`, `getPawn()` (last-frame telemetry of the active pawn, including `kind`, `level`, `chunk`, `hp`, `maxHp` and `alive`), `getTank()` (the tank's, whichever pawn is active), `pressHatch()`, `damageScout(n)`, `getShots()` (the player's shots per weapon id), `getWorld()` (current and loaded chunk ids), `teleport(x, y, heading?)` (moves the active pawn; the scout's leash still applies), `worldToCanvas(x, y)` (so specs aim with the real mouse), `damagePlayer(n)`, `setGod(on)`, `getCombatLog()` (recent resolved hits), `getDestructibles()`, `getEnemies()`, `spawnEnemy(type, x, y, facing?)`, `getState()` (the GameState in save shape), `grantAbility(id)`, `getSave(slot)`, `clearSave(slot)`, `getObjects()` (pickups, switches, doors, depots and boulders in loaded chunks) and `getMortarLandings()`.
+- Debug hooks are exposed on `window.__merkavania` (in debug mode only) so Playwright can drive state: `game`, `getPawn()` (last-frame telemetry of the active pawn, including `kind`, `level`, `chunk`, `hp`, `maxHp` and `alive`), `getTank()` (the tank's, whichever pawn is active), `pressHatch()`, `damageScout(n)`, `getShots()` (the player's shots per weapon id), `getWorld()` (current and loaded chunk ids), `teleport(x, y, heading?)` (moves the active pawn; the scout's leash still applies), `worldToCanvas(x, y)` (so specs aim with the real mouse), `damagePlayer(n)`, `setGod(on)`, `getCombatLog()` (recent resolved hits), `getDestructibles()`, `getEnemies()`, `spawnEnemy(type, x, y, facing?)`, `getState()` (the GameState in save shape), `grantAbility(id)`, `getSave(slot)`, `clearSave(slot)`, `getObjects()` (pickups, switches, doors, depots and boulders in loaded chunks), `getMortarLandings()`, `getMenu(scene)` (the rows, focus and canvas rects of the menu in Title, Pause or Settings), `getHud()` (what the HUD shows), `getMapView()` (the open map's layout) and `getTouchButtons()` (the touch buttons on screen).
 
 ## Testing
 - **Work test-first** (see `CLAUDE.md`, Workflow). Game code stays a thin shell over tested `src/logic/` functions.
 - **Vitest:** everything in `src/logic/` and `scripts/` (tank handling, input mapping, damage, progression, save migrations, elevation traversal rules, gate reachability, i18n key parity), sanity tests for the `src/data/` tables (ids and asset keys resolve, values in range) and structural tests for hand-built maps.
-- **Playwright** (`tests/e2e/`, shared helpers in `helpers.ts`): boot the game and confirm the title and then `WorldScene` load with no console errors. Behaviour that only exists in a running scene (collisions, turret traverse, fire cadence, combat and enemies in `combat.spec.ts`, pickups, gates, depots and saves in `progression.spec.ts`, the rear hatch and scout in `hatch.spec.ts`, the gamepad via a stubbed `navigator.getGamepads`, touch via CDP multi-touch, debug overlay keys) is checked through `window.__merkavania` hooks. Input is polled once per frame, so specs hold keys and mouse buttons for a few frames rather than tapping them.
+- **Playwright** (`tests/e2e/`, shared helpers in `helpers.ts`): boot the game and confirm the title and then `WorldScene` load with no console errors. Behaviour that only exists in a running scene (collisions, turret traverse, fire cadence, combat and enemies in `combat.spec.ts`, pickups, gates, depots and saves in `progression.spec.ts`, the rear hatch and scout in `hatch.spec.ts`, title/slots, settings, pause, HUD, map, repair kit and touch UI in their own specs, the gamepad via a stubbed `navigator.getGamepads`, touch via CDP multi-touch, debug overlay keys) is checked through `window.__merkavania` hooks. Input is polled once per frame, so specs hold keys and mouse buttons for a few frames rather than tapping them.
 - **Map validation:** `npm run validate:maps` (see `LEVEL_DESIGN.md`).
 
 ## Deploy

@@ -3,7 +3,7 @@ export type AssetStatus = 'placeholder' | 'generated' | 'final';
 
 export interface AssetEntry {
   key: string;
-  type: 'image' | 'spritesheet' | 'audio' | 'json';
+  type: 'image' | 'spritesheet' | 'audio' | 'json' | 'font';
   /**
    * Relative to public/. Empty means Preload draws the texture in code (see game/placeholders.ts).
    * A placeholder may still have a file (e.g. a flat-colour tileset Tiled needs to open).
@@ -16,6 +16,8 @@ export interface AssetEntry {
 }
 
 export const assetManifest = [
+  // UI font: Latin + Hebrew, crisp at 8px multiples (CC0, see the licence file next to it).
+  { key: 'font_ui', type: 'font', path: 'assets/fonts/PublicPixel.ttf', status: 'final' },
   { key: 'mk2_hull', type: 'image', path: '', status: 'placeholder', origin: { x: 0.5, y: 0.5 } },
   // Pivot sits on the turret ring; the barrel extends east of it.
   {

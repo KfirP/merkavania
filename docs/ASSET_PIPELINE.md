@@ -38,6 +38,7 @@ src/data/assetManifest.ts        # the ONLY place paths appear; code uses keys
 - **Palette:** a limited palette per biome (desert: sand, ochre, khaki, olive drab, dusty grey). Keep the player tank the same olive/sand IDF colours in every biome for readability. Store palettes as `.hex` in `assets-src/palettes/` and pass them to PixelLab when it supports palettes.
 - **Tilesets:** generate the top-down terrain transitions (sand↔rock, sand↔road, ground↔water, cliff edges per elevation) as Wang/autotile sets. Import them into Tiled as `.tsj` with terrain sets configured.
 - **Gate readability:** each gate terrain or material gets a distinct, obvious look (see `LEVEL_DESIGN.md`).
+- **UI font:** Public Pixel (GGBotNet, CC0), an 8×8 pixel font with Latin and Hebrew, self-hosted in `public/assets/fonts/` with its licence note (manifest key `font_ui`, type `font`). Use multiples of 8px. New UI text must stay inside its glyph set: `scripts/font.test.ts` fails on any character in the i18n files that the font lacks.
 
 ### PixelLab prompt templates
 - Tank hull: `top-down view, 90 degree overhead, pixel art Israeli Merkava Mk2 main battle tank hull without turret, facing right, olive sand color, 32x32, transparent background`

@@ -15,33 +15,19 @@ import {
   hasAbility,
   maxHp,
   newGame,
+  repairCapacity,
   spendAmmo,
   unlockedSecondaries,
   useDepot,
+  useRepairKit,
   visitChunk,
   type GameState,
 } from '../../logic/state/gameState';
 import type { PickupSpec } from '../../logic/world/objects';
 import { events, type Loadout } from '../events';
+import { browserStorage } from '../storage';
 
-/** localStorage, or a throwaway in-memory store where it's blocked (private mode, sandboxes). */
-function browserStorage(): StorageLike {
-  try {
-    const probe = 'merkavania.probe';
-    window.localStorage.setItem(probe, '1');
-    window.localStorage.removeItem(probe);
-    return window.localStorage;
-  } catch {
-    const mem = new Map<string, string>();
-    return {
-      getItem: (k) => mem.get(k) ?? null,
-      setItem: (k, v) => void mem.set(k, v),
-      removeItem: (k) => void mem.delete(k),
-    };
-  }
-}
-
-/** Save slot from `?slot=N` (1–3); slot select arrives with the title screen in M6. */
+/** Save slot from `?slot=N` (1–3), else 1: the slot the title focuses first. */
 export function slotFromUrl(): number {
   const n = Number(new URLSearchParams(window.location.search).get('slot') ?? 1);
   return SLOTS.includes(n as never) ? n : 1;
@@ -83,6 +69,7 @@ export class ProgressionSystem {
     events.emit('pickup:collected', grant);
     this.emitLoadout();
     if (grant.ability) this.emitAbilities();
+    if (grant.minor === 'repair_kit') this.emitRepair();
     return { hpBonus: spec.minor === 'armor_plate' ? ARMOR_PLATE_HP : 0 };
   }
 
@@ -92,6 +79,7 @@ export class ProgressionSystem {
     const saved = this.save();
     events.emit('depot:used', { key, saved });
     this.emitLoadout();
+    this.emitRepair();
   }
 
   selected(): SecondaryId {
@@ -111,12 +99,32 @@ export class ProgressionSystem {
     return ok;
   }
 
+  /** Spends a repair kit charge on a tank at `hp` of `max`; the HP it gains, or null. */
+  repair(hp: number, max: number): number | null {
+    const gained = useRepairKit(this.state, hp, max);
+    if (gained !== null) {
+      this.emitRepair();
+      events.emit('repair:used', { hp: gained });
+    }
+    return gained;
+  }
+
+  emitRepair(): void {
+    events.emit('repair:changed', {
+      charges: this.state.repairCharges,
+      capacity: repairCapacity(this.state),
+    });
+  }
+
   tick(ms: number): void {
     this.state.playtimeMs += ms;
   }
 
-  visit(biome: string, chunkId: string): void {
+  /** Records a chunk visit; true if it's the first. */
+  visit(biome: string, chunkId: string): boolean {
+    const known = this.state.visitedChunks[biome]?.includes(chunkId) ?? false;
     visitChunk(this.state, biome, chunkId);
+    return !known;
   }
 
   /** Debug: grants an ability without a pickup (saved with the next save). */

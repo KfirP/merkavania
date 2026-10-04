@@ -22,11 +22,14 @@ The same actions are available on every input device, and all of them feed into 
 | Aim turret | Mouse position | Right stick | Right virtual stick |
 | Fire main gun | Right click | RT | Right stick: drag to aim, lift to fire (drag back to the centre first to cancel) |
 | Alt fire: the selected secondary (coax MG / mortar / missile) | Left click (the mortar lands at the cursor) | LT (right-stick tilt sets the mortar range) | Alt button toggles MG mode, which switches the right stick from the cannon to the coax: it fires while dragged past its outer ring, and lifting never fires the cannon. The mortar has its own button (shown once you have it): drag from it to a spot and lift to fire there; drag back onto it to cancel. The missile will need its own gesture too |
-| Cycle ammo / secondary | Q / E, wheel | LB / RB | Swap button (M6) |
+| Cycle ammo / secondary | Q / E, wheel | LB / RB | Swap button (shown with more than one secondary) |
 | Rear hatch (deploy/recall pawn) | F | Y | Hatch button |
+| Field repair (spend a repair kit charge) | R | X | Repair button (shown while there's a charge) |
 | Interact | Space | A | Context button (appears when relevant) |
-| Map | M / Tab | Select | Map button |
-| Pause | Esc | Start | Pause button |
+| Map | M / Tab | Select | Map button (top centre) |
+| Pause | Esc | Start | Pause button (top centre) |
+
+Keyboard keys can be rebound in Settings (Esc always pauses). Menus use the arrows/WASD, Enter/Space and Esc, the d-pad/stick with A and B, or taps.
 
 The turret turns toward its aim angle at a limited **traverse rate** that depends on the Mk tier. The hull has acceleration, top speed and turn rate. It drives forward and back along its heading and never strafes.
 
@@ -64,7 +67,7 @@ Each ability except the Mk signatures is a pickup found in the world. There is n
 Minor pickups (also found in the world, never bought):
 - `armor_plate`: +max HP
 - `ammo_rack`: +secondary ammo capacity
-- `repair_kit`: +1 field repair charge
+- `repair_kit`: +1 field repair charge. A charge restores half max HP; depots refill the charges (`data/progression.ts`).
 
 Sequence breaks: the design tolerates skilled players reaching areas early (for example, mortar-hitting a switch from an odd angle) as long as the progression graph can't **soft-lock**. The map validator checks this (see `LEVEL_DESIGN.md`).
 
@@ -87,7 +90,7 @@ Sequence breaks: the design tolerates skilled players reaching areas early (for 
 
 ## Save & depots
 - **Repair depots** (`depot` objects) heal fully, refill secondary ammo and save the game when you drive onto the pad (once per visit).
-- There are 3 save slots.
+- There are 3 save slots, picked on the title screen (continue or new game; a save can be deleted after a confirm).
 - The 60mm mortar holds 6 rounds (+2 per `ammo_rack`); each `armor_plate` adds 20 max HP (`data/progression.ts`).
 - The map screen shows the chunks you've explored, depots, and any collected or seen pickup markers.
 

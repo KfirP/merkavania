@@ -12,8 +12,8 @@ import { touchState } from './touchState';
 /**
  * Reads the virtual sticks drawn by TouchControlsScene. The left stick drives; the right stick
  * aims, fires the cannon on release and, in MG mode, the coax past its outer ring (touchAim.ts).
- * The mortar button lobs a shell at the spot the finger lifts (touchLob.ts), and a tap on the
- * hatch button deploys or recalls the scout.
+ * The mortar button lobs a shell at the spot the finger lifts (touchLob.ts); the hatch, swap,
+ * repair, map and pause buttons are one press each.
  */
 export class TouchAdapter implements InputAdapter {
   private aim: TouchAimState = initialTouchAim();
@@ -56,8 +56,14 @@ export class TouchAdapter implements InputAdapter {
       };
     }
 
-    cmd.hatch = touchState.hatchTapped;
-    touchState.hatchTapped = false;
+    const taps = touchState.taps;
+    cmd.hatch = taps.hatch;
+    cmd.cycleNext = taps.swap;
+    cmd.repair = taps.repair;
+    cmd.map = taps.map;
+    cmd.pause = taps.pause;
+    const tapped = Object.values(taps).some(Boolean);
+    for (const k of Object.keys(taps) as (keyof typeof taps)[]) taps[k] = false;
 
     const toggled = mgOn !== this.lastMgOn;
     this.lastMgOn = mgOn;
@@ -68,7 +74,7 @@ export class TouchAdapter implements InputAdapter {
       this.aim.pending !== null ||
       touchState.lob.active ||
       lob.fire ||
-      cmd.hatch
+      tapped
     );
   }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeZoom } from './scale';
+import { computeZoom, shouldPromptRotate } from './scale';
 
 describe('computeZoom', () => {
   it('picks the largest integer zoom that fits', () => {
@@ -21,5 +21,14 @@ describe('computeZoom', () => {
 
   it('returns 1 for degenerate sizes', () => {
     expect(computeZoom(0, 0)).toBe(1);
+  });
+});
+
+describe('shouldPromptRotate', () => {
+  it('asks touch devices in portrait to rotate', () => {
+    expect(shouldPromptRotate(390, 844, true)).toBe(true);
+    expect(shouldPromptRotate(844, 390, true)).toBe(false);
+    expect(shouldPromptRotate(390, 844, false)).toBe(false);
+    expect(shouldPromptRotate(500, 500, true)).toBe(false);
   });
 });

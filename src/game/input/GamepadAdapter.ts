@@ -9,7 +9,7 @@ import type { InputAdapter } from './InputAdapter';
 const TRIGGER_THRESHOLD = 0.4;
 
 /** Standard-mapping button indices (W3C Gamepad "standard" layout). */
-const B = { a: 0, y: 3, lb: 4, rb: 5, lt: 6, rt: 7, select: 8, start: 9 } as const;
+const B = { a: 0, x: 2, y: 3, lb: 4, rb: 5, lt: 6, rt: 7, select: 8, start: 9 } as const;
 
 /**
  * Left stick drives, right stick aims (its tilt sets the mortar range), RT fires the main gun, LT
@@ -20,6 +20,7 @@ export class GamepadAdapter implements InputAdapter {
     cycleNext: new RisingEdge(),
     cyclePrev: new RisingEdge(),
     hatch: new RisingEdge(),
+    repair: new RisingEdge(),
     interact: new RisingEdge(),
     map: new RisingEdge(),
     pause: new RisingEdge(),
@@ -50,6 +51,7 @@ export class GamepadAdapter implements InputAdapter {
     cmd.cycleNext = this.edges.cycleNext.update(pressed(B.rb));
     cmd.cyclePrev = this.edges.cyclePrev.update(pressed(B.lb));
     cmd.hatch = this.edges.hatch.update(pressed(B.y));
+    cmd.repair = this.edges.repair.update(pressed(B.x));
     cmd.interact = this.edges.interact.update(pressed(B.a));
     cmd.map = this.edges.map.update(pressed(B.select));
     cmd.pause = this.edges.pause.update(pressed(B.start));

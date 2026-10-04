@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type BrowserContext, type Page } from '@playwright/test';
 
 export function isSceneActive(page: Page, key: string) {
   return page.evaluate((k) => window.__merkavania?.game.scene.isActive(k) ?? false, key);
@@ -187,4 +187,47 @@ export async function walkUntil(
   } finally {
     await page.keyboard.up(key);
   }
+}
+
+/** The open menu in scene `scene` (rows, focus, where each row is), or null. */
+export function getMenu(page: Page, scene: string) {
+  return page.evaluate((s) => window.__merkavania?.getMenu(s) ?? null, scene);
+}
+
+/** Presses a key (by DOM key name, e.g. `ArrowDown`) and gives the game a couple of frames. */
+export async function pressKey(page: Page, key: string) {
+  await page.keyboard.press(key);
+  await page.waitForTimeout(80);
+}
+
+/**
+ * Multi-finger touch over CDP. The canvas is 2x (960×540 for 480×270), so page px = 2 × game px.
+ * Every event carries all fingers still down; lifting sends the remaining ones.
+ */
+export async function fingers(page: Page, context: BrowserContext) {
+  const cdp = await context.newCDPSession(page);
+  const down = new Map<number, { x: number; y: number }>();
+  const points = () => [...down].map(([id, p]) => ({ id, ...p }));
+  const send = (type: string, touchPoints = points()) =>
+    cdp.send('Input.dispatchTouchEvent', { type, touchPoints } as never);
+  return {
+    async down(id: number, x: number, y: number) {
+      down.set(id, { x, y });
+      await send('touchStart');
+    },
+    async move(id: number, x: number, y: number) {
+      down.set(id, { x, y });
+      await send('touchMove');
+    },
+    async up(id: number) {
+      down.delete(id);
+      await send('touchEnd', []);
+      // CDP ends every touch on touchEnd; put the fingers still held back down.
+      if (down.size) await send('touchStart');
+    },
+    async tap(id: number, x: number, y: number) {
+      await this.down(id, x, y);
+      await this.up(id);
+    },
+  };
 }

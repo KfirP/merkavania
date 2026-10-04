@@ -17,6 +17,8 @@ export interface TankCommand {
   cycleNext: boolean;
   cyclePrev: boolean;
   hatch: boolean;
+  /** Spend a repair kit charge. */
+  repair: boolean;
   interact: boolean;
   map: boolean;
   pause: boolean;
@@ -35,6 +37,7 @@ export function emptyCommand(): TankCommand {
     cycleNext: false,
     cyclePrev: false,
     hatch: false,
+    repair: false,
     interact: false,
     map: false,
     pause: false,

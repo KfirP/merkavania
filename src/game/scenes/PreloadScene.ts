@@ -9,6 +9,7 @@ import {
   registerTiledMap,
   registerTiledWorld,
 } from '../tiledLoader';
+import { textStyle } from '../ui/text';
 import { SceneKey } from './keys';
 
 const BAR_WIDTH = 200;
@@ -26,15 +27,13 @@ export class PreloadScene extends Phaser.Scene {
   preload(): void {
     const x = (GAME_WIDTH - BAR_WIDTH) / 2;
     const y = GAME_HEIGHT / 2;
-    this.add
-      .text(GAME_WIDTH / 2, y - 12, t('boot.loading'), { fontFamily: 'monospace', fontSize: '8px' })
-      .setOrigin(0.5);
+    this.add.text(GAME_WIDTH / 2, y - 12, t('boot.loading'), textStyle()).setOrigin(0.5);
     this.add.rectangle(x, y, BAR_WIDTH, BAR_HEIGHT).setOrigin(0).setStrokeStyle(1, 0xffffff);
     const fill = this.add.rectangle(x + 1, y + 1, 0, BAR_HEIGHT - 2, 0xc2b280).setOrigin(0);
     this.load.on('progress', (p: number) => (fill.width = (BAR_WIDTH - 2) * p));
 
     for (const asset of assetManifest as readonly AssetEntry[]) {
-      if (asset.path === '') continue; // drawn in code in create()
+      if (asset.path === '' || asset.type === 'font') continue; // drawn in code, or loaded by Boot
       if (asset.type === 'image') this.load.image(asset.key, asset.path);
       else if (asset.type === 'spritesheet' && asset.frame)
         this.load.spritesheet(asset.key, asset.path, {

@@ -1,21 +1,23 @@
 import Phaser from 'phaser';
 import { stickMagnitude } from '../../logic/input/stick';
+import { hitTouchButton, TOUCH_BUTTONS, type TouchButtonId } from '../../logic/input/touchButtons';
 import { TOUCH_MG_THRESHOLD, touchAimZone, type TouchAimZone } from '../../logic/input/touchAim';
 import { dragToStick } from '../../logic/input/virtualStick';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../logic/scale';
 import { events, type GameEvents } from '../events';
-import { touchState, type StickState } from '../input/touchState';
+import { touchState, type StickState, type TouchTap } from '../input/touchState';
+import { textStyle } from '../ui/text';
 import { SceneKey } from './keys';
 
 const STICK_RADIUS = 28;
 const KNOB_RADIUS = 11;
-const ALT_BUTTON = { x: GAME_WIDTH - 30, y: GAME_HEIGHT - 110, r: 16 };
-/** Mortar button, left of ALT; shown once the tank has the mortar. */
-const MORTAR_BUTTON = { x: GAME_WIDTH - 70, y: GAME_HEIGHT - 110, r: 14 };
+const ALT_BUTTON = TOUCH_BUTTONS.alt;
+const MORTAR_BUTTON = TOUCH_BUTTONS.mortar;
 const MORTAR_COLOR = 0xc2b280;
-/** Hatch button, above ALT; shown once the tank has the scout. A tap deploys or recalls it. */
-const HATCH_BUTTON = { x: GAME_WIDTH - 30, y: GAME_HEIGHT - 150, r: 14 };
 const HATCH_COLOR = 0x85854a;
+const SWAP_COLOR = 0x8fa3b8;
+const REPAIR_COLOR = 0x6fbf4a;
+const MENU_COLOR = 0xffffff;
 const IDLE_ALPHA = 0.25;
 const ALT_COLOR = 0xffb030;
 /** Right knob colour per zone: grey = release cancels, orange = release fires, yellow = MG. */
@@ -40,10 +42,12 @@ interface VirtualStick {
  * outer ring (shown only in MG mode) fires the MG, and lifting never fires the cannon. Once the
  * tank has the mortar, its button appears: drag from it to a spot and lift to lob a shell there
  * (back onto the button cancels). Once it has the scout, a tap on the hatch button deploys or
- * recalls it. Writes `touchState` for TouchAdapter; rules in touchAim.ts and
- * touchLob.ts.
- * Always running but hidden until the first real touch: many desktop browsers report touch
- * support, and a touchscreen laptop may never be touched.
+ * recalls it. Swap cycles the secondary (with more than one), repair spends a repair kit charge
+ * (while there is one), and map and pause sit at the top centre. Writes `touchState` for
+ * TouchAdapter; rules in touchAim.ts, touchLob.ts and touchButtons.ts.
+ * With the `auto` touch setting it runs but stays hidden until the first real touch: many desktop
+ * browsers report touch support, and a touchscreen laptop may never be touched. `on` shows it
+ * straight away.
  */
 export class TouchControlsScene extends Phaser.Scene {
   private sticks!: { left: VirtualStick; right: VirtualStick };
@@ -51,6 +55,8 @@ export class TouchControlsScene extends Phaser.Scene {
   private mgRing!: Phaser.GameObjects.Arc;
   private mortarButton!: Phaser.GameObjects.Arc;
   private hatchButton!: Phaser.GameObjects.Arc;
+  /** One-press buttons, with their icons. */
+  private taps!: Record<TouchTap, Phaser.GameObjects.Container>;
   private lobLine!: Phaser.GameObjects.Graphics;
   private lobPointer: number | null = null;
 
@@ -58,7 +64,7 @@ export class TouchControlsScene extends Phaser.Scene {
     super(SceneKey.TouchControls);
   }
 
-  create(): void {
+  create(data: { visible?: boolean } = {}): void {
     this.input.addPointer(2);
     this.sticks = {
       left: this.makeStick(touchState.left, 60, GAME_HEIGHT - 60),
@@ -77,14 +83,24 @@ export class TouchControlsScene extends Phaser.Scene {
       .circle(MORTAR_BUTTON.x, MORTAR_BUTTON.y, MORTAR_BUTTON.r, MORTAR_COLOR, IDLE_ALPHA)
       .setStrokeStyle(1, 0xffffff, 0.6);
     this.lobLine = this.add.graphics();
+    const hatch = TOUCH_BUTTONS.hatch;
     this.hatchButton = this.add
-      .circle(HATCH_BUTTON.x, HATCH_BUTTON.y, HATCH_BUTTON.r, HATCH_COLOR, IDLE_ALPHA)
+      .circle(hatch.x, hatch.y, hatch.r, HATCH_COLOR, IDLE_ALPHA)
       .setStrokeStyle(1, 0xffffff, 0.6);
+    this.taps = {
+      hatch: this.add.container(0, 0, [this.hatchButton]),
+      swap: this.tapButton('swap', SWAP_COLOR, '<>'),
+      repair: this.tapButton('repair', REPAIR_COLOR, '+'),
+      map: this.tapButton('map', MENU_COLOR, 'M'),
+      pause: this.tapButton('pause', MENU_COLOR, 'II'),
+    };
     this.onLoadout(events.latest('loadout:changed'));
     this.onAbilities(events.latest('abilities:changed'));
+    this.onRepair(events.latest('repair:changed'));
     events.on('loadout:changed', this.onLoadout, this);
     events.on('abilities:changed', this.onAbilities, this);
-    this.cameras.main.setVisible(false);
+    events.on('repair:changed', this.onRepair, this);
+    this.cameras.main.setVisible(data.visible ?? false);
 
     this.input.on('pointerdown', this.onDown, this);
     this.input.on('pointermove', this.onMove, this);
@@ -96,7 +112,8 @@ export class TouchControlsScene extends Phaser.Scene {
       this.releaseLob();
       events.off('loadout:changed', this.onLoadout, this);
       events.off('abilities:changed', this.onAbilities, this);
-      touchState.hatchTapped = false;
+      events.off('repair:changed', this.onRepair, this);
+      for (const k of Object.keys(touchState.taps) as TouchTap[]) touchState.taps[k] = false;
     });
   }
 
@@ -112,19 +129,20 @@ export class TouchControlsScene extends Phaser.Scene {
     if (!p.wasTouch) return;
     touchState.lastTouchAt = performance.now();
     this.cameras.main.setVisible(true);
-    if (Phaser.Math.Distance.Between(p.x, p.y, ALT_BUTTON.x, ALT_BUTTON.y) <= ALT_BUTTON.r + 4) {
+    const button = hitTouchButton(p.x, p.y, (id) => this.isShown(id));
+    if (button === 'alt') {
       touchState.mgOn = !touchState.mgOn;
       this.refreshMgMode();
       return;
     }
-    const hatch = Phaser.Math.Distance.Between(p.x, p.y, HATCH_BUTTON.x, HATCH_BUTTON.y);
-    if (this.hatchButton.visible && hatch <= HATCH_BUTTON.r + 4) {
-      touchState.hatchTapped = true;
-      this.hatchButton.setAlpha(0.7);
-      this.time.delayedCall(120, () => this.hatchButton.setAlpha(IDLE_ALPHA));
+    if (button && button !== 'mortar') {
+      touchState.taps[button] = true;
+      const circle = this.taps[button].list[0] as Phaser.GameObjects.Arc;
+      circle.setFillStyle(circle.fillColor, 0.7);
+      this.time.delayedCall(120, () => circle.setFillStyle(circle.fillColor, IDLE_ALPHA));
       return;
     }
-    if (this.overMortar(p) && this.mortarButton.visible && this.lobPointer === null) {
+    if (button === 'mortar' && this.lobPointer === null) {
       this.lobPointer = p.id;
       Object.assign(touchState.lob, { active: true, overButton: true, x: p.x, y: p.y });
       this.mortarButton.setAlpha(0.7);
@@ -194,10 +212,35 @@ export class TouchControlsScene extends Phaser.Scene {
 
   private onLoadout(loadout: GameEvents['loadout:changed'] | undefined): void {
     this.mortarButton.setVisible(loadout?.unlocked.includes('mortar') ?? false);
+    this.taps.swap.setVisible((loadout?.unlocked.length ?? 0) > 1);
   }
 
   private onAbilities(a: GameEvents['abilities:changed'] | undefined): void {
-    this.hatchButton.setVisible(a?.abilities.includes('hatch_scout') ?? false);
+    this.taps.hatch.setVisible(a?.abilities.includes('hatch_scout') ?? false);
+    this.hatchButton.setVisible(this.taps.hatch.visible);
+  }
+
+  private onRepair(r: GameEvents['repair:changed'] | undefined): void {
+    this.taps.repair.setVisible((r?.charges ?? 0) > 0);
+  }
+
+  /** Whether button `id` is on screen (and so can be pressed). */
+  isShown(id: TouchButtonId): boolean {
+    if (id === 'alt') return true;
+    if (id === 'mortar') return this.mortarButton.visible;
+    return this.taps[id].visible;
+  }
+
+  /** A round one-press button with a short label for its icon. */
+  private tapButton(id: TouchTap, color: number, label: string): Phaser.GameObjects.Container {
+    const b = TOUCH_BUTTONS[id];
+    return this.add.container(b.x, b.y, [
+      this.add.circle(0, 0, b.r, color, IDLE_ALPHA).setStrokeStyle(1, 0xffffff, 0.6),
+      this.add
+        .text(0, 0, label, textStyle(1, { rtl: false }))
+        .setOrigin(0.5)
+        .setAlpha(0.8),
+    ]);
   }
 
   private release(stick: VirtualStick): void {
